@@ -147,7 +147,10 @@
             <div class="text-[11px] text-[var(--muted-foreground)]" id="contactsStatusText">Upload CSV/XLSX or paste lines ("Name, Phone") for live tag previews</div>
           </div>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-wrap">
+          <button onclick="quickLoadMockContacts()" class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-colors" title="Quick-load registered phone numbers (+15551234561, +15551234562) to test with the Mock Phone">
+            <span>⚡</span> Quick-Load Mock Numbers
+          </button>
           <input type="file" id="contactFileInput" accept=".csv,.xlsx,.tsv,.txt" class="hidden" onchange="handleFileUpload(this.files[0])">
           <button onclick="document.getElementById('contactFileInput').click()" class="px-3 py-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--content)] text-xs font-medium flex items-center gap-1.5">
             📁 Upload File
@@ -296,9 +299,14 @@
       </div>
       <p class="text-xs text-[var(--muted-foreground)]">Paste rows with <strong>Name</strong>, <strong>Phone</strong>, and any custom columns (e.g. <code>City, Amount, Note</code>). Header line is supported:</p>
       <textarea id="pasteTextInput" rows="6" class="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl p-3 text-xs font-mono focus:outline-hidden focus:ring-2 focus:ring-blue-500" placeholder="Name, Phone, City, Amount&#10;Ramesh Adhikari, +9779841234567, Kathmandu, $50&#10;Sunita Thapa, +9779851234567, Pokhara, $100"></textarea>
-      <div class="flex justify-end gap-2">
-        <button onclick="closePasteModal()" class="px-4 py-2 rounded-xl text-xs border border-[var(--border)] hover:bg-[var(--content)]">Cancel</button>
-        <button onclick="submitPastedContacts()" class="px-4 py-2 rounded-xl text-xs bg-blue-600 hover:bg-blue-700 text-white font-medium">Parse Contacts</button>
+      <div class="flex items-center justify-between gap-2 pt-1">
+        <button onclick="fillMockContactsInModal()" type="button" class="text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium flex items-center gap-1">
+          <span>⚡</span> Fill Mock Phone Numbers
+        </button>
+        <div class="flex justify-end gap-2">
+          <button onclick="closePasteModal()" class="px-4 py-2 rounded-xl text-xs border border-[var(--border)] hover:bg-[var(--content)]">Cancel</button>
+          <button onclick="submitPastedContacts()" class="px-4 py-2 rounded-xl text-xs bg-blue-600 hover:bg-blue-700 text-white font-medium">Parse Contacts</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1309,6 +1317,13 @@
         }
       } catch (e) {
         alert('Error loading test contacts: ' + e.message);
+      }
+    }
+
+    function fillMockContactsInModal() {
+      const input = document.getElementById('pasteTextInput');
+      if (input) {
+        input.value = "Parent Beta, +15551234561\nParent Gamma, +15551234562";
       }
     }
 
