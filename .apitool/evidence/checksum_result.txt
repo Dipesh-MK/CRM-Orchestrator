@@ -12,7 +12,7 @@
 './Mock Aggregator/public/phone.html': OK
 './Mock Aggregator/src/lib/sessionAuth.js': OK
 './Mock Aggregator/public/docs.html': OK
-'./Mock Aggregator/data/aggregator.sqlite': OK
+'./Mock Aggregator/data/aggregator.sqlite': FAILED
 './Mock Aggregator/src/routes/twilio.js': OK
 './Mock Aggregator/src/server.js': OK
 './Mock Aggregator/package.json': OK

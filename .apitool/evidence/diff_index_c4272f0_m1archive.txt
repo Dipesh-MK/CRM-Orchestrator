@@ -1,0 +1,1023 @@
+diff --git a/static/index.html b/static/index.html
+index 377b0b5..1a69506 100644
+--- a/static/index.html
++++ b/static/index.html
+@@ -111,17 +111,29 @@
+         <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+         <span id="healthText">Connecting...</span>
+       </div>
++      <!-- Virtual Clock Status Banner (Milestone 2) -->
++      <div id="virtualClockBanner" class="ml-3 px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-lg flex items-center gap-2 text-xs font-mono">
++        <span class="text-blue-500">🕒</span>
++        <span id="virtualClockTime" class="text-blue-600 font-semibold text-[11px]">Loading...</span>
++        <span id="virtualClockState" class="px-1.5 py-0.2 rounded text-[10px] uppercase font-bold bg-blue-500/20 text-blue-700">RUNNING</span>
++        <button onclick="advanceClockDays(1)" class="px-2 py-0.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-[11px] font-sans font-medium transition cursor-pointer" title="Advance Virtual Clock by 1 Day">+1 Day</button>
++        <button id="btnPauseClock" onclick="toggleClockPause()" class="px-2 py-0.5 bg-[var(--card)] hover:bg-[var(--border)] border border-[var(--border)] rounded text-[11px] font-sans font-medium transition cursor-pointer">Pause</button>
++      </div>
+     </div>
+ 
+     <!-- Right Controls: Workspace, Theme Toggle, Tabs -->
+     <div class="flex items-center gap-4">
+-      <!-- 3 Main Tabs Only -->
++      <!-- Navigation Tabs -->
+       <nav class="flex p-1 bg-[var(--content)] rounded-lg border border-[var(--border)] text-xs font-medium">
+         <button id="tabChatBtn" onclick="switchTab('chat')" class="px-4 py-1.5 rounded-md bg-[var(--card)] shadow-xs text-[var(--foreground)] transition-all">💬 Chat</button>
+         <button id="tabPipelineBtn" onclick="switchTab('pipeline')" class="px-4 py-1.5 rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-all flex items-center gap-1.5">
+           <span>⚡ Pipeline</span>
+           <span id="pipelineIndicator" class="hidden w-2 h-2 rounded-full bg-blue-500"></span>
+         </button>
++        <button id="tabPhonesBtn" onclick="switchTab('phones')" class="px-4 py-1.5 rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-all flex items-center gap-1.5">
++          <span>📱 Phone Simulator</span>
++          <span id="phoneMsgBadge" class="hidden px-1.5 py-0.2 text-[10px] bg-emerald-500 text-white rounded-full"></span>
++        </button>
+         <button id="tabLogsBtn" onclick="switchTab('logs')" class="px-4 py-1.5 rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-all">📋 Logs</button>
+       </nav>
+ 
+@@ -238,6 +250,249 @@
+           No pipeline events yet. Start the conversation in Chat to build your campaign.
+         </div>
+       </div>
++
++      <!-- ================= MILESTONE 1: DISPATCH CONTROL SECTION ================= -->
++      <div id="dispatchSection" class="hidden mt-8 pt-6 border-t border-[var(--border)]">
++        <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 shadow-sm space-y-4">
++          <div class="flex items-center justify-between">
++            <div class="flex items-center gap-2">
++              <span class="text-xl">🚀</span>
++              <div>
++                <h3 class="font-bold text-sm">Campaign Dispatch Control</h3>
++                <p class="text-xs text-[var(--muted-foreground)]">Human-in-the-Loop Batch Approval &amp; Verification</p>
++              </div>
++            </div>
++            <button id="btnRunPreflight" onclick="triggerPreflight()" class="px-3 py-1.5 bg-[var(--content)] hover:bg-[var(--border)] border border-[var(--border)] rounded-md text-xs font-semibold transition">
++              🔍 Run Pre-Flight Audit
++            </button>
++          </div>
++
++          <!-- Pre-Flight Audit Results Container -->
++          <div id="preflightResults" class="hidden space-y-3">
++            <div class="grid grid-cols-3 gap-2 text-center text-xs">
++              <div class="p-2.5 rounded-lg bg-[var(--content)] border border-[var(--border)]">
++                <div class="text-[var(--muted-foreground)] text-[10px]">TOTAL CONTACTS</div>
++                <div id="pfTotalCount" class="text-base font-bold mt-0.5">0</div>
++              </div>
++              <div class="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600">
++                <div class="text-[10px] font-semibold">ELIGIBLE TO SEND</div>
++                <div id="pfEligibleCount" class="text-base font-bold mt-0.5">0</div>
++              </div>
++              <div class="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-600">
++                <div class="text-[10px] font-semibold">BLOCKED</div>
++                <div id="pfBlockedCount" class="text-base font-bold mt-0.5">0</div>
++              </div>
++            </div>
++
++            <!-- Blocked Reasons Detail (if any) -->
++            <div id="pfBlockedDetails" class="hidden p-3 bg-rose-500/5 border border-rose-500/20 rounded-lg text-xs space-y-1">
++              <div class="font-semibold text-rose-600 flex items-center gap-1">⚠️ Pre-Flight Exclusions:</div>
++              <ul id="pfBlockedList" class="list-disc list-inside text-rose-700/80 text-[11px] space-y-0.5"></ul>
++            </div>
++
++            <!-- Message Preview Drawer (first 3) -->
++            <div id="pfPreviewsContainer" class="space-y-2">
++              <div class="text-[11px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wider">Sample Rendered Message Previews:</div>
++              <div id="pfPreviewCards" class="space-y-2"></div>
++            </div>
++
++            <!-- Milestone 2: Dispatch Mode & Future Schedule Controls -->
++            <div class="p-3 bg-[var(--content)] border border-[var(--border)] rounded-lg space-y-2">
++              <div class="text-[11px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wider">Dispatch Execution Mode:</div>
++              <div class="flex items-center gap-6 text-xs">
++                <label class="flex items-center gap-1.5 cursor-pointer font-medium">
++                  <input type="radio" name="dispatchMode" value="now" checked onchange="toggleDispatchMode('now')" class="text-blue-600 focus:ring-blue-500">
++                  <span>🚀 Send Now (Immediate)</span>
++                </label>
++                <label class="flex items-center gap-1.5 cursor-pointer font-medium">
++                  <input type="radio" name="dispatchMode" value="schedule" onchange="toggleDispatchMode('schedule')" class="text-blue-600 focus:ring-blue-500">
++                  <span>🕒 Schedule for Future (Virtual Clock)</span>
++                </label>
++              </div>
++
++              <!-- Future DateTime Picker (Hidden by default) -->
++              <div id="schedulePickerContainer" class="hidden pt-2 border-t border-[var(--border)] flex items-center gap-3 text-xs">
++                <label for="scheduleDateTimeInput" class="text-[var(--muted-foreground)] font-medium">Target Virtual Date &amp; Time:</label>
++                <input type="datetime-local" id="scheduleDateTimeInput" class="px-2.5 py-1 text-xs border border-[var(--border)] rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
++                <span class="text-[11px] text-[var(--muted-foreground)]">(Requires future virtual time)</span>
++              </div>
++            </div>
++
++            <!-- Provider Live Delivery Reconciler Notice -->
++            <div class="p-2.5 bg-blue-500/10 border border-blue-500/20 rounded-lg text-xs text-blue-800 dark:text-blue-300 flex items-center justify-between gap-2">
++              <div class="flex items-center gap-2">
++                <span class="text-sm">🔄</span>
++                <div>
++                  <strong>Live Reconciler Active:</strong> Background worker continuously polls aggregator delivery status and matches in-flight messages.
++                </div>
++              </div>
++              <button onclick="triggerReconcilerPoll()" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-[11px] font-semibold transition shrink-0 cursor-pointer">
++                Poll Now
++              </button>
++            </div>
++
++            <!-- Approval Controls -->
++            <div class="flex items-center justify-end gap-3 pt-2">
++              <button id="btnRejectRun" onclick="rejectDispatchRun()" class="px-4 py-2 border border-rose-500/30 text-rose-600 hover:bg-rose-500/10 rounded-lg text-xs font-semibold transition cursor-pointer">
++                ❌ Reject Run
++              </button>
++              <button id="btnApproveRun" onclick="executeOrScheduleRun()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs transition flex items-center gap-1.5 cursor-pointer">
++                <span id="btnApproveIcon">🚀</span> <span id="btnApproveText">Approve &amp; Send Run</span>
++              </button>
++            </div>
++          </div>
++
++          <!-- Live Progress Container -->
++          <div id="dispatchProgressContainer" class="hidden space-y-3 pt-3 border-t border-[var(--border)]">
++            <div class="flex items-center justify-between text-xs">
++              <span id="dispatchProgressLabel" class="font-medium">Dispatching Messages...</span>
++              <span id="dispatchProgressPercent" class="font-bold text-blue-600">0%</span>
++            </div>
++            <div class="w-full bg-[var(--content)] rounded-full h-2 overflow-hidden border border-[var(--border)]">
++              <div id="dispatchProgressBar" class="bg-blue-600 h-full w-0 transition-all duration-300"></div>
++            </div>
++            
++            <!-- Live Status Badges (Milestone 2) -->
++            <div class="flex items-center gap-2 text-[11px]">
++              <span class="px-2 py-0.5 rounded-full bg-slate-500/10 text-slate-600 border border-slate-500/20 font-medium" id="badgePending">Pending: 0</span>
++              <span class="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 border border-amber-500/20 font-medium" id="badgeQueued">Queued: 0</span>
++              <span class="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 font-medium" id="badgeDelivered">Delivered: 0</span>
++              <span class="px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-600 border border-rose-500/20 font-medium" id="badgeFailed">Failed: 0</span>
++            </div>
++
++            <div id="dispatchItemsSummary" class="text-xs text-[var(--muted-foreground)]"></div>
++          </div>
++        </div>
++      </div>
++    </section>
++
++    <!-- ================= TAB: PHONE SIMULATOR & MESSAGES ================= -->
++    <section id="tabPhones" class="hidden h-full flex flex-col p-6 max-w-6xl mx-auto gap-4 overflow-y-auto">
++      
++      <!-- Virtual Clock & CRM Trigger Controller Header -->
++      <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 shadow-xs shrink-0 flex flex-wrap items-center justify-between gap-4">
++        <div>
++          <div class="flex items-center gap-2">
++            <span class="text-base">⏱️</span>
++            <h2 class="text-sm font-bold tracking-tight">Virtual Clock & CRM Trigger Controller</h2>
++            <span id="phoneClockPauseBadge" class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-amber-500/10 text-amber-600 border border-amber-500/20">PAUSED</span>
++          </div>
++          <div class="text-xs text-[var(--muted-foreground)] mt-0.5 flex items-center gap-2">
++            <span>Current Virtual Time:</span>
++            <span id="phoneViewVirtualTime" class="font-mono text-blue-600 dark:text-blue-400 font-bold">2026-10-25T09:00:00+00:00</span>
++          </div>
++        </div>
++
++        <!-- Date Changer & Time Travel Controls -->
++        <div class="flex flex-wrap items-center gap-2">
++          <input type="datetime-local" id="phoneVirtualDatePicker" class="bg-[var(--background)] border border-[var(--border)] rounded-lg px-2.5 py-1 text-xs font-mono">
++          <button onclick="applyPhoneVirtualDate()" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition cursor-pointer">Set Virtual Date</button>
++          <button onclick="advancePhoneVirtualHours(1)" class="px-2.5 py-1 bg-[var(--content)] hover:bg-[var(--border)] border border-[var(--border)] rounded-lg text-xs font-medium transition cursor-pointer">+1 Hour</button>
++          <button onclick="advancePhoneVirtualHours(24)" class="px-2.5 py-1 bg-[var(--content)] hover:bg-[var(--border)] border border-[var(--border)] rounded-lg text-xs font-medium transition cursor-pointer">+1 Day</button>
++          <button onclick="fireTriggersNow()" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-medium transition cursor-pointer flex items-center gap-1">
++            <span>⚡ Check & Fire Triggers</span>
++          </button>
++        </div>
++      </div>
++
++      <!-- Main Phone Simulator Grid: Left Tabs & Thread, Right Triggers & Scheduled Steps -->
++      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 min-h-[500px]">
++        
++        <!-- Left 2 Cols: Phone Tabs & Messages Thread -->
++        <div class="lg:col-span-2 flex flex-col bg-[var(--card)] border border-[var(--border)] rounded-2xl shadow-xs overflow-hidden">
++          
++          <!-- Horizontal Phone Tabs Rail (Each phone is a tab!) -->
++          <div class="p-3 bg-[var(--content)] border-b border-[var(--border)] flex items-center justify-between gap-2 overflow-x-auto shrink-0">
++            <div class="flex items-center gap-2 overflow-x-auto" id="phoneTabsRail">
++              <!-- Rendered dynamically: Each phone is a tab -->
++            </div>
++            <button onclick="promptAddPhoneTab()" class="shrink-0 px-2.5 py-1 border border-dashed border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg text-xs font-medium transition cursor-pointer">
++              + Add Phone Tab
++            </button>
++          </div>
++
++          <!-- Active Phone Header -->
++          <div class="p-3 border-b border-[var(--border)] bg-[var(--card)] flex items-center justify-between shrink-0">
++            <div class="flex items-center gap-3">
++              <div class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-xs" id="activePhoneAvatar">
++                📱
++              </div>
++              <div>
++                <div class="text-xs font-bold font-mono flex items-center gap-2">
++                  <span id="activePhoneNumberLabel">+15551234561</span>
++                  <span id="activePhoneContactName" class="text-[11px] font-sans font-normal text-[var(--muted-foreground)]">(Alice)</span>
++                </div>
++                <div class="text-[10px] text-emerald-600 flex items-center gap-1" id="activePhoneStatusIndicator">
++                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
++                  <span>Active Contact (Can receive campaigns & replies)</span>
++                </div>
++              </div>
++            </div>
++            <div class="text-[11px] text-[var(--muted-foreground)] font-mono" id="activePhoneMsgCount">0 messages</div>
++          </div>
++
++          <!-- Message Thread Scroll Container -->
++          <div id="phoneMessagesContainer" class="flex-1 p-4 overflow-y-auto space-y-3 bg-[var(--background)] flex flex-col min-h-[280px]">
++            <div class="text-center text-xs text-[var(--muted-foreground)] py-8">Select a phone tab to view message history</div>
++          </div>
++
++          <!-- Texting Inside the Tool Composer -->
++          <div class="p-3 bg-[var(--card)] border-t border-[var(--border)] shrink-0 space-y-2">
++            <div class="flex items-center justify-between">
++              <span class="text-[11px] font-bold text-[var(--muted-foreground)] uppercase">Text Inside the Tool (Two-Way SMS)</span>
++              <!-- Quick Response Chips -->
++              <div class="flex items-center gap-1.5">
++                <button onclick="insertQuickReply('STOP')" class="px-2 py-0.5 rounded text-[10px] bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-900/30 dark:text-rose-300 transition cursor-pointer">
++                  Reply "STOP" (Opt-Out)
++                </button>
++                <button onclick="insertQuickReply('YES')" class="px-2 py-0.5 rounded text-[10px] bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300 transition cursor-pointer">
++                  Reply "YES"
++                </button>
++                <button onclick="insertQuickReply('INFO')" class="px-2 py-0.5 rounded text-[10px] bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 transition cursor-pointer">
++                  Reply "INFO"
++                </button>
++              </div>
++            </div>
++
++            <div class="flex gap-2">
++              <textarea id="phoneTextComposerInput" rows="2" placeholder="Type SMS text message from this simulated phone..." class="flex-1 bg-[var(--background)] border border-[var(--border)] rounded-xl p-2.5 text-xs font-sans focus:outline-hidden focus:ring-2 focus:ring-blue-500"></textarea>
++              <div class="flex flex-col gap-1.5">
++                <button onclick="sendPhoneText('inbound')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-medium transition cursor-pointer whitespace-nowrap shadow-xs">
++                  💬 Send Customer Reply
++                </button>
++                <button onclick="sendPhoneText('outbound')" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition cursor-pointer whitespace-nowrap shadow-xs">
++                  📤 Send Outbound SMS
++                </button>
++              </div>
++            </div>
++          </div>
++        </div>
++
++        <!-- Right 1 Col: CRM Triggers & Subsequent Messages Panel -->
++        <div class="flex flex-col bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 shadow-xs gap-3">
++          <div class="flex items-center justify-between border-b border-[var(--border)] pb-2">
++            <div>
++              <h3 class="text-xs font-bold uppercase tracking-wider text-[var(--foreground)]">CRM Triggers & Next Steps</h3>
++              <p class="text-[11px] text-[var(--muted-foreground)]">When trigger conditions are met, subsequent messages fire</p>
++            </div>
++            <button onclick="loadTriggersAndScheduled()" class="p-1 hover:bg-[var(--content)] rounded text-xs" title="Refresh">🔄</button>
++          </div>
++
++          <!-- Active CRM Triggers List -->
++          <div class="flex-1 overflow-y-auto space-y-2 pr-1" id="crmTriggersPanel">
++            <div class="text-xs text-[var(--muted-foreground)] py-4 text-center">Loading triggers...</div>
++          </div>
++
++          <!-- Quick Actions -->
++          <div class="p-3 bg-[var(--content)] rounded-xl border border-[var(--border)] space-y-2 shrink-0">
++            <div class="text-[11px] font-bold">Fast-Forward to Next Trigger:</div>
++            <button onclick="jumpToNextTriggerJob()" class="w-full px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-medium transition cursor-pointer shadow-xs flex items-center justify-center gap-1.5">
++              <span>⏩ Jump Clock to Next Due Trigger</span>
++            </button>
++          </div>
++        </div>
++
++      </div>
+     </section>
+ 
+     <!-- ================= TAB 3: LOGS ================= -->
+@@ -402,6 +657,7 @@
+     function switchTab(tab) {
+       document.getElementById('tabChat').classList.toggle('hidden', tab !== 'chat');
+       document.getElementById('tabPipeline').classList.toggle('hidden', tab !== 'pipeline');
++      document.getElementById('tabPhones').classList.toggle('hidden', tab !== 'phones');
+       document.getElementById('tabLogs').classList.toggle('hidden', tab !== 'logs');
+ 
+       document.getElementById('tabChatBtn').className = tab === 'chat'
+@@ -410,11 +666,15 @@
+       document.getElementById('tabPipelineBtn').className = tab === 'pipeline'
+         ? "px-4 py-1.5 rounded-md bg-[var(--card)] shadow-xs text-[var(--foreground)] transition-all font-semibold flex items-center gap-1.5"
+         : "px-4 py-1.5 rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-all flex items-center gap-1.5";
++      document.getElementById('tabPhonesBtn').className = tab === 'phones'
++        ? "px-4 py-1.5 rounded-md bg-[var(--card)] shadow-xs text-[var(--foreground)] transition-all font-semibold flex items-center gap-1.5"
++        : "px-4 py-1.5 rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-all flex items-center gap-1.5";
+       document.getElementById('tabLogsBtn').className = tab === 'logs'
+         ? "px-4 py-1.5 rounded-md bg-[var(--card)] shadow-xs text-[var(--foreground)] transition-all font-semibold"
+         : "px-4 py-1.5 rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-all";
+ 
+       if (tab === 'logs') loadLogs();
++      if (tab === 'phones') loadPhonesAndMessages();
+     }
+ 
+     // Health Check on startup
+@@ -929,8 +1189,15 @@
+             tmplContainer.classList.add('hidden');
+           }
+ 
++          // Reveal and trigger dispatch section in Pipeline tab (Milestone 1)
++          const dispSec = document.getElementById('dispatchSection');
++          if (dispSec) {
++            dispSec.classList.remove('hidden');
++            triggerPreflight();
++          }
++
+           // Post final message in the chat
+-          const approvalMsg = `🎉 **Campaign Package Approved!**\n\nAll messaging templates, tone criteria, and campaign facts have been locked and saved to your persistent workspace memory.\n\nReady for dispatch! You can download the complete formatted messaging sequence below:\n\n[📥 Download Campaign Messages](/api/export/campaign/${currentSessionId})`;
++          const approvalMsg = `🎉 **Campaign Package Approved!**\n\nAll messaging templates, tone criteria, and campaign facts have been locked and saved to your persistent workspace memory.\n\n🚀 **Pre-Flight Dispatch Ready:** Switch to the ⚡ **Pipeline** tab to review the pre-flight exclusion audit, preview personalized messages, and authorize live sending.\n\n[📥 Download Campaign Messages](/api/export/campaign/${currentSessionId})`;
+           appendChatMessage('assistant', approvalMsg);
+         }
+       } catch (e) {
+@@ -1124,6 +1391,696 @@
+     }
+ 
+     function closeRawLogModal() { document.getElementById('rawLogModal').classList.add('hidden'); }
++
++    // ================= MILESTONE 1 DISPATCH JAVASCRIPT =================
++    let currentDispatchRunId = null;
++    let currentDispatchActionId = null;
++    let currentDispatchCsrfToken = null;
++    let dispatchPollInterval = null;
++
++    async function triggerPreflight() {
++      const btn = document.getElementById('btnRunPreflight');
++      if (btn) btn.textContent = '⏳ Auditing...';
++      try {
++        const res = await fetch('/api/dispatch/preflight', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ session_id: currentSessionId, template_step: 1 })
++        });
++        const data = await res.json();
++        if (!res.ok) throw new Error(data.detail || data.error || 'Pre-flight check failed');
++
++        currentDispatchRunId = data.run_id;
++        currentDispatchActionId = data.action_id;
++        currentDispatchCsrfToken = data.csrf_token;
++
++        document.getElementById('preflightResults').classList.remove('hidden');
++        document.getElementById('pfTotalCount').textContent = data.total_contacts;
++        document.getElementById('pfEligibleCount').textContent = data.eligible_count;
++        document.getElementById('pfBlockedCount').textContent = data.blocked_count;
++
++        // Render blocked reasons
++        const blockedDetails = document.getElementById('pfBlockedDetails');
++        const blockedList = document.getElementById('pfBlockedList');
++        if (data.blocked_count > 0 && data.blocked_items && data.blocked_items.length > 0) {
++          blockedDetails.classList.remove('hidden');
++          blockedList.innerHTML = '';
++          data.blocked_items.forEach(b => {
++            const li = document.createElement('li');
++            li.textContent = `Contact ${b.contact_id} (${b.phone}): ${b.reason}`;
++            blockedList.appendChild(li);
++          });
++        } else {
++          blockedDetails.classList.add('hidden');
++        }
++
++        // Render sample preview cards
++        const previewsContainer = document.getElementById('pfPreviewCards');
++        previewsContainer.innerHTML = '';
++        if (data.preview_cards && data.preview_cards.length > 0) {
++          data.preview_cards.forEach((p, idx) => {
++            previewsContainer.innerHTML += `
++              <div class="p-3 bg-[var(--content)] border border-[var(--border)] rounded-lg text-xs space-y-1">
++                <div class="flex items-center justify-between text-[11px] font-semibold text-[var(--muted-foreground)]">
++                  <span>Sample ${idx + 1} · Recipient: ${p.masked_phone}</span>
++                  <span class="font-mono text-emerald-600">${p.word_count} words</span>
++                </div>
++                <div class="p-2 bg-[var(--background)] rounded border border-[var(--border)] text-xs text-[var(--foreground)] whitespace-pre-wrap">${p.rendered_body}</div>
++              </div>
++            `;
++          });
++        }
++
++        // Emit pipeline event in UI
++        renderPipelineEvent({
++          step_id: 'dispatch_preflight',
++          step_title: 'Dispatch Pre-Flight Audit',
++          step_icon: '🔍',
++          status: 'done',
++          description: data.message,
++          sub_step: `Pre-flight validated: ${data.eligible_count} eligible, ${data.blocked_count} blocked`,
++          sub_status: 'done'
++        });
++
++      } catch (err) {
++        alert('Pre-flight error: ' + err.message);
++      } finally {
++        if (btn) btn.textContent = '🔍 Re-run Pre-Flight';
++      }
++    }
++
++    async function approveDispatchRun() {
++      if (!currentDispatchActionId) {
++        alert('No active staged pre-flight run. Please run pre-flight first.');
++        return;
++      }
++      const approveBtn = document.getElementById('btnApproveRun');
++      const rejectBtn = document.getElementById('btnRejectRun');
++      if (approveBtn) approveBtn.disabled = true;
++      if (rejectBtn) rejectBtn.disabled = true;
++
++      try {
++        const res = await fetch(`/api/pending/${currentDispatchActionId}/approve`, {
++          method: 'POST',
++          headers: {
++            'Content-Type': 'application/json',
++            'X-CSRF-Token': currentDispatchCsrfToken || ''
++          },
++          body: JSON.stringify({ csrf_token: currentDispatchCsrfToken })
++        });
++        const data = await res.json();
++        if (!res.ok) throw new Error(data.detail || data.error || 'Approval failed');
++
++        document.getElementById('dispatchProgressContainer').classList.remove('hidden');
++        startDispatchPolling();
++
++        renderPipelineEvent({
++          step_id: 'dispatch_send',
++          step_title: 'Campaign Dispatch Execution',
++          step_icon: '🚀',
++          status: 'active',
++          description: 'Authorized by user in UI. Worker sending batch messages...',
++          sub_step: 'Dispatching messages to provider',
++          sub_status: 'processing'
++        });
++
++      } catch (err) {
++        alert('Approval failed: ' + err.message);
++        if (approveBtn) approveBtn.disabled = false;
++        if (rejectBtn) rejectBtn.disabled = false;
++      }
++    }
++
++    async function rejectDispatchRun() {
++      if (!currentDispatchActionId) return;
++      try {
++        const res = await fetch(`/api/pending/${currentDispatchActionId}/reject`, {
++          method: 'POST',
++          headers: {
++            'Content-Type': 'application/json',
++            'X-CSRF-Token': currentDispatchCsrfToken || ''
++          },
++          body: JSON.stringify({ csrf_token: currentDispatchCsrfToken })
++        });
++        const data = await res.json();
++        if (!res.ok) throw new Error(data.detail || data.error || 'Rejection failed');
++
++        document.getElementById('preflightResults').classList.add('hidden');
++        renderPipelineEvent({
++          step_id: 'dispatch_send',
++          step_title: 'Campaign Dispatch Execution',
++          step_icon: '🛑',
++          status: 'rejected',
++          description: 'Dispatch run rejected by user.',
++          sub_step: 'Run canceled',
++          sub_status: 'done'
++        });
++        alert('Dispatch run was rejected.');
++      } catch (err) {
++        alert('Rejection failed: ' + err.message);
++      }
++    }
++
++    function startDispatchPolling() {
++      if (dispatchPollInterval) clearInterval(dispatchPollInterval);
++      dispatchPollInterval = setInterval(async () => {
++        if (!currentDispatchRunId) return;
++        try {
++          const res = await fetch(`/api/dispatch/${currentDispatchRunId}/status`);
++          const data = await res.json();
++          if (res.ok && data.run) {
++            const run = data.run;
++            const items = data.items || [];
++            const completedItems = items.filter(it => it.status === 'queued' || it.status === 'failed').length;
++            const total = run.eligible_count || 1;
++            const percent = Math.min(100, Math.round((completedItems / total) * 100));
++
++            document.getElementById('dispatchProgressPercent').textContent = percent + '%';
++            document.getElementById('dispatchProgressBar').style.width = percent + '%';
++            document.getElementById('dispatchItemsSummary').textContent = `${completedItems} of ${total} items processed (${items.filter(it => it.status === 'queued').length} queued, ${items.filter(it => it.status === 'failed').length} failed). Notice: Status is queued (live delivery arrives in Milestone 2).`;
++
++            if (run.status === 'completed' || run.status === 'completed_with_errors' || run.status === 'rejected') {
++              clearInterval(dispatchPollInterval);
++              document.getElementById('dispatchProgressLabel').textContent = run.status === 'completed' ? '✅ Dispatch Completed' : '⚠️ Dispatch Completed with Errors';
++              
++              renderPipelineEvent({
++                step_id: 'dispatch_send',
++                step_title: 'Campaign Dispatch Execution',
++                step_icon: run.status === 'completed' ? '✅' : '⚠️',
++                status: 'done',
++                description: `Batch dispatch finished: ${completedItems} messages processed. Status: Queued (Provider Live Delivery Reconciler enabled in Milestone 2).`,
++                sub_step: 'Complete',
++                sub_status: 'done'
++              });
++            }
++          }
++        } catch (e) {
++          console.warn('Dispatch poll error:', e);
++        }
++      }, 500);
++    }
++
++    // =========================================================================
++    // Milestone 2: Virtual Clock & Reconciler Client Logic
++    // =========================================================================
++
++    let currentDispatchMode = 'now';
++
++    function toggleDispatchMode(mode) {
++      currentDispatchMode = mode;
++      const picker = document.getElementById('schedulePickerContainer');
++      const approveText = document.getElementById('btnApproveText');
++      const approveIcon = document.getElementById('btnApproveIcon');
++
++      if (mode === 'schedule') {
++        picker.classList.remove('hidden');
++        approveText.textContent = 'Approve & Schedule Batch';
++        approveIcon.textContent = '🕒';
++        
++        // Suggest tomorrow at 09:00
++        const now = new Date();
++        now.setDate(now.getDate() + 1);
++        now.setHours(9, 0, 0, 0);
++        const pad = (n) => String(n).padStart(2, '0');
++        const localIso = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
++        document.getElementById('scheduleDateTimeInput').value = localIso;
++      } else {
++        picker.classList.add('hidden');
++        approveText.textContent = 'Approve & Send Run';
++        approveIcon.textContent = '🚀';
++      }
++    }
++
++    async function executeOrScheduleRun() {
++      if (currentDispatchMode === 'schedule') {
++        await scheduleDispatchRun();
++      } else {
++        await approveDispatchRun();
++      }
++    }
++
++    async function scheduleDispatchRun() {
++      if (!currentDispatchActionId) return;
++      const dtInput = document.getElementById('scheduleDateTimeInput').value;
++      if (!dtInput) {
++        alert('Please select a target date and time to schedule this campaign.');
++        return;
++      }
++      const sendAtIso = new Date(dtInput).toISOString();
++
++      try {
++        const approveBtn = document.getElementById('btnApproveRun');
++        if (approveBtn) approveBtn.disabled = true;
++
++        const res = await fetch('/api/dispatch/schedule', {
++          method: 'POST',
++          headers: {
++            'Content-Type': 'application/json',
++            'X-CSRF-Token': currentDispatchCsrfToken || ''
++          },
++          body: JSON.stringify({
++            session_id: currentSessionId,
++            template_step: currentDispatchStep,
++            send_at_virtual_iso: sendAtIso
++          })
++        });
++        const data = await res.json();
++        if (!res.ok) throw new Error(data.detail || data.error || 'Scheduling failed');
++
++        document.getElementById('preflightResults').classList.add('hidden');
++        renderPipelineEvent({
++          step_id: 'dispatch_send',
++          step_title: 'Campaign Scheduled for Future',
++          step_icon: '🕒',
++          status: 'done',
++          description: `Campaign batch successfully scheduled for virtual time: ${sendAtIso}. Schedule ID: ${data.schedule_id}.`,
++          sub_step: 'Queued in Scheduler',
++          sub_status: 'done'
++        });
++        alert(`Campaign successfully scheduled for ${sendAtIso}!\nThe scheduler worker will automatically execute when the virtual clock reaches this timestamp.`);
++      } catch (err) {
++        alert('Scheduling failed: ' + err.message);
++        const approveBtn = document.getElementById('btnApproveRun');
++        if (approveBtn) approveBtn.disabled = false;
++      }
++    }
++
++    async function fetchClockStatus() {
++      try {
++        const res = await fetch('/api/clock');
++        if (res.ok) {
++          const data = await res.json();
++          const vt = data.virtual_time.replace('T', ' ').substring(0, 19) + ' UTC';
++          document.getElementById('virtualClockTime').textContent = vt;
++          const stateBadge = document.getElementById('virtualClockState');
++          const pauseBtn = document.getElementById('btnPauseClock');
++          if (data.is_paused) {
++            stateBadge.textContent = 'PAUSED';
++            stateBadge.className = 'px-1.5 py-0.2 rounded text-[10px] uppercase font-bold bg-amber-500/20 text-amber-700';
++            pauseBtn.textContent = 'Resume';
++          } else {
++            stateBadge.textContent = 'RUNNING';
++            stateBadge.className = 'px-1.5 py-0.2 rounded text-[10px] uppercase font-bold bg-blue-500/20 text-blue-700';
++            pauseBtn.textContent = 'Pause';
++          }
++        }
++      } catch (e) {
++        console.warn('Clock fetch error:', e);
++      }
++    }
++
++    async function advanceClockDays(days) {
++      try {
++        const seconds = days * 86400;
++        await fetch('/api/clock/advance', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ duration_seconds: seconds })
++        });
++        await fetchClockStatus();
++      } catch (e) {
++        alert('Failed to advance clock: ' + e.message);
++      }
++    }
++
++    async function toggleClockPause() {
++      try {
++        const stateBadge = document.getElementById('virtualClockState');
++        const currentlyPaused = stateBadge.textContent.includes('PAUSED');
++        await fetch('/api/clock/pause', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ paused: !currentlyPaused })
++        });
++        await fetchClockStatus();
++      } catch (e) {
++        alert('Failed to toggle clock pause: ' + e.message);
++      }
++    }
++
++    async function triggerReconcilerPoll() {
++      try {
++        const res = await fetch('/api/reconciler/poll', { method: 'POST' });
++        const data = await res.json();
++        alert(`Reconciliation Cycle Complete:\n• Evaluated: ${data.total_evaluated}\n• Reconciled Terminal: ${data.reconciled_terminal}\n• Still in Flight: ${data.still_in_flight}\n• Unknown Matched: ${data.unknown_matched}`);
++      } catch (e) {
++        alert('Reconciler poll error: ' + e.message);
++      }
++    }
++
++    // Start clock heartbeat
++    setInterval(fetchClockStatus, 3000);
++    fetchClockStatus();
++
++    // -------------------------------------------------------------
++    // Phone Simulator, Two-Way Texting & Trigger Management
++    // -------------------------------------------------------------
++    let currentSelectedPhone = null;
++    let currentSelectedName = null;
++    let knownPhones = [];
++
++    async function loadPhonesAndMessages() {
++      try {
++        const res = await fetch('/api/phone-viewer/phones');
++        const phones = await res.json();
++        knownPhones = phones;
++        renderPhoneTabs(phones);
++
++        // Select first phone if none selected
++        if (!currentSelectedPhone && phones.length > 0) {
++          selectPhoneTab(phones[0].phone, phones[0].name);
++        } else if (currentSelectedPhone) {
++          loadPhoneMessages(currentSelectedPhone);
++        }
++
++        // Also refresh triggers list and virtual clock display
++        loadTriggersAndScheduled();
++        updatePhoneVirtualClockDisplay();
++      } catch (e) {
++        console.error('Failed to load phones:', e);
++      }
++    }
++
++    function renderPhoneTabs(phones) {
++      const rail = document.getElementById('phoneTabsRail');
++      if (!rail) return;
++      rail.innerHTML = '';
++
++      phones.forEach(p => {
++        const isActive = p.phone === currentSelectedPhone;
++        const btn = document.createElement('button');
++        btn.className = isActive
++          ? "px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-blue-600 text-white shadow-xs transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
++          : "px-3 py-1.5 rounded-lg text-xs font-mono font-medium bg-[var(--card)] hover:bg-[var(--border)] text-[var(--foreground)] border border-[var(--border)] transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap";
++        
++        btn.onclick = () => selectPhoneTab(p.phone, p.name);
++        btn.innerHTML = `<span>📱</span> <span>${p.phone}</span> <span class="opacity-75 font-sans font-normal text-[11px]">(${p.name})</span>`;
++        if (p.message_count > 0) {
++          const badge = document.createElement('span');
++          badge.className = isActive ? "px-1.5 py-0.2 rounded-full text-[10px] bg-white text-blue-700 font-bold" : "px-1.5 py-0.2 rounded-full text-[10px] bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 font-bold";
++          badge.textContent = p.message_count;
++          btn.appendChild(badge);
++        }
++        rail.appendChild(btn);
++      });
++    }
++
++    function selectPhoneTab(phone, name) {
++      currentSelectedPhone = phone;
++      currentSelectedName = name;
++      renderPhoneTabs(knownPhones);
++
++      document.getElementById('activePhoneNumberLabel').textContent = phone;
++      document.getElementById('activePhoneContactName').textContent = `(${name})`;
++      loadPhoneMessages(phone);
++    }
++
++    async function loadPhoneMessages(phone) {
++      if (!phone) return;
++      const container = document.getElementById('phoneMessagesContainer');
++      try {
++        const res = await fetch(`/api/phone-viewer/messages?phone=${encodeURIComponent(phone)}`);
++        const data = await res.json();
++        const msgs = data.messages || [];
++
++        document.getElementById('activePhoneMsgCount').textContent = `${msgs.length} message${msgs.length === 1 ? '' : 's'}`;
++
++        if (msgs.length === 0) {
++          container.innerHTML = `
++            <div class="m-auto text-center py-12 text-xs text-[var(--muted-foreground)]">
++              <div class="text-3xl mb-2">📭</div>
++              <div>No messages yet for <strong>${phone}</strong></div>
++              <div class="text-[11px] mt-1">Send a message below or dispatch a campaign step to view texts here.</div>
++            </div>`;
++          return;
++        }
++
++        container.innerHTML = '';
++        msgs.forEach(m => {
++          const row = document.createElement('div');
++          const isOutbound = m.direction === 'outbound';
++          row.className = isOutbound ? "flex flex-col items-end" : "flex flex-col items-start";
++
++          const bubble = document.createElement('div');
++          bubble.className = isOutbound
++            ? "max-w-[85%] rounded-2xl rounded-tr-xs px-3.5 py-2.5 text-xs bg-blue-600 text-white shadow-xs space-y-1"
++            : "max-w-[85%] rounded-2xl rounded-tl-xs px-3.5 py-2.5 text-xs bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] shadow-xs space-y-1";
++
++          const metaLine = document.createElement('div');
++          metaLine.className = isOutbound
++            ? "text-[10px] text-blue-200 flex items-center justify-between gap-3 font-mono"
++            : "text-[10px] text-[var(--muted-foreground)] flex items-center justify-between gap-3 font-mono";
++          
++          const label = isOutbound ? `Campaign (Step ${m.step || 1})` : `${phone} (Customer)`;
++          const statusBadge = isOutbound
++            ? `<span class="px-1.5 py-0.2 rounded text-[9px] ${m.status === 'delivered' ? 'bg-emerald-500/20 text-emerald-200' : 'bg-white/20 text-white'}">${m.status || 'sent'}</span>`
++            : '';
++
++          metaLine.innerHTML = `<span>${label}</span> ${statusBadge}`;
++          bubble.appendChild(metaLine);
++
++          const bodyEl = document.createElement('div');
++          bodyEl.className = "whitespace-pre-wrap font-sans text-xs leading-relaxed";
++          bodyEl.textContent = m.body;
++          bubble.appendChild(bodyEl);
++
++          const timeEl = document.createElement('div');
++          timeEl.className = isOutbound ? "text-[9px] text-blue-300 text-right font-mono" : "text-[9px] text-[var(--muted-foreground)] text-right font-mono";
++          timeEl.textContent = m.timestamp ? m.timestamp.replace('T', ' ').substring(0, 19) + ' UTC' : '';
++          bubble.appendChild(timeEl);
++
++          row.appendChild(bubble);
++          container.appendChild(row);
++        });
++
++        container.scrollTop = container.scrollHeight;
++      } catch (e) {
++        console.error('Failed to load messages for', phone, e);
++      }
++    }
++
++    async function sendPhoneText(direction) {
++      if (!currentSelectedPhone) {
++        alert('Please select or add a phone tab first.');
++        return;
++      }
++      const input = document.getElementById('phoneTextComposerInput');
++      const body = input.value.trim();
++      if (!body) return;
++
++      try {
++        const res = await fetch('/api/phone-viewer/send', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({
++            phone: currentSelectedPhone,
++            body: body,
++            direction: direction
++          })
++        });
++        const data = await res.json();
++        if (data.success) {
++          input.value = '';
++          if (data.opted_out) {
++            alert(`⚠️ Phone ${currentSelectedPhone} texted 'STOP' and has been automatically added to the suppression list.`);
++          }
++          if (data.triggered_actions > 0) {
++            alert(`⚡ Keyword trigger matched! Fired ${data.triggered_actions} subsequent automated action(s).`);
++          }
++          await loadPhoneMessages(currentSelectedPhone);
++          await loadPhonesAndMessages();
++        } else {
++          alert('Failed to send text: ' + (data.error || 'Unknown error'));
++        }
++      } catch (e) {
++        alert('Send text error: ' + e.message);
++      }
++    }
++
++    function insertQuickReply(text) {
++      const input = document.getElementById('phoneTextComposerInput');
++      input.value = text;
++      input.focus();
++    }
++
++    function promptAddPhoneTab() {
++      const phone = prompt("Enter phone number to add as a tab (e.g. +15551234564):");
++      if (!phone || !phone.trim()) return;
++      const cleanPhone = phone.trim();
++      const name = prompt("Enter contact name (optional):") || cleanPhone;
++      
++      const existing = knownPhones.find(p => p.phone === cleanPhone);
++      if (!existing) {
++        knownPhones.push({ phone: cleanPhone, name: name, message_count: 0 });
++      }
++      selectPhoneTab(cleanPhone, name);
++    }
++
++    async function updatePhoneVirtualClockDisplay() {
++      try {
++        const res = await fetch('/api/clock');
++        const data = await res.json();
++        if (data.virtual_time) {
++          document.getElementById('phoneViewVirtualTime').textContent = data.virtual_time;
++          const dtInput = document.getElementById('phoneVirtualDatePicker');
++          if (dtInput && !dtInput.value) {
++            dtInput.value = data.virtual_time.substring(0, 16);
++          }
++        }
++        const pauseBadge = document.getElementById('phoneClockPauseBadge');
++        if (pauseBadge) {
++          pauseBadge.textContent = data.is_paused ? 'PAUSED' : 'RUNNING';
++          pauseBadge.className = data.is_paused
++            ? "px-2 py-0.5 rounded-full text-[10px] font-mono bg-amber-500/10 text-amber-600 border border-amber-500/20"
++            : "px-2 py-0.5 rounded-full text-[10px] font-mono bg-emerald-500/10 text-emerald-600 border border-emerald-500/20";
++        }
++      } catch (e) {}
++    }
++
++    async function applyPhoneVirtualDate() {
++      const dtInput = document.getElementById('phoneVirtualDatePicker');
++      if (!dtInput || !dtInput.value) {
++        alert('Please select a date and time.');
++        return;
++      }
++      const iso = new Date(dtInput.value).toISOString();
++      try {
++        const res = await fetch('/api/clock/set', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ iso_datetime: iso })
++        });
++        const data = await res.json();
++        await updatePhoneVirtualClockDisplay();
++        await fetchClockStatus();
++        
++        let msg = `Virtual clock updated to ${data.virtual_time}`;
++        if (data.triggered && data.triggered.executed_count > 0) {
++          msg += `\n\n⚡ CRM Trigger Met! Fired ${data.triggered.executed_count} subsequent message(s).`;
++        }
++        alert(msg);
++
++        if (currentSelectedPhone) loadPhoneMessages(currentSelectedPhone);
++        loadTriggersAndScheduled();
++      } catch (e) {
++        alert('Failed to set virtual date: ' + e.message);
++      }
++    }
++
++    async function advancePhoneVirtualHours(hours) {
++      try {
++        const res = await fetch('/api/clock/advance', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ duration_seconds: hours * 3600 })
++        });
++        const data = await res.json();
++        await updatePhoneVirtualClockDisplay();
++        await fetchClockStatus();
++
++        if (data.triggered && data.triggered.executed_count > 0) {
++          alert(`⚡ CRM Trigger Met! Clock advanced and fired ${data.triggered.executed_count} subsequent message(s).`);
++        }
++
++        if (currentSelectedPhone) loadPhoneMessages(currentSelectedPhone);
++        loadTriggersAndScheduled();
++      } catch (e) {
++        alert('Failed to advance clock: ' + e.message);
++      }
++    }
++
++    async function fireTriggersNow() {
++      try {
++        const res = await fetch('/api/triggers/evaluate-now', { method: 'POST' });
++        const data = await res.json();
++        let msg = `Trigger Evaluation Complete:\n• Acquired: ${data.acquired || 0}\n• Executed Dispatches: ${data.executed_count || 0}\n• Status: ${data.status}`;
++        alert(msg);
++        if (currentSelectedPhone) loadPhoneMessages(currentSelectedPhone);
++        loadTriggersAndScheduled();
++      } catch (e) {
++        alert('Trigger evaluation failed: ' + e.message);
++      }
++    }
++
++    async function loadTriggersAndScheduled() {
++      const panel = document.getElementById('crmTriggersPanel');
++      if (!panel) return;
++
++      try {
++        const [trigRes, schedRes] = await Promise.all([
++          fetch('/api/companion/triggers'),
++          fetch('/api/scheduled')
++        ]);
++        const triggers = await trigRes.json();
++        const scheduled = await schedRes.json();
++
++        if (triggers.length === 0 && scheduled.length === 0) {
++          panel.innerHTML = `
++            <div class="text-xs text-[var(--muted-foreground)] py-6 text-center border border-dashed rounded-xl p-3">
++              No pending CRM triggers or scheduled runs.<br>
++              <span class="text-[10px] opacity-75">When multi-step campaigns are approved or scheduled, upcoming steps appear here.</span>
++            </div>`;
++          return;
++        }
++
++        panel.innerHTML = '';
++
++        scheduled.forEach(s => {
++          const card = document.createElement('div');
++          card.className = "p-2.5 rounded-xl border border-[var(--border)] bg-[var(--content)] space-y-1 text-xs";
++          card.innerHTML = `
++            <div class="flex items-center justify-between font-mono text-[10px]">
++              <span class="font-bold text-blue-600 dark:text-blue-400">Step ${s.template_step || 2} Scheduled</span>
++              <span class="px-1.5 py-0.2 rounded ${s.status === 'completed' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'} font-sans">${s.status}</span>
++            </div>
++            <div class="text-[11px] font-mono text-[var(--foreground)]">Trigger Date: ${s.send_at_virtual_iso.replace('T', ' ').substring(0, 19)} UTC</div>
++            <div class="text-[10px] text-[var(--muted-foreground)]">Campaign: ${s.session_id}</div>
++          `;
++          panel.appendChild(card);
++        });
++
++        triggers.forEach(t => {
++          const card = document.createElement('div');
++          card.className = "p-2.5 rounded-xl border border-[var(--border)] bg-[var(--content)] space-y-1 text-xs";
++          const cond = t.condition || {};
++          const condText = cond.time_spec ? `Date/Time: ${cond.time_spec.replace('T', ' ').substring(0, 19)}` : (cond.keyword ? `Keyword: "${cond.keyword}"` : t.condition_type);
++          card.innerHTML = `
++            <div class="flex items-center justify-between font-mono text-[10px]">
++              <span class="font-bold text-purple-600 dark:text-purple-400">Trigger: ${t.action_type || 'Action'}</span>
++              <span class="px-1.5 py-0.2 rounded bg-purple-100 text-purple-800 font-sans">${t.status}</span>
++            </div>
++            <div class="text-[11px] font-mono text-[var(--foreground)]">Condition: ${condText}</div>
++            <div class="text-[10px] text-[var(--muted-foreground)]">Fires: ${t.fires_count || 0} / ${t.max_fires || '∞'}</div>
++          `;
++          panel.appendChild(card);
++        });
++
++      } catch (e) {
++        console.error('Error loading triggers:', e);
++      }
++    }
++
++    async function jumpToNextTriggerJob() {
++      try {
++        const res = await fetch('/api/companion/clock/jump-next', { method: 'POST' });
++        const data = await res.json();
++        if (data.status === 'no_pending_jobs') {
++          alert('No pending scheduled jobs in queue.');
++          return;
++        }
++        await updatePhoneVirtualClockDisplay();
++        await fetchClockStatus();
++        let msg = `⏩ Jumped virtual clock to: ${data.virtual_time}`;
++        if (data.triggered && data.triggered.executed_count > 0) {
++          msg += `\n\n⚡ CRM Trigger Fired! Sent ${data.triggered.executed_count} subsequent message(s).`;
++        }
++        alert(msg);
++        if (currentSelectedPhone) loadPhoneMessages(currentSelectedPhone);
++        loadTriggersAndScheduled();
++      } catch (e) {
++        alert('Jump failed: ' + e.message);
++      }
++    }
+   </script>
+ </body>
+ </html>

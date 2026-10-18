@@ -1,0 +1,54 @@
+{
+  "config_allowed_hosts": [
+    "127.0.0.1:8000",
+    "localhost:8000",
+    "127.0.0.1",
+    "localhost",
+    "::1",
+    "[::1]:8000",
+    "testserver"
+  ],
+  "config_allowed_origins": [
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "http://[::1]:8000",
+    "http://testserver"
+  ],
+  "verification_results": [
+    {
+      "case": "Browser opened at http://localhost:8000",
+      "host": "localhost:8000",
+      "origin": "http://localhost:8000",
+      "verified": true,
+      "error": null
+    },
+    {
+      "case": "Browser opened at http://127.0.0.1:8000",
+      "host": "127.0.0.1:8000",
+      "origin": "http://127.0.0.1:8000",
+      "verified": true,
+      "error": null
+    },
+    {
+      "case": "Browser opened at http://[::1]:8000",
+      "host": "[::1]:8000",
+      "origin": "http://[::1]:8000",
+      "verified": true,
+      "error": null
+    },
+    {
+      "case": "Spoofed/Foreign Host (e.g. attacker.com)",
+      "host": "attacker.com",
+      "origin": "http://localhost:8000",
+      "verified": false,
+      "error": "403: Dispatch refused: Invalid or spoofed Host 'attacker.com' rejected by security policy"
+    },
+    {
+      "case": "Spoofed/Foreign Origin (e.g. http://malicious.site)",
+      "host": "localhost:8000",
+      "origin": "http://malicious.site",
+      "verified": false,
+      "error": "403: Dispatch refused: Foreign Origin 'http://malicious.site' rejected by loopback policy"
+    }
+  ]
+}

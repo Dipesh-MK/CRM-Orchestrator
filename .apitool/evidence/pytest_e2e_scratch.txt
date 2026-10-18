@@ -16,4 +16,4 @@ tests/test_dispatch_e2e_scratch.py::test_scratch_aggregator_e2e_send
 [E2E Scratch Aggregator] Teardown complete: process killed and /tmp/scratch_mock_aggregator deleted.
 PASSED
 
-============================== 1 passed in 2.99s ===============================
+============================== 1 passed in 3.25s ===============================

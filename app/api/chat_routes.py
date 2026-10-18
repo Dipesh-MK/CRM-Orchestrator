@@ -1,8 +1,10 @@
 import json
 import uuid
 import asyncio
+import hmac
+import secrets
 from typing import Optional, Dict, Any, List
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Request, Header
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
@@ -40,10 +42,18 @@ def get_or_create_state(session_id: str, workspace_id: str = "default_workspace"
             "contacts": [],
             "contacts_count": 0,
             "approved": False,
-            "step_order": 0
+            "step_order": 0,
+            "csrf_token": secrets.token_hex(16)
         }
         storage.save_session(session_id, workspace_id)
+    elif "csrf_token" not in _session_states[session_id]:
+        _session_states[session_id]["csrf_token"] = secrets.token_hex(16)
     return _session_states[session_id]
+
+@router.get("/session/{session_id}/csrf")
+async def get_session_csrf_endpoint(session_id: str):
+    state = get_or_create_state(session_id)
+    return {"session_id": session_id, "csrf_token": state["csrf_token"]}
 
 class ChatMessageRequest(BaseModel):
     session_id: Optional[str] = None
@@ -67,6 +77,7 @@ class TemplateRegenerateRequest(BaseModel):
 
 class ApproveCampaignRequest(BaseModel):
     session_id: str
+    csrf_token: Optional[str] = None
 
 def format_pipeline_event_tag(event: Dict[str, Any]) -> str:
     """Wraps event object in <pipeline_event> tags for SSE / LLM compatibility."""
@@ -102,7 +113,7 @@ async def chat_send(req: ChatMessageRequest):
 
     async def event_generator():
         # First send session initialization
-        init_meta = {"type": "session_init", "session_id": session_id}
+        init_meta = {"type": "session_init", "session_id": session_id, "csrf_token": state["csrf_token"]}
         yield f"data: {json.dumps(init_meta)}\n\n"
 
         user_msg = req.message.strip()
@@ -481,7 +492,7 @@ async def select_tone(req: ToneSelectRequest):
         yield f"data: {json.dumps({'type': 'pipeline_event', 'event': ev_ready, 'tag': format_pipeline_event_tag(ev_ready)})}\n\n"
 
         # Send templates to UI
-        yield f"data: {json.dumps({'type': 'templates_ready', 'templates': state['templates'], 'schedule': tmpl_res.get('recommended_schedule')})}\n\n"
+        yield f"data: {json.dumps({'type': 'templates_ready', 'templates': state['templates'], 'schedule': tmpl_res.get('recommended_schedule'), 'csrf_token': state['csrf_token']})}\n\n"
         yield f"data: {json.dumps({'type': 'done'})}\n\n"
 
     return StreamingResponse(tone_exec_stream(), media_type="text/event-stream")
@@ -565,9 +576,28 @@ async def paste_contacts(
         return {"result": res}
 
 @router.post("/campaign/approve")
-async def approve_campaign(req: ApproveCampaignRequest):
-    """Approves campaign, stores final state, extracts durable memory, and marks ready."""
+async def approve_campaign(
+    req: ApproveCampaignRequest,
+    request: Request,
+    host: Optional[str] = Header(None),
+    origin: Optional[str] = Header(None),
+    x_csrf_token: Optional[str] = Header(None)
+):
+    """
+    Approves campaign, stores final state, extracts durable memory, and marks ready.
+    Protected with exact Host/Origin checks and server-side per-session CSRF token validation.
+    """
+    cfg = get_config()
+    from app.api.dispatch_routes import verify_loopback_headers
+    verify_loopback_headers(request, host, origin, cfg)
+
     state = get_or_create_state(req.session_id)
+    csrf = x_csrf_token or req.csrf_token or request.headers.get("x-csrf-token", "")
+    stored_csrf = state.get("csrf_token")
+
+    if not csrf or not stored_csrf or not hmac.compare_digest(str(stored_csrf), str(csrf)):
+        raise HTTPException(status_code=403, detail="Approval refused: Missing or invalid CSRF token")
+
     storage.log_user_action(req.session_id, "approve_campaign", {})
 
     state["approved"] = True
@@ -594,12 +624,30 @@ async def approve_campaign(req: ApproveCampaignRequest):
     }
     storage.save_campaign(req.session_id, campaign_dict)
 
-    # Extract durable memory
-    await memory_service.extract_and_save_memory(
-        session_id=req.session_id,
-        workspace_id=state["workspace_id"],
-        campaign_data=campaign_dict
-    )
+    # Extract durable memory asynchronously in background (concise summary to avoid large prompt overhead)
+    clean_campaign_dict = {
+        "business_name": b_name,
+        "campaign_name": c_name,
+        "business_type": state["business_type"] or "General Business",
+        "selected_tone": state.get("selected_tone", ""),
+        "rejected_tones": state.get("rejected_tones", []),
+        "templates_count": len(state.get("templates", [])),
+        "template_summaries": [
+            {"stage": t.get("stage"), "word_count": t.get("word_count"), "tone": t.get("tone")}
+            for t in state.get("templates", [])
+        ]
+    }
+    async def _bg_memory():
+        try:
+            await memory_service.extract_and_save_memory(
+                session_id=req.session_id,
+                workspace_id=state["workspace_id"],
+                campaign_data=clean_campaign_dict
+            )
+        except Exception as ex:
+            print(f"[MemoryService] Background memory extraction warning: {ex}")
+
+    asyncio.create_task(_bg_memory())
 
     ev_done = emit_event(
         state, "ready", "Campaign Package Ready", "🚀", "done",
@@ -607,7 +655,7 @@ async def approve_campaign(req: ApproveCampaignRequest):
         f"Campaign approved! Memory recorded & package ready for export.", "done"
     )
 
-    return {"status": "success", "event": ev_done, "campaign": campaign_dict}
+    return {"status": "success", "session_id": req.session_id, "approved": True, "event": ev_done, "campaign": campaign_dict}
 
 @router.post("/campaign/edit_template")
 async def edit_template(req: TemplateEditRequest):
