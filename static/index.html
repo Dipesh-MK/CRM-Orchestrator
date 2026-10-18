@@ -406,6 +406,7 @@
     const workspaceId = "default_workspace";
     let pipelineSteps = {}; // step_id -> { step, subSteps: [] }
     let rawLLMCalls = [];
+    let isCampaignApproved = false;
 
     // Dark Mode Toggle
     function toggleDarkMode() {
@@ -795,6 +796,15 @@
 
     // Render Templates Carousel with Word Counts, Previews & Controls
     function renderTemplates(templates, schedule) {
+      isCampaignApproved = false;
+      const approveBtn = document.getElementById('approveCampaignBtn');
+      if (approveBtn) {
+        approveBtn.disabled = false;
+        approveBtn.innerHTML = `<span>✅</span> Approve Campaign`;
+        approveBtn.classList.remove('bg-slate-500', 'opacity-70', 'cursor-not-allowed');
+        approveBtn.classList.add('bg-emerald-600', 'hover:bg-emerald-700');
+      }
+
       const container = document.getElementById('templatesContainer');
       document.getElementById('scheduleText').textContent = schedule || 'Cadence';
       container.classList.remove('hidden');
@@ -994,6 +1004,11 @@
     }
 
     async function approveCampaign() {
+      if (isCampaignApproved) {
+        await renderSendAggregatorCard(currentSessionId);
+        return;
+      }
+
       const approveBtn = document.getElementById('approveCampaignBtn');
       if (approveBtn) {
         approveBtn.disabled = true;
@@ -1034,6 +1049,7 @@
         }
 
         // Successfully approved
+        isCampaignApproved = true;
         if (approveBtn) {
           approveBtn.disabled = true;
           approveBtn.innerHTML = `<span>✅</span> Approved`;
@@ -1041,7 +1057,7 @@
           approveBtn.classList.add('bg-slate-500', 'opacity-70', 'cursor-not-allowed');
         }
 
-        // Post final message in the chat
+        // Post final message in the chat (only once)
         const approvalMsg = `🎉 **Campaign Package Approved!**\n\nAll messaging templates, tone criteria, and campaign facts have been locked and saved to your persistent workspace memory.\n\nReady for dispatch! Review the pre-flight verification report below and confirm sending to the aggregator:\n\n[📥 Download Campaign Messages](/api/export/campaign/${currentSessionId})`;
         appendChatMessage('assistant', approvalMsg);
 
@@ -1128,6 +1144,9 @@
         const data = await res.json();
         if (data.result && data.result.success) {
           showContactPreview(data.result);
+          if (isCampaignApproved) {
+            await renderSendAggregatorCard(currentSessionId);
+          }
         } else {
           const err = data.result?.error || data.result?.message || 'Failed to process file';
           appendChatMessage('assistant', `⚠️ **Contact File Dismissed:** ${err}`, true);
@@ -1158,6 +1177,9 @@
         const data = await res.json();
         if (data.result && data.result.success) {
           showContactPreview(data.result);
+          if (isCampaignApproved) {
+            await renderSendAggregatorCard(currentSessionId);
+          }
         } else {
           const err = data.result?.error || data.result?.message || 'Failed to parse contacts';
           appendChatMessage('assistant', `⚠️ **Contact Ingestion Dismissed:** ${err}`, true);
@@ -1266,6 +1288,30 @@
       window.open('/api/export/send_log?session_id=' + encodeURIComponent(currentSessionId), '_blank');
     }
 
+    async function quickLoadMockContacts() {
+      const defaultContacts = "Parent Beta, +15551234561\nParent Gamma, +15551234562";
+      const formData = new FormData();
+      formData.append('session_id', currentSessionId);
+      formData.append('text_data', defaultContacts);
+
+      try {
+        const res = await fetch('/api/contacts/paste', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        if (data.result && data.result.success) {
+          showContactPreview(data.result);
+          appendChatMessage('assistant', `✅ **Loaded Mock Phone Test Contacts:** Added 2 test recipient numbers (\`+15551234561\` and \`+15551234562\`). Ready for aggregator dispatch!`);
+          await renderSendAggregatorCard(currentSessionId);
+        } else {
+          alert(data.result?.error || 'Failed to load test contacts');
+        }
+      } catch (e) {
+        alert('Error loading test contacts: ' + e.message);
+      }
+    }
+
     async function renderSendAggregatorCard(sessionId) {
       const container = document.getElementById('sendAggregatorContainer');
       if (!container) return;
@@ -1280,7 +1326,32 @@
         });
         const data = await res.json();
         if (!res.ok) {
-          container.innerHTML = `<div class="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-600 text-xs rounded-lg font-medium">Pre-flight check error: ${data.detail || data.error || 'Failed'}</div>`;
+          const errMsg = data.detail || data.error || 'Failed';
+          if (errMsg.includes('No contacts found')) {
+            container.innerHTML = `
+              <div class="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-3">
+                <div class="flex items-start gap-2.5">
+                  <span class="text-xl">📱</span>
+                  <div class="space-y-1">
+                    <h4 class="text-xs font-bold text-amber-700 dark:text-amber-400">Recipient Contacts Required for Dispatch</h4>
+                    <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                      No contacts have been loaded for this campaign yet. The aggregator requires recipient phone numbers to simulate SMS delivery on the Virtual Mock Phone.
+                    </p>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2 pt-1 flex-wrap">
+                  <button onclick="quickLoadMockContacts()" class="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-colors">
+                    <span>⚡</span> Quick-Load Mock Phone Test Numbers (+15551234561, +15551234562)
+                  </button>
+                  <button onclick="openPasteModal()" class="px-3 py-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--content)] text-xs font-medium">
+                    📋 Paste Custom Contacts
+                  </button>
+                </div>
+              </div>
+            `;
+          } else {
+            container.innerHTML = `<div class="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-600 text-xs rounded-lg font-medium">Pre-flight check error: ${errMsg}</div>`;
+          }
           return;
         }
 
