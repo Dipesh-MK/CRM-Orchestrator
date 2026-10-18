@@ -191,18 +191,26 @@
         <div id="candidateTonesList" class="grid grid-cols-1 md:grid-cols-3 gap-3 max-h-80 overflow-y-auto pr-1"></div>
       </div>
 
-      <!-- Generated Templates Container -->
-      <div id="templatesContainer" class="hidden bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 shadow-md space-y-3 shrink-0 max-h-96 overflow-y-auto">
+      <!-- Generated Templates Container (with Multi-Message Carousel) -->
+      <div id="templatesContainer" class="hidden bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 shadow-md space-y-3 shrink-0 max-h-[32rem] overflow-y-auto">
         <div class="flex items-center justify-between sticky top-0 bg-[var(--card)] pb-2 border-b border-[var(--border)] z-10">
-          <div>
-            <h3 class="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
-              <span>✍️</span> Generated CRM Templates (<span id="scheduleText"></span>)
-            </h3>
-            <span class="text-[10px] text-[var(--muted-foreground)]">Strictly verified ≤ 320 words with mandatory opt-out</span>
+          <div class="flex items-center gap-3">
+            <div>
+              <h3 class="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                <span>✍️</span> Generated CRM Templates (<span id="scheduleText"></span>)
+              </h3>
+              <span class="text-[10px] text-[var(--muted-foreground)]">Strictly verified ≤ 320 words with mandatory opt-out</span>
+            </div>
+            <!-- Multi-Message Carousel Navigation -->
+            <div id="templateCarouselNav" class="flex items-center gap-1 bg-[var(--background)] px-2 py-1 rounded-lg border border-[var(--border)] shadow-xs">
+              <button id="prevTemplateBtn" onclick="prevTemplateSlide()" class="px-2 py-0.5 text-xs rounded hover:bg-[var(--content)] disabled:opacity-30 disabled:cursor-not-allowed font-bold" title="Previous message (or Left Arrow)">◀</button>
+              <span id="templateCounterBadge" class="font-mono text-xs font-bold px-2 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400">Message 1 of 3</span>
+              <button id="nextTemplateBtn" onclick="nextTemplateSlide()" class="px-2 py-0.5 text-xs rounded hover:bg-[var(--content)] disabled:opacity-30 disabled:cursor-not-allowed font-bold" title="Next message (or Right Arrow)">▶</button>
+            </div>
           </div>
           <div class="flex items-center gap-2">
-            <button id="approveCampaignBtn" onclick="approveCampaign()" class="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs">
-              ✅ Approve Campaign
+            <button id="approveCampaignBtn" onclick="approveCampaign()" class="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs flex items-center gap-1.5">
+              <span>✅</span> Approve Campaign
             </button>
             <button id="rejectCampaignBtn" onclick="openRejectModal()" class="px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-xs">
               ❌ Reject & Revise
@@ -630,6 +638,7 @@
               const payload = JSON.parse(line.substring(6));
               if (payload.type === 'session_init') {
                 currentSessionId = payload.session_id;
+                if (payload.csrf_token) currentCsrfToken = payload.csrf_token;
               } else if (payload.type === 'pipeline_event') {
                 renderPipelineEvent(payload.event);
               } else if (payload.type === 'text_chunk') {
@@ -637,6 +646,7 @@
                 if (cleanText) appendChatMessage('assistant', cleanText, payload.is_rate_limit || false);
                 if (payload.tones) renderToneProposal(payload.tones);
               } else if (payload.type === 'templates_ready') {
+                if (payload.csrf_token) currentCsrfToken = payload.csrf_token;
                 renderTemplates(payload.templates, payload.schedule);
               }
             }
@@ -766,6 +776,7 @@
               if (payload.type === 'pipeline_event') {
                 renderPipelineEvent(payload.event);
               } else if (payload.type === 'templates_ready') {
+                if (payload.csrf_token) currentCsrfToken = payload.csrf_token;
                 renderTemplates(payload.templates, payload.schedule);
               }
             }
@@ -777,68 +788,125 @@
       }
     }
 
-    // Render Templates with Word Counts, Previews & Controls
+    let currentTemplateSlideIndex = 0;
+    let currentTemplatesStore = [];
+    let currentCsrfToken = "";
+
+    // Render Templates Carousel with Word Counts, Previews & Controls
     function renderTemplates(templates, schedule) {
       const container = document.getElementById('templatesContainer');
-      const list = document.getElementById('templatesList');
       document.getElementById('scheduleText').textContent = schedule || 'Cadence';
-      list.innerHTML = '';
       container.classList.remove('hidden');
-
-      templates.forEach(t => {
-        const hasPreviews = (t.previews || []).length > 0;
-        const previewRows = hasPreviews ? (t.previews || []).map(p => {
-          const extraBadges = p.extra && Object.keys(p.extra).length > 0
-            ? Object.entries(p.extra).map(([k, v]) => `<span class="px-1.5 py-0.5 rounded-sm bg-slate-200 dark:bg-slate-700 text-[10px] text-[var(--foreground)] font-mono">${k}: ${v}</span>`).join(' ')
-            : '';
-
-          return `
-            <div class="p-2.5 bg-[var(--background)] rounded-lg border border-[var(--border)] space-y-1">
-              <div class="flex items-center justify-between">
-                <span class="font-bold text-xs text-blue-600 dark:text-blue-400">👤 ${p.contact_name} <span class="text-[var(--muted-foreground)] font-mono text-[11px]">(${p.masked_phone || p.phone})</span></span>
-                <div class="flex items-center gap-1">${extraBadges}</div>
-              </div>
-              <div class="text-xs text-[var(--foreground)] mt-1 whitespace-pre-wrap font-sans bg-[var(--card)] p-2 rounded-md border border-[var(--border)]">${p.rendered_text}</div>
-            </div>
-          `;
-        }).join('') : `
-          <div class="p-2.5 bg-[var(--background)] rounded-lg border border-dashed border-[var(--border)] text-xs text-slate-700 dark:text-slate-300 flex items-center justify-between">
-            <span>💡 <em>No contacts file uploaded yet. Placeholders like <code class="px-1 bg-slate-200 dark:bg-slate-700 rounded-sm font-mono text-[11px] font-semibold text-blue-600 dark:text-blue-400">{{customer_name}}</code> will resolve dynamically to real recipient names upon CSV upload or dispatch.</em></span>
-          </div>
-        `;
-
-        const cardHTML = `
-          <div class="border border-[var(--border)] bg-[var(--card)] rounded-xl p-4 space-y-3 shadow-xs">
-            <div class="flex items-center justify-between border-b border-[var(--border)] pb-2">
-              <span class="font-bold text-xs uppercase tracking-wider text-blue-600 dark:text-blue-400">
-                ${t.tone} — Message ${t.message_index} (${t.stage})
-              </span>
-              <div class="flex items-center gap-2">
-                <span class="text-[11px] font-mono px-2 py-0.5 rounded-md ${t.word_count <= t.word_limit ? 'bg-emerald-500/10 text-emerald-600' : 'bg-red-500/10 text-red-600'}">
-                  📏 ${t.word_count} / ${t.word_limit} words ${t.compliant ? '✅' : '⚠️'}
-                </span>
-                <button onclick="openEditModal(${t.message_index})" class="px-2 py-1 rounded-md border border-[var(--border)] hover:bg-[var(--content)] text-xs font-medium text-[var(--foreground)]">✏️ Edit</button>
-                <button onclick="regenerateTemplateAction(${t.message_index})" class="px-2 py-1 rounded-md border border-[var(--border)] hover:bg-[var(--content)] text-xs font-medium text-blue-600 dark:text-blue-400">🔄 Regenerate</button>
-              </div>
-            </div>
-
-            <div class="text-xs whitespace-pre-wrap font-sans text-[var(--foreground)] p-3 bg-[var(--background)] rounded-lg border border-[var(--border)]" id="tmpl-body-${t.message_index}">
-              ${t.body}
-            </div>
-
-            <!-- Recipient Previews with Personalization Tags -->
-            <div>
-              <div class="text-[11px] font-semibold text-[var(--muted-foreground)] mb-1">${hasPreviews ? 'Live Recipient Previews (Real Name & Fields Injected):' : 'Recipient Personalization Preview:'}</div>
-              <div class="space-y-1.5" id="tmpl-previews-${t.message_index}">${previewRows}</div>
-            </div>
-          </div>
-        `;
-        list.insertAdjacentHTML('beforeend', cardHTML);
-      });
+      currentTemplatesStore = templates || [];
+      currentTemplateSlideIndex = 0;
+      updateTemplateSlide();
     }
 
+    function updateTemplateSlide() {
+      const list = document.getElementById('templatesList');
+      const prevBtn = document.getElementById('prevTemplateBtn');
+      const nextBtn = document.getElementById('nextTemplateBtn');
+      const badge = document.getElementById('templateCounterBadge');
+
+      const total = currentTemplatesStore.length;
+      if (total === 0) {
+        list.innerHTML = '<div class="text-xs text-[var(--muted-foreground)] p-4 text-center">No templates available</div>';
+        if (badge) badge.textContent = 'Message 0 of 0';
+        if (prevBtn) prevBtn.disabled = true;
+        if (nextBtn) nextBtn.disabled = true;
+        return;
+      }
+
+      if (currentTemplateSlideIndex < 0) currentTemplateSlideIndex = 0;
+      if (currentTemplateSlideIndex >= total) currentTemplateSlideIndex = total - 1;
+
+      if (badge) badge.textContent = `Message ${currentTemplateSlideIndex + 1} of ${total}`;
+      if (prevBtn) prevBtn.disabled = (currentTemplateSlideIndex === 0);
+      if (nextBtn) nextBtn.disabled = (currentTemplateSlideIndex === total - 1);
+
+      const t = currentTemplatesStore[currentTemplateSlideIndex];
+      const hasPreviews = (t.previews || []).length > 0;
+      const previewRows = hasPreviews ? (t.previews || []).map(p => {
+        const extraBadges = p.extra && Object.keys(p.extra).length > 0
+          ? Object.entries(p.extra).map(([k, v]) => `<span class="px-1.5 py-0.5 rounded-sm bg-slate-200 dark:bg-slate-700 text-[10px] text-[var(--foreground)] font-mono">${k}: ${v}</span>`).join(' ')
+          : '';
+
+        return `
+          <div class="p-2.5 bg-[var(--background)] rounded-lg border border-[var(--border)] space-y-1">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-xs text-blue-600 dark:text-blue-400">👤 ${p.contact_name} <span class="text-[var(--muted-foreground)] font-mono text-[11px]">(${p.masked_phone || p.phone})</span></span>
+              <div class="flex items-center gap-1">${extraBadges}</div>
+            </div>
+            <div class="text-xs text-[var(--foreground)] mt-1 whitespace-pre-wrap font-sans bg-[var(--card)] p-2 rounded-md border border-[var(--border)]">${p.rendered_text}</div>
+          </div>
+        `;
+      }).join('') : `
+        <div class="p-2.5 bg-[var(--background)] rounded-lg border border-dashed border-[var(--border)] text-xs text-slate-700 dark:text-slate-300 flex items-center justify-between">
+          <span>💡 <em>No contacts file uploaded yet. Placeholders like <code class="px-1 bg-slate-200 dark:bg-slate-700 rounded-sm font-mono text-[11px] font-semibold text-blue-600 dark:text-blue-400">{{customer_name}}</code> will resolve dynamically to real recipient names upon CSV upload or dispatch.</em></span>
+        </div>
+      `;
+
+      list.innerHTML = `
+        <div class="border border-[var(--border)] bg-[var(--card)] rounded-xl p-4 space-y-3 shadow-xs">
+          <div class="flex items-center justify-between border-b border-[var(--border)] pb-2">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="font-bold text-xs uppercase tracking-wider text-blue-600 dark:text-blue-400">
+                ${t.tone || 'Campaign Tone'} — Message ${t.message_index} (${t.stage || 'Touchpoint'})
+              </span>
+              <span class="text-[11px] font-mono px-2 py-0.5 rounded-md ${t.word_count <= (t.word_limit || 320) ? 'bg-emerald-500/10 text-emerald-600 font-semibold' : 'bg-red-500/10 text-red-600 font-semibold'}">
+                📏 ${t.word_count} / ${t.word_limit || 320} words ${t.compliant ? '✅' : '⚠️'}
+              </span>
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 font-medium">
+                Opt-out: ✅
+              </span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="openEditModal(${t.message_index})" class="px-2 py-1 rounded-md border border-[var(--border)] hover:bg-[var(--content)] text-xs font-medium text-[var(--foreground)]">✏️ Edit</button>
+              <button onclick="regenerateTemplateAction(${t.message_index})" class="px-2 py-1 rounded-md border border-[var(--border)] hover:bg-[var(--content)] text-xs font-medium text-blue-600 dark:text-blue-400">🔄 Regenerate</button>
+            </div>
+          </div>
+
+          <div class="text-xs whitespace-pre-wrap font-sans text-[var(--foreground)] p-3 bg-[var(--background)] rounded-lg border border-[var(--border)] leading-relaxed" id="tmpl-body-${t.message_index}">
+            ${t.body}
+          </div>
+
+          <!-- Recipient Previews with Personalization Tags -->
+          <div>
+            <div class="text-[11px] font-semibold text-[var(--muted-foreground)] mb-1">${hasPreviews ? 'Live Recipient Previews (Real Name & Fields Injected):' : 'Recipient Personalization Preview:'}</div>
+            <div class="space-y-1.5" id="tmpl-previews-${t.message_index}">${previewRows}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function prevTemplateSlide() {
+      if (currentTemplateSlideIndex > 0) {
+        currentTemplateSlideIndex--;
+        updateTemplateSlide();
+      }
+    }
+
+    function nextTemplateSlide() {
+      if (currentTemplateSlideIndex < currentTemplatesStore.length - 1) {
+        currentTemplateSlideIndex++;
+        updateTemplateSlide();
+      }
+    }
+
+    // Keyboard navigation (ArrowLeft / ArrowRight) for template carousel
+    window.addEventListener('keydown', (e) => {
+      const tmplContainer = document.getElementById('templatesContainer');
+      if (tmplContainer && !tmplContainer.classList.contains('hidden')) {
+        if (['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) return;
+        if (e.key === 'ArrowLeft') {
+          prevTemplateSlide();
+        } else if (e.key === 'ArrowRight') {
+          nextTemplateSlide();
+        }
+      }
+    });
+
     let currentEditingIndex = null;
-    let currentTemplatesStore = [];
 
     function openEditModal(index) {
       currentEditingIndex = index;
@@ -870,7 +938,8 @@
         });
         const data = await res.json();
         if (data.status === 'success' && data.all_templates) {
-          renderTemplates(data.all_templates);
+          currentTemplatesStore = data.all_templates;
+          updateTemplateSlide();
         }
       } catch (e) {
         alert('Edit failed: ' + e.message);
@@ -911,7 +980,8 @@
         });
         const data = await res.json();
         if (data.status === 'success' && data.all_templates) {
-          renderTemplates(data.all_templates);
+          currentTemplatesStore = data.all_templates;
+          updateTemplateSlide();
         }
       } catch (e) {
         alert('Regenerate failed: ' + e.message);
@@ -923,29 +993,65 @@
     }
 
     async function approveCampaign() {
+      const approveBtn = document.getElementById('approveCampaignBtn');
+      if (approveBtn) {
+        approveBtn.disabled = true;
+        approveBtn.innerHTML = `<span>⏳</span> Approving...`;
+      }
+
       try {
+        // Ensure CSRF token is present
+        if (!currentCsrfToken && currentSessionId) {
+          try {
+            const csrfRes = await fetch(`/api/session/${currentSessionId}/csrf`);
+            const csrfData = await csrfRes.json();
+            if (csrfData.csrf_token) currentCsrfToken = csrfData.csrf_token;
+          } catch (e) {}
+        }
+
         const res = await fetch('/api/campaign/approve', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ session_id: currentSessionId })
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': currentCsrfToken || ''
+          },
+          body: JSON.stringify({
+            session_id: currentSessionId,
+            csrf_token: currentCsrfToken || ''
+          })
         });
+
         const data = await res.json();
-        if (data.status === 'success') {
-          // Hide the templates container card so it does not stick around
-          const tmplContainer = document.getElementById('templatesContainer');
-          if (tmplContainer) {
-            tmplContainer.classList.add('hidden');
+        if (!res.ok || data.status !== 'success') {
+          const errMsg = data.detail || data.error || data.message || `HTTP ${res.status}`;
+          alert('Approval error: ' + errMsg);
+          if (approveBtn) {
+            approveBtn.disabled = false;
+            approveBtn.innerHTML = `<span>✅</span> Approve Campaign`;
           }
-
-          // Post final message in the chat
-          const approvalMsg = `🎉 **Campaign Package Approved!**\n\nAll messaging templates, tone criteria, and campaign facts have been locked and saved to your persistent workspace memory.\n\nReady for dispatch! Review the pre-flight verification report below and confirm sending to the aggregator:\n\n[📥 Download Campaign Messages](/api/export/campaign/${currentSessionId})`;
-          appendChatMessage('assistant', approvalMsg);
-
-          // Render Step 5 Send Card
-          await renderSendAggregatorCard(currentSessionId);
+          return;
         }
+
+        // Successfully approved
+        if (approveBtn) {
+          approveBtn.disabled = true;
+          approveBtn.innerHTML = `<span>✅</span> Approved`;
+          approveBtn.classList.remove('bg-emerald-600', 'hover:bg-emerald-700');
+          approveBtn.classList.add('bg-slate-500', 'opacity-70', 'cursor-not-allowed');
+        }
+
+        // Post final message in the chat
+        const approvalMsg = `🎉 **Campaign Package Approved!**\n\nAll messaging templates, tone criteria, and campaign facts have been locked and saved to your persistent workspace memory.\n\nReady for dispatch! Review the pre-flight verification report below and confirm sending to the aggregator:\n\n[📥 Download Campaign Messages](/api/export/campaign/${currentSessionId})`;
+        appendChatMessage('assistant', approvalMsg);
+
+        // Render Step 5 Send Card
+        await renderSendAggregatorCard(currentSessionId);
       } catch (e) {
         alert('Approval failed: ' + e.message);
+        if (approveBtn) {
+          approveBtn.disabled = false;
+          approveBtn.innerHTML = `<span>✅</span> Approve Campaign`;
+        }
       }
     }
 
