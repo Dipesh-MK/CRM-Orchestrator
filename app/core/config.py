@@ -13,6 +13,7 @@ class LLMConfig(BaseModel):
     request_timeout_seconds: int = 60
 
 class OrchestratorConfig(BaseModel):
+    min_tone_candidates: int = 3
     word_limit: int = 320
     max_retries: int = 3
     max_discovery_rounds: int = 5

@@ -5,10 +5,11 @@ llm:
   model: "qwen2.5:7b-instruct"
   api_key_env: "LLM_API_KEY"
   temperature: 0.3
-  request_timeout_seconds: 60
+  request_timeout_seconds: 120
 
 
 orchestrator:
+  min_tone_candidates: 3
   word_limit: 320
   max_retries: 3
   max_discovery_rounds: 5

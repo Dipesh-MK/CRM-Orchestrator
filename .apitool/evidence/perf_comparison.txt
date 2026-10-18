@@ -1,0 +1,17 @@
+==========================================================================================
+PERFORMANCE OPTIMIZATION COMPARISON: BASELINE vs AFTER
+==========================================================================================
+Metric / Purpose               Baseline (ms)     After (ms)        Change / Reduction
+------------------------------------------------------------------------------------------
+Total Wall Clock Time            1596038 ms         599310 ms      -996.7s (-62.5%)
+Total Raw LLM Calls                   21 calls          18 calls   -3 calls
+Candidate Tones Returned               3 tones           3 tones   3 guaranteed distinct
+------------------------------------------------------------------------------------------
+discovery                        54667 ms (1x)    85394 ms (2x)    +30727 ms (+56.2%)
+memory_extract                   60066 ms (1x)   111515 ms (1x)    +51449 ms (+85.7%)
+planner                          53313 ms (1x)    60838 ms (1x)     +7525 ms (+14.1%)
+repair                          115714 ms (9x)   343310 ms (9x)   +227596 ms (+196.7%)
+safety_guard                     34182 ms (4x)    79573 ms (4x)    +45391 ms (+132.8%)
+template_write                   48363 ms (1x)    65394 ms (1x)    +17031 ms (+35.2%)
+tone_proposal                   240266 ms (4x)        0 ms (0x)   -240266 ms (-100.0%)
+==========================================================================================

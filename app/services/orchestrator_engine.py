@@ -1,5 +1,6 @@
 import json
 import re
+import asyncio
 from typing import Dict, Any, List, Optional
 from app.core.config import get_config
 from app.core.storage import get_storage
@@ -170,49 +171,103 @@ class OrchestratorEngine:
                         details={"error": str(e), "raw": raw, "attempt": attempt}
                     )
 
-        if not parsed:
-            # Fallback dynamic tone proposal with multi-message support
-            display_name = business_name if business_name and business_name != "Our Company" else "{{organization_name}}"
-            parsed = {
-                "rationale": f"Adaptive tones selected for {business_type}",
-                "candidate_tones": [
-                    {
-                        "id": "friendly_warm",
-                        "name": "✨ Warm & Friendly",
-                        "description": "Engaging, conversational tone focused on customer connection.",
-                        "example_messages": [
-                            f"Hi {{{{customer_name}}}}, {display_name} has an important update regarding {campaign_goal}. Tap {{{{link}}}} for details.\n\n{self.config.orchestrator.optout_text}",
-                            f"Hello {{{{customer_name}}}}, quick follow-up from {display_name} about {campaign_goal}. Let us know if you need any help.\n\n{self.config.orchestrator.optout_text}",
-                            f"Hi {{{{customer_name}}}}, final reminder from {display_name} to review {campaign_goal}. Visit {{{{link}}}}.\n\n{self.config.orchestrator.optout_text}"
-                        ],
-                        "example_message": f"Hi {{{{customer_name}}}}, {display_name} has an exciting update for you: {campaign_goal}. Visit {{{{link}}}} to learn more!\n\n{self.config.orchestrator.optout_text}"
-                    },
-                    {
-                        "id": "clear_direct",
-                        "name": "🎯 Clear & Direct",
-                        "description": "Concise and action-driven message with clear next steps.",
-                        "example_messages": [
-                            f"Hello {{{{customer_name}}}}, notice from {display_name}: {campaign_goal}. Complete this at {{{{link}}}}.\n\n{self.config.orchestrator.optout_text}",
-                            f"Reminder {{{{customer_name}}}}, your action with {display_name} regarding {campaign_goal} is still pending.\n\n{self.config.orchestrator.optout_text}",
-                            f"Final notice: Please settle {campaign_goal} with {display_name} via {{{{link}}}}.\n\n{self.config.orchestrator.optout_text}"
-                        ],
-                        "example_message": f"Hello {{{{customer_name}}}}, important reminder from {display_name}: {campaign_goal}. Tap {{{{link}}}} now.\n\n{self.config.orchestrator.optout_text}"
-                    },
-                    {
-                        "id": "formal_admin",
-                        "name": "🏛️ Formal & Administrative",
-                        "description": "Professional, structured communication adhering to official policy.",
-                        "example_messages": [
-                            f"Dear {{{{customer_name}}}}, official notification from {display_name} regarding {campaign_goal}. Please review: {{{{link}}}}.\n\n{self.config.orchestrator.optout_text}",
-                            f"Dear {{{{customer_name}}}}, this is a follow-up concerning {campaign_goal} on your {display_name} record.\n\n{self.config.orchestrator.optout_text}",
-                            f"Dear {{{{customer_name}}}}, final administrative notice regarding {campaign_goal} with {display_name}.\n\n{self.config.orchestrator.optout_text}"
-                        ],
-                        "example_message": f"Dear {{{{customer_name}}}}, official notice from {display_name} regarding {campaign_goal}. Review at {{{{link}}}}.\n\n{self.config.orchestrator.optout_text}"
-                    }
-                ]
-            }
+        min_candidates = getattr(self.config.orchestrator, "min_tone_candidates", 3)
+        raw_tones = parsed.get("candidate_tones", []) if parsed else []
 
-        return parsed
+        cleaned_tones = []
+        seen_names = set()
+        for t in raw_tones:
+            name = (t.get("name") or "").strip()
+            desc = (t.get("description") or "").strip()
+            ex = t.get("example_message")
+            if not ex and t.get("example_messages"):
+                ex = t["example_messages"][0]
+            if name and name.lower() not in seen_names:
+                seen_names.add(name.lower())
+                cleaned_tones.append({
+                    "id": t.get("id") or f"tone_{len(cleaned_tones)+1}",
+                    "name": name,
+                    "description": desc or f"Campaign messaging tone: {name}",
+                    "example_message": ex or f"Update from {business_name}: {campaign_goal}. {self.config.orchestrator.optout_text}"
+                })
+
+        # If fewer than min_candidates, run a lightweight repair prompt (up to 1 retry)
+        if len(cleaned_tones) < min_candidates:
+            needed = min_candidates - len(cleaned_tones)
+            existing_names_str = ", ".join(f"'{t['name']}'" for t in cleaned_tones) if cleaned_tones else "none"
+            repair_prompt = f"""You previously proposed {len(cleaned_tones)} tone(s): {existing_names_str}.
+We need at least {min_candidates} candidate tones. Please provide {needed} more DISTINCT candidate tone(s) for business '{business_name}' ({business_type}).
+Do NOT repeat existing tones.
+Respond in strict JSON:
+{{
+  "additional_tones": [
+    {{
+      "id": "new_tone_id",
+      "name": "Distinct Tone Name with Emoji",
+      "description": "Short explanation of the tone",
+      "example_message": "Single preview message ending with {self.config.orchestrator.optout_text}"
+    }}
+  ]
+}}"""
+            rep_res = await self.llm.call_llm(
+                session_id=session_id,
+                purpose="tone_proposal",
+                system_prompt="You are a tone suggestion assistant. Output valid JSON.",
+                user_message=repair_prompt,
+                step_id="tone_repair",
+                json_mode=True
+            )
+            if rep_res.get("status") == "success":
+                try:
+                    c_clean = re.sub(r"^```json\s*", "", rep_res.get("raw_response", "").strip())
+                    c_clean = re.sub(r"\s*```$", "", c_clean)
+                    rep_data = json.loads(c_clean)
+                    new_tones = rep_data.get("additional_tones") or rep_data.get("candidate_tones") or []
+                    for t in new_tones:
+                        name = (t.get("name") or "").strip()
+                        desc = (t.get("description") or "").strip()
+                        ex = t.get("example_message") or (t.get("example_messages")[0] if t.get("example_messages") else "")
+                        if name and name.lower() not in seen_names:
+                            seen_names.add(name.lower())
+                            cleaned_tones.append({
+                                "id": t.get("id") or f"tone_{len(cleaned_tones)+1}",
+                                "name": name,
+                                "description": desc or f"Campaign messaging tone: {name}",
+                                "example_message": ex or f"Update from {business_name}: {campaign_goal}. {self.config.orchestrator.optout_text}"
+                            })
+                            if len(cleaned_tones) >= min_candidates:
+                                break
+                except Exception as e:
+                    self.storage.log_validation(
+                        session_id=session_id,
+                        validation_type="tone_repair_json_parse",
+                        passed=False,
+                        details={"error": str(e)}
+                    )
+
+        # Fallback complement if still under min_candidates
+        if len(cleaned_tones) < min_candidates:
+            fallback_options = [
+                ("warm_friendly", "✨ Warm & Friendly", "Engaging, conversational tone focused on customer connection."),
+                ("clear_direct", "🎯 Clear & Direct", "Concise and action-driven message with clear next steps."),
+                ("formal_admin", "🏛️ Formal & Professional", "Professional, structured communication adhering to official policy standards.")
+            ]
+            for f_id, f_name, f_desc in fallback_options:
+                if f_name.lower() not in seen_names:
+                    seen_names.add(f_name.lower())
+                    cleaned_tones.append({
+                        "id": f_id,
+                        "name": f_name,
+                        "description": f_desc,
+                        "example_message": f"Hello {{{{customer_name}}}}, important update from {business_name} regarding {campaign_goal}.\n\n{self.config.orchestrator.optout_text}"
+                    })
+                if len(cleaned_tones) >= min_candidates:
+                    break
+
+        return {
+            "rationale": parsed.get("rationale", f"Adaptive tones selected for {business_type}") if parsed else f"Adaptive tones selected for {business_type}",
+            "candidate_tones": cleaned_tones
+        }
 
     async def generate_plan(
         self,
@@ -413,11 +468,8 @@ class OrchestratorEngine:
                 ]
             }
 
-        # Validate and repair each template
-        validated_templates = []
-        all_compliant = True
-
-        for tmpl in parsed.get("templates", []):
+        # Validate and repair templates in parallel using asyncio.gather
+        async def process_single_template(tmpl: Dict[str, Any]) -> Dict[str, Any]:
             body = tmpl.get("body", "")
             comp = check_template_compliance(
                 body=body,
@@ -428,7 +480,6 @@ class OrchestratorEngine:
             )
 
             retries_done = 0
-            # If not compliant, run repair loop up to max_retries
             while not comp["compliant"] and retries_done < max_retries:
                 retries_done += 1
                 repair_prompt = self.prompts.render("validator_repair", {
@@ -485,9 +536,6 @@ class OrchestratorEngine:
                 }
             )
 
-            if not comp["compliant"] or not is_safe:
-                all_compliant = False
-
             # Build preview with actual uploaded/pasted contact data
             previews = []
             has_real_contacts = contacts_sample is not None and len(contacts_sample) > 0
@@ -496,7 +544,7 @@ class OrchestratorEngine:
                     rendered_preview = body
                     c_name = sc.get("name", "Customer")
                     c_phone = sc.get("phone", sc.get("masked_phone", ""))
-                    
+
                     # Standard tags
                     rendered_preview = rendered_preview.replace("{{customer_name}}", c_name)
                     rendered_preview = rendered_preview.replace("{{name}}", c_name)
@@ -509,12 +557,11 @@ class OrchestratorEngine:
                     rendered_preview = rendered_preview.replace("{{donation_link}}", link_or_contact or "https://example.com")
                     rendered_preview = rendered_preview.replace("{{phone}}", c_phone)
 
-                    # Dynamically replace any extra columns from the input row (e.g. {{city}}, {{donation_amount}}, {{appointment_time}})
+                    # Extra columns
                     extra_data = sc.get("extra", {})
                     for col_k, col_v in extra_data.items():
                         tag = "{{" + col_k.lower().strip().replace(" ", "_") + "}}"
                         rendered_preview = rendered_preview.replace(tag, str(col_v))
-                        # Also try raw column name
                         rendered_preview = rendered_preview.replace("{{" + col_k + "}}", str(col_v))
 
                     previews.append({
@@ -525,7 +572,7 @@ class OrchestratorEngine:
                         "rendered_text": rendered_preview
                     })
 
-            validated_templates.append({
+            return {
                 "message_index": tmpl.get("message_index", 1),
                 "stage": tmpl.get("stage", "Message"),
                 "tone": selected_tone,
@@ -537,13 +584,20 @@ class OrchestratorEngine:
                 "safety_status": "safe" if is_safe else "blocked",
                 "retries": retries_done,
                 "previews": previews
-            })
+            }
+
+        raw_templates = parsed.get("templates", [])
+        if raw_templates:
+            validated_templates = await asyncio.gather(*(process_single_template(t) for t in raw_templates))
+        else:
+            validated_templates = []
+        all_compliant = all(t["compliant"] for t in validated_templates) if validated_templates else True
 
         return {
             "sequence_summary": parsed.get("sequence_summary", ""),
             "recommended_schedule": parsed.get("recommended_schedule", "Day 1 -> Day 3 -> Day 7"),
             "all_compliant": all_compliant,
-            "templates": validated_templates
+            "templates": list(validated_templates)
         }
 
 _orchestrator_engine: Optional[OrchestratorEngine] = None

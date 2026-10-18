@@ -8,6 +8,16 @@ from typing import Dict, Any, Optional, List
 from app.core.config import get_config
 from app.core.storage import get_storage, utc_now_iso
 
+PURPOSE_MAX_TOKENS = {
+    "safety_guard": 120,
+    "tone_proposal": 500,
+    "discovery": 450,
+    "planner": 450,
+    "template_write": 650,
+    "repair": 300,
+    "memory_extract": 300,
+}
+
 class LLMClient:
     def __init__(self):
         self.config = get_config()
@@ -96,17 +106,23 @@ class LLMClient:
         }
         if self.config.llm.api_key:
             headers["Authorization"] = f"Bearer {self.config.llm.api_key}"
-
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_message}
         ]
 
+        max_tokens = PURPOSE_MAX_TOKENS.get(purpose, 800)
         payload: Dict[str, Any] = {
             "model": self.config.llm.model,
             "messages": messages,
             "temperature": temp,
-            "stream": False
+            "max_tokens": max_tokens,
+            "stream": False,
+            "keep_alive": "15m",
+            "options": {
+                "num_predict": max_tokens,
+                "keep_alive": "15m"
+            }
         }
         if json_mode:
             payload["response_format"] = {"type": "json_object"}

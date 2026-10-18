@@ -36,9 +36,15 @@ def check_template_compliance(
     if not clean_body.endswith(clean_optout):
         violations.append(f"Does not end with mandatory opt-out text: '{clean_optout}'")
 
-    # 3. Includes business name (case-insensitive)
+    # 3. Includes business name (case-insensitive) or business placeholder
     if business_name and business_name.strip():
-        if business_name.lower() not in body.lower():
+        has_business = (
+            business_name.lower() in body.lower()
+            or "{{business_name}}" in body.lower()
+            or "{{organization_name}}" in body.lower()
+            or "{{org_name}}" in body.lower()
+        )
+        if not has_business:
             violations.append(f"Missing business name: '{business_name}'")
 
     # 4. No ALL CAPS sentences

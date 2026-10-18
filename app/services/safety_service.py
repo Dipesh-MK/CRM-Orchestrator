@@ -6,6 +6,22 @@ from app.core.storage import get_storage
 from app.core.prompt_manager import get_prompt_manager
 from app.core.llm_client import get_llm_client
 
+CHIT_CHAT_WORDS = {
+    "hi", "hello", "hey", "greetings", "there", "good", "morning", "afternoon", "evening",
+    "ok", "okay", "sure", "sounds", "continue", "next", "proceed", "yes", "no", "yep", "nope",
+    "thanks", "thank", "you", "great", "awesome", "perfect", "got", "it", "fine", "done", "please", "go", "ahead"
+}
+
+def is_chit_chat_or_ack(text: str) -> bool:
+    """Returns True if the text is pure conversational pleasantry or acknowledgment without campaign facts."""
+    clean = re.sub(r"[^a-zA-Z\s]", "", text).strip().lower()
+    if not clean:
+        return True
+    words = clean.split()
+    if len(words) <= 5 and all(w in CHIT_CHAT_WORDS for w in words):
+        return True
+    return False
+
 class SafetyService:
     def __init__(self):
         self.config = get_config()
@@ -17,8 +33,24 @@ class SafetyService:
         """
         Runs code-level guard: safety_policy.md as system prompt,
         classifying whether text is safe or violates prohibited categories.
+        Skips LLM call on pure chit-chat turns without campaign facts.
         Fails closed on error/invalid output.
         """
+        if context_label in ("user_input", "discovery_input") and is_chit_chat_or_ack(text_to_evaluate):
+            result = {
+                "allowed": True,
+                "category": "none",
+                "reason": "Chit-chat / acknowledgment turn skipped safety LLM guard.",
+                "suggested_alternative": None,
+                "skipped_llm": True
+            }
+            self.storage.log_validation(
+                session_id=session_id,
+                validation_type=f"safety_guard_{context_label}",
+                passed=True,
+                details=result
+            )
+            return result
         safety_policy = self.prompts.load_prompt("safety_policy")
         
         system_prompt = f"""{safety_policy}

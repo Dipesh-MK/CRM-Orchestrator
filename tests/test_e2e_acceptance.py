@@ -12,7 +12,6 @@ from app.services.compliance_service import count_words
 
 @pytest_asyncio.fixture(autouse=True)
 async def setup_e2e_env():
-    os.environ["LLM_MODEL"] = "qwen2.5vl-local:latest"
     os.environ["DATABASE_PATH"] = "data/e2e_test.db"
     os.environ["LOGS_DIR"] = "logs/e2e_logs"
     get_config(reload=True)

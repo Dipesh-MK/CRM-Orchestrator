@@ -1,0 +1,39 @@
+{
+  "session_id": "perf_d196df1b",
+  "total_wall_clock_ms": 599310,
+  "total_wall_clock_seconds": 599.31,
+  "tone_candidates_count": 3,
+  "per_purpose": {
+    "safety_guard": {
+      "calls": 4,
+      "average_latency_ms": 19893,
+      "total_latency_ms": 79573
+    },
+    "repair": {
+      "calls": 9,
+      "average_latency_ms": 38145,
+      "total_latency_ms": 343310
+    },
+    "planner": {
+      "calls": 1,
+      "average_latency_ms": 60838,
+      "total_latency_ms": 60838
+    },
+    "discovery": {
+      "calls": 2,
+      "average_latency_ms": 42697,
+      "total_latency_ms": 85394
+    },
+    "memory_extract": {
+      "calls": 1,
+      "average_latency_ms": 111515,
+      "total_latency_ms": 111515
+    },
+    "template_write": {
+      "calls": 1,
+      "average_latency_ms": 65394,
+      "total_latency_ms": 65394
+    }
+  },
+  "raw_calls_count": 18
+}

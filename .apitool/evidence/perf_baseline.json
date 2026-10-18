@@ -1,0 +1,44 @@
+{
+  "session_id": "perf_8949560a",
+  "total_wall_clock_ms": 1596038,
+  "total_wall_clock_seconds": 1596.04,
+  "tone_candidates_count": 3,
+  "per_purpose": {
+    "safety_guard": {
+      "calls": 4,
+      "average_latency_ms": 8545,
+      "total_latency_ms": 34182
+    },
+    "tone_proposal": {
+      "calls": 4,
+      "average_latency_ms": 60066,
+      "total_latency_ms": 240266
+    },
+    "repair": {
+      "calls": 9,
+      "average_latency_ms": 12857,
+      "total_latency_ms": 115714
+    },
+    "memory_extract": {
+      "calls": 1,
+      "average_latency_ms": 60066,
+      "total_latency_ms": 60066
+    },
+    "planner": {
+      "calls": 1,
+      "average_latency_ms": 53313,
+      "total_latency_ms": 53313
+    },
+    "template_write": {
+      "calls": 1,
+      "average_latency_ms": 48363,
+      "total_latency_ms": 48363
+    },
+    "discovery": {
+      "calls": 1,
+      "average_latency_ms": 54667,
+      "total_latency_ms": 54667
+    }
+  },
+  "raw_calls_count": 21
+}
