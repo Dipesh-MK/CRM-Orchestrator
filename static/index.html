@@ -215,6 +215,10 @@
         <div id="templatesList" class="space-y-4 pt-2"></div>
       </div>
 
+      <!-- Send to Aggregator Card (Step 5: Final send step) -->
+      <div id="sendAggregatorContainer" class="hidden bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 shadow-lg space-y-4 shrink-0 max-h-[32rem] overflow-y-auto">
+      </div>
+
       <!-- Chat Input Form -->
       <form id="chatForm" onsubmit="handleChatSubmit(event)" class="shrink-0 flex gap-2">
         <input type="text" id="chatInput" placeholder="Describe your campaign (e.g. 'Flash sale for artisanal bakery with 20% off code BAKE20')..." autocomplete="off"
@@ -250,6 +254,7 @@
         <div class="flex items-center gap-2">
           <select id="logCategorySelect" onchange="loadLogs()" class="bg-[var(--card)] border border-[var(--border)] text-xs rounded-lg px-3 py-1.5">
             <option value="llm_calls">LLM Calls</option>
+            <option value="channel_calls">Aggregator Channel Calls</option>
             <option value="events">Pipeline Events</option>
             <option value="validations">Compliance Validations</option>
             <option value="memory">Workspace Memory</option>
@@ -257,6 +262,9 @@
             <option value="actions">User Actions</option>
             <option value="errors">Errors</option>
           </select>
+          <button onclick="downloadSendLog()" class="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700 shadow-xs">
+            📥 Download Send Log
+          </button>
           <button onclick="downloadFullRunLog()" class="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 shadow-xs">
             📥 Download Run Log
           </button>
@@ -930,8 +938,11 @@
           }
 
           // Post final message in the chat
-          const approvalMsg = `🎉 **Campaign Package Approved!**\n\nAll messaging templates, tone criteria, and campaign facts have been locked and saved to your persistent workspace memory.\n\nReady for dispatch! You can download the complete formatted messaging sequence below:\n\n[📥 Download Campaign Messages](/api/export/campaign/${currentSessionId})`;
+          const approvalMsg = `🎉 **Campaign Package Approved!**\n\nAll messaging templates, tone criteria, and campaign facts have been locked and saved to your persistent workspace memory.\n\nReady for dispatch! Review the pre-flight verification report below and confirm sending to the aggregator:\n\n[📥 Download Campaign Messages](/api/export/campaign/${currentSessionId})`;
           appendChatMessage('assistant', approvalMsg);
+
+          // Render Step 5 Send Card
+          await renderSendAggregatorCard(currentSessionId);
         }
       } catch (e) {
         alert('Approval failed: ' + e.message);
@@ -1090,7 +1101,37 @@
           return;
         }
 
-        if (category === 'llm_calls') {
+        if (category === 'channel_calls') {
+          data.forEach(call => {
+            const isSuccess = call.status_code >= 200 && call.status_code < 300;
+            const badgeClass = isSuccess ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : 'bg-rose-500/10 text-rose-600 border-rose-500/20';
+            output.innerHTML += `
+              <div class="p-3 bg-[var(--background)] rounded-lg border border-[var(--border)] space-y-2">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <span class="font-bold text-blue-600 dark:text-blue-400">#${call.id} [${call.tool_name || call.adapter}]</span>
+                    <span class="px-2 py-0.5 rounded text-[10px] font-semibold border ${badgeClass}">HTTP ${call.status_code}</span>
+                  </div>
+                  <span class="text-[10px] text-[var(--muted-foreground)]">${call.created_at || call.timestamp} · ${call.duration_ms}ms</span>
+                </div>
+                <div class="text-xs text-[var(--muted-foreground)]">Operation: <code>${call.operation}</code> | Item: <code>${call.item_id || 'N/A'}</code></div>
+                <details class="text-xs">
+                  <summary class="cursor-pointer text-blue-600 dark:text-blue-400 font-medium">View Redacted Request & Response</summary>
+                  <div class="mt-2 space-y-2">
+                    <div>
+                      <span class="text-[10px] font-bold uppercase text-[var(--muted-foreground)]">Payload (Zero credentials):</span>
+                      <pre class="p-2 bg-[var(--content)] rounded text-[11px] overflow-x-auto whitespace-pre-wrap">${call.payload_redacted || 'None'}</pre>
+                    </div>
+                    <div>
+                      <span class="text-[10px] font-bold uppercase text-[var(--muted-foreground)]">Response:</span>
+                      <pre class="p-2 bg-[var(--content)] rounded text-[11px] overflow-x-auto whitespace-pre-wrap">${call.response_redacted || 'None'}</pre>
+                    </div>
+                  </div>
+                </details>
+              </div>
+            `;
+          });
+        } else if (category === 'llm_calls') {
           rawLLMCalls = data;
           data.forEach((call, idx) => {
             output.innerHTML += `
@@ -1111,6 +1152,221 @@
         }
       } catch (e) {
         output.textContent = 'Error loading logs: ' + e.message;
+      }
+    }
+
+    function downloadSendLog() {
+      window.open('/api/export/send_log?session_id=' + encodeURIComponent(currentSessionId), '_blank');
+    }
+
+    async function renderSendAggregatorCard(sessionId) {
+      const container = document.getElementById('sendAggregatorContainer');
+      if (!container) return;
+      container.classList.remove('hidden');
+      container.innerHTML = `<div class="text-xs text-[var(--muted-foreground)] p-4 text-center animate-pulse">Running pre-flight checks against campaign and aggregator phone registry...</div>`;
+
+      try {
+        const res = await fetch('/api/dispatch/preflight', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sessionId, template_step: 1 })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          container.innerHTML = `<div class="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-600 text-xs rounded-lg font-medium">Pre-flight check error: ${data.detail || data.error || 'Failed'}</div>`;
+          return;
+        }
+
+        const checks = data.checks || {};
+        const checkBadge = (val, label) => `
+          <div class="flex items-center gap-2 text-xs">
+            <span>${val ? '✅' : '❌'}</span>
+            <span class="${val ? 'text-[var(--foreground)]' : 'text-rose-600 font-semibold'}">${label}</span>
+          </div>
+        `;
+
+        const previewsHtml = (data.previews || []).map(p => `
+          <div class="p-2.5 bg-[var(--background)] rounded-lg border border-[var(--border)] text-xs space-y-1">
+            <div class="flex justify-between font-semibold text-[11px] text-[var(--muted-foreground)]">
+              <span>${p.name || 'Recipient'} (${p.phone})</span>
+              <span>Contact ID: ${p.contact_id || 'N/A'}</span>
+            </div>
+            <div class="text-xs text-[var(--foreground)] whitespace-pre-wrap">${p.preview_text}</div>
+          </div>
+        `).join('');
+
+        const aggregatorUrl = data.aggregator_url || 'http://localhost:3000';
+
+        container.innerHTML = `
+          <div class="flex items-center justify-between border-b border-[var(--border)] pb-3">
+            <div>
+              <h3 class="text-sm font-bold text-blue-600 dark:text-blue-400 flex items-center gap-2">
+                <span>🚀</span> Send to Aggregator
+              </h3>
+              <p class="text-xs text-[var(--muted-foreground)]">Pre-flight report, message previews, and aggregator dispatch</p>
+            </div>
+            <a href="${aggregatorUrl}" target="_blank" class="text-xs text-blue-600 dark:text-blue-400 underline font-medium hover:opacity-80">
+              Open Mock Aggregator (${aggregatorUrl}) ↗
+            </a>
+          </div>
+
+          <!-- Pre-flight Report -->
+          <div class="space-y-1.5 p-3 bg-[var(--background)] rounded-xl border border-[var(--border)]">
+            <div class="text-[11px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] mb-1">Pre-flight Verification Report</div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              ${checkBadge(checks.e164_valid, 'Valid E.164 recipient numbers')}
+              ${checkBadge(checks.tags_resolved, 'Tags resolved from contacts table')}
+              ${checkBadge(checks.under_word_limit, 'Post-personalization word limit (≤ 320 words)')}
+              ${checkBadge(checks.optout_present, 'Mandatory opt-out included')}
+              ${checkBadge(checks.no_suppressed_numbers, 'No suppressed numbers')}
+              ${checkBadge(checks.run_cap_ok, 'Run cap respected (≤ ' + data.max_messages_per_run + ')')}
+              ${checkBadge(checks.registered_in_aggregator, 'Registered in aggregator website')}
+            </div>
+          </div>
+
+          ${data.unregistered_policy_message ? `
+            <div class="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-700 dark:text-amber-300 font-medium">
+              ⚠️ ${data.unregistered_policy_message}
+            </div>
+          ` : ''}
+
+          <!-- Personalized Previews -->
+          <div class="space-y-2">
+            <div class="text-[11px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
+              Personalized Previews (First 3 of ${data.total_recipients} recipients)
+            </div>
+            <div class="space-y-2">
+              ${previewsHtml}
+            </div>
+          </div>
+
+          <!-- Aggregator Website Link Note -->
+          <div class="text-xs text-[var(--muted-foreground)] bg-[var(--content)] p-3 rounded-lg border border-[var(--border)] flex items-center justify-between">
+            <span>Handsets and phone views are configured ONLY in the aggregator website:</span>
+            <a href="${aggregatorUrl}" target="_blank" class="px-3 py-1 bg-blue-600 text-white rounded text-xs font-semibold hover:bg-blue-700">
+              register these numbers there ↗
+            </a>
+          </div>
+
+          <!-- Confirm Action Button -->
+          <div id="sendActionContainer" class="flex items-center justify-between pt-2">
+            <div class="text-xs text-[var(--muted-foreground)]">
+              Total recipients: <strong>${data.total_recipients}</strong>
+            </div>
+            <button id="btnConfirmSend" onclick="confirmSendCampaign('${data.job_id}', '${data.csrf_token}')"
+                    ${!data.passed ? 'disabled' : ''}
+                    class="px-5 py-2.5 rounded-xl font-bold text-xs shadow-md transition-all flex items-center gap-2 ${
+                      data.passed ? 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer' : 'bg-gray-400 text-gray-200 cursor-not-allowed opacity-60'
+                    }">
+              <span>🚀 Confirm & Send via Aggregator</span>
+            </button>
+          </div>
+
+          <!-- Post-Send Items Container -->
+          <div id="sendResultsContainer" class="hidden space-y-3 pt-3 border-t border-[var(--border)]">
+          </div>
+        `;
+
+        renderPipelineEvent({
+          step_id: 'dispatch_preflight',
+          step_order: 5,
+          step_title: 'Step 5: Send to Aggregator',
+          step_icon: '🚀',
+          status: data.passed ? 'completed' : 'blocked',
+          description: data.passed ? 'Pre-flight passed. Ready for human confirm.' : (data.unregistered_policy_message || 'Pre-flight checks pending.'),
+          details: { checks: data.checks, total_recipients: data.total_recipients }
+        });
+
+      } catch (err) {
+        container.innerHTML = `<div class="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-600 text-xs rounded-lg">Failed to run pre-flight: ${err.message}</div>`;
+      }
+    }
+
+    async function confirmSendCampaign(jobId, csrfToken) {
+      const btn = document.getElementById('btnConfirmSend');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<span>Sending API calls to aggregator...</span>`;
+      }
+
+      try {
+        const res = await fetch('/api/dispatch/send', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken
+          },
+          body: JSON.stringify({ job_id: jobId, csrf_token: csrfToken })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          alert('Send failed: ' + (data.detail || data.error || 'Server error'));
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<span>🚀 Confirm & Send via Aggregator</span>`;
+          }
+          return;
+        }
+
+        renderSendResults(data, jobId);
+
+      } catch (e) {
+        alert('Send request error: ' + e.message);
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = `<span>🚀 Confirm & Send via Aggregator</span>`;
+        }
+      }
+    }
+
+    function renderSendResults(data, jobId) {
+      const container = document.getElementById('sendResultsContainer');
+      const actionContainer = document.getElementById('sendActionContainer');
+      if (actionContainer) actionContainer.classList.add('hidden');
+      if (!container) return;
+      container.classList.remove('hidden');
+
+      const items = data.items || [];
+      const itemsHtml = items.map(it => `
+        <div class="flex items-center justify-between p-2.5 bg-[var(--background)] rounded-lg border border-[var(--border)] text-xs">
+          <div>
+            <span class="font-bold">${it.phone}</span>
+            <span class="text-[var(--muted-foreground)] ml-2">SID: <code>${it.message_sid || 'None'}</code></span>
+            ${it.error ? `<div class="text-[11px] text-rose-600 mt-0.5">${it.error}</div>` : ''}
+          </div>
+          <span class="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase ${
+            it.status === 'queued' || it.status === 'sent' || it.status === 'delivered' ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-600 border border-rose-500/20'
+          }">${it.status}</span>
+        </div>
+      `).join('');
+
+      container.innerHTML = `
+        <div class="flex items-center justify-between">
+          <div>
+            <h4 class="font-bold text-xs">Campaign Dispatch Status: ${data.status}</h4>
+            <p class="text-[11px] text-[var(--muted-foreground)]">Messages staged and sent. Live delivery is tracked in the aggregator website.</p>
+          </div>
+          <button onclick="refreshSendStatus('${jobId}')" class="px-3 py-1.5 rounded-lg bg-[var(--card)] border border-[var(--border)] hover:bg-[var(--content)] text-xs font-semibold shadow-xs flex items-center gap-1.5">
+            <span>🔄 Refresh status</span>
+          </button>
+        </div>
+        <div class="space-y-1.5 max-h-48 overflow-y-auto">
+          ${itemsHtml}
+        </div>
+      `;
+    }
+
+    async function refreshSendStatus(jobId) {
+      try {
+        const res = await fetch('/api/dispatch/jobs/' + jobId + '/refresh', { method: 'POST' });
+        const data = await res.json();
+        if (res.ok) {
+          renderSendResults(data, jobId);
+        } else {
+          alert('Refresh failed: ' + (data.detail || data.error));
+        }
+      } catch (e) {
+        alert('Refresh error: ' + e.message);
       }
     }
 

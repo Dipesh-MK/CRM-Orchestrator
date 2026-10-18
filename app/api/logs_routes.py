@@ -1,7 +1,7 @@
 import json
 import sqlite3
 from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Response
 from pydantic import BaseModel
 from app.core.storage import get_storage
 from app.core.config import get_config
@@ -297,3 +297,25 @@ def export_run_log(session_id: str):
         "memory_ops": memory_ops,
         "errors": errors
     }
+
+# 11. Channel Calls Logs (Step 5)
+@router.get("/logs/channel_calls")
+def get_channel_calls_endpoint(
+    session_id: Optional[str] = Query(None),
+    tool_name: Optional[str] = Query(None),
+    status_code: Optional[int] = Query(None),
+    limit: int = 100
+):
+    return storage.get_channel_calls(session_id=session_id, tool_name=tool_name, status_code=status_code, limit=limit)
+
+# 12. Send Log Export (Step 5)
+@router.get("/export/send_log")
+def export_send_log(session_id: Optional[str] = Query(None)):
+    calls = storage.get_channel_calls(session_id=session_id, limit=500)
+    lines = [json.dumps(c) for c in calls]
+    content = "\n".join(lines)
+    return Response(
+        content=content,
+        media_type="application/x-ndjson",
+        headers={"Content-Disposition": 'attachment; filename="channel_calls.jsonl"'}
+    )

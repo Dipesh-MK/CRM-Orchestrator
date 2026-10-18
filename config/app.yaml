@@ -26,3 +26,33 @@ paths:
 memory:
   enabled: true
   max_relevant_entries: 10
+
+channel:
+  adapter: "aggregator"
+  tool_dir: "generated/aggregator"
+  base_url_env: "APITOOL_BASE_URL"
+  agent_tool_allowlist: ["propose_dispatch"]
+
+dispatch:
+  enabled: true
+  require_user_confirm: true
+  max_messages_per_run: 50
+  allow_non_loopback: false
+  allowed_hosts:
+    - "127.0.0.1:8000"
+    - "localhost:8000"
+    - "127.0.0.1"
+    - "localhost"
+    - "::1"
+    - "[::1]:8000"
+    - "testserver"
+  allowed_origins:
+    - "http://localhost:8000"
+    - "http://127.0.0.1:8000"
+    - "http://[::1]:8000"
+    - "http://testserver"
+  approval_ttl_seconds: 900
+  registry_cache_ttl_seconds: 300
+  require_registered_phone: true
+  send_interval_ms: 50
+  status_callback_url: null

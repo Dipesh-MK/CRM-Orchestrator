@@ -22,11 +22,17 @@ class ContactService:
             return set()
         try:
             with open(supp_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                if isinstance(data, list):
-                    return set(data)
-                elif isinstance(data, dict):
-                    return set(data.get("suppressed_phones", []))
+                content = f.read().strip()
+                if not content:
+                    return set()
+                if content.startswith("[") or content.startswith("{"):
+                    data = json.loads(content)
+                    if isinstance(data, list):
+                        return set(data)
+                    elif isinstance(data, dict):
+                        return set(data.get("suppressed_phones", []))
+                else:
+                    return set(line.strip() for line in content.splitlines() if line.strip())
         except Exception:
             return set()
         return set()
@@ -110,6 +116,11 @@ class ContactService:
                 "total_rows": total_rows,
                 "invalid_count": invalid_count
             }
+
+        # Assign durable contact_id and persist to contacts table (Amendment 1)
+        for idx, c in enumerate(valid_contacts):
+            c["contact_id"] = f"c_{session_id[:8]}_{idx+1}_{c['phone'][-4:]}"
+        self.storage.save_contacts(session_id, valid_contacts)
 
         # 3-row preview
         preview_rows = [
