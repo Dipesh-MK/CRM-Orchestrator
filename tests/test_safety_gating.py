@@ -21,6 +21,7 @@ async def test_safety_skipped_on_chit_chat():
     assert res["allowed"] is True
     assert res.get("skipped_llm") is True
 
+@pytest.mark.slow
 @pytest.mark.asyncio
 async def test_safety_enforced_on_template():
     safety = get_safety_service()

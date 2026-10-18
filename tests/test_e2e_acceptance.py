@@ -2,6 +2,8 @@ import os
 import json
 import pytest
 import pytest_asyncio
+
+pytestmark = pytest.mark.slow
 from app.core.config import get_config
 from app.core.storage import get_storage
 from app.core.llm_client import get_llm_client

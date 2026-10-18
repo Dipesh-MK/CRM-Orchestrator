@@ -1,0 +1,38 @@
+============================= test session starts ==============================
+platform linux -- Python 3.14.7, pytest-9.1.1, pluggy-1.6.0 -- /home/aracknab/Projects/CRM Orchaestrator/venv/bin/python3
+cachedir: .pytest_cache
+rootdir: /home/aracknab/Projects/CRM Orchaestrator
+configfile: pytest.ini
+plugins: anyio-4.15.1, asyncio-1.4.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 34 items / 7 deselected / 27 selected
+
+tests/test_core.py::test_contact_adapters_and_normalization PASSED       [  3%]
+tests/test_core.py::test_template_compliance_rules PASSED                [  7%]
+tests/test_core.py::test_suppression_list_handling PASSED                [ 11%]
+tests/test_core.py::test_memory_storage_and_retrieval PASSED             [ 14%]
+tests/test_dispatch_e2e_scratch.py::test_scratch_aggregator_e2e_send PASSED [ 18%]
+tests/test_dispatch_simple.py::test_preflight_unresolved_tag_fails PASSED [ 22%]
+tests/test_dispatch_simple.py::test_preflight_post_personalization_word_limit_fails PASSED [ 25%]
+tests/test_dispatch_simple.py::test_preflight_suppression_fails PASSED   [ 29%]
+tests/test_dispatch_simple.py::test_preflight_run_cap_fails PASSED       [ 33%]
+tests/test_dispatch_simple.py::test_preflight_unregistered_number_blocked PASSED [ 37%]
+tests/test_dispatch_simple.py::test_preflight_registry_unreachable_fails_closed PASSED [ 40%]
+tests/test_dispatch_simple.py::test_security_foreign_origin_refused PASSED [ 44%]
+tests/test_dispatch_simple.py::test_security_missing_origin_refused PASSED [ 48%]
+tests/test_dispatch_simple.py::test_security_spoofed_host_refused PASSED [ 51%]
+tests/test_dispatch_simple.py::test_security_missing_or_wrong_csrf_refused PASSED [ 55%]
+tests/test_dispatch_simple.py::test_security_non_loopback_provider_url_refused PASSED [ 59%]
+tests/test_dispatch_simple.py::test_security_llm_tool_path_produces_zero_requests PASSED [ 62%]
+tests/test_dispatch_simple.py::test_security_forged_contact_id_blocked PASSED [ 66%]
+tests/test_dispatch_simple.py::test_at_most_once_crash_recovery_unknown PASSED [ 70%]
+tests/test_dispatch_simple.py::test_at_most_once_restart_never_resends PASSED [ 74%]
+tests/test_no_token_leak.py::test_token_leak_positive_control PASSED     [ 77%]
+tests/test_no_token_leak.py::test_no_token_leak_in_logs_and_databases PASSED [ 81%]
+tests/test_safety_gating.py::test_is_chit_chat_detection PASSED          [ 85%]
+tests/test_safety_gating.py::test_safety_skipped_on_chit_chat PASSED     [ 88%]
+tests/test_scan_secrets.py::test_scan_secrets_positive_control PASSED    [ 92%]
+tests/test_scan_secrets.py::test_working_tree_has_no_secrets PASSED      [ 96%]
+tests/test_scan_secrets.py::test_cli_execution_generates_evidence PASSED [100%]
+
+======================= 27 passed, 7 deselected in 3.60s =======================

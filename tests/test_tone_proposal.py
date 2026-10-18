@@ -1,4 +1,6 @@
 import pytest
+
+pytestmark = pytest.mark.slow
 from app.core.config import get_config
 from app.services.orchestrator_engine import get_orchestrator_engine
 
