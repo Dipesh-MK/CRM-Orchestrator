@@ -1,0 +1,28 @@
+TOOLS (names + descriptions only):
+- send_message: Send an SMS message to a recipient phone number via the aggregator. Requires destination phone number in To and message body in Body. A result of pending_user_approval means NOT sent or scheduled yet; tell the user to approve in the UI.
+- list_messages: List message audit records across accounts with delivery status, timestamps, and error codes. Masks recipient phone numbers for privacy.
+
+For EACH request below, answer with just the tool name you would call (or `none`). Do not look at the expected answers.
+
+1. Send an SMS message right now to contact +15551234567 saying their school fee invoice is ready
+2. Dispatch a fee reminder text immediately to parent +15559876543
+3. Schedule the campaign fee reminder to be sent on Friday at 09:00
+4. Set up a text message to contact +15551112222 to be dispatched next Monday at 10:00
+5. Cancel scheduled message job job_42
+6. Abort pending scheduled message job_99 before it sends
+7. Show me upcoming scheduled messages waiting in the queue
+8. List all scheduled campaign dispatch jobs
+9. Show me recent message audit logs that were already sent
+10. List the audit records of sent SMS messages
+11. Check whether message SID SM00000000000000000000000000000001 has been delivered
+12. What is the delivery status and error code for message SM00000000000000000000000000000002?
+13. Create an automated trigger to send a welcome SMS whenever a parent signs up
+14. Set up a keyword trigger that sends fee details when someone replies INFO
+15. Show me all active event triggers and auto-reply rules
+16. Register a new virtual handset with phone number +15559999
+17. List all simulated handsets in the provider virtual phone directory
+18. What is the weather forecast for tomorrow in New Delhi?
+19. Calculate the compound interest on 10000 at 5 percent for 3 years
+20. Set the system virtual clock date to tomorrow
+
+(Afterwards compare with `expect:` in .apitool/evals/tool_selection.yaml and fix descriptions where you were unsure.)

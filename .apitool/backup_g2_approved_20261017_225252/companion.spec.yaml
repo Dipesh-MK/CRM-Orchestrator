@@ -1,0 +1,175 @@
+version: 1
+api:
+  name: host_companion
+  title: CampaignForge Host Companion (Virtual Clock, Scheduler, Triggers)
+  base_url: ${COMPANION_BASE_URL:-http://127.0.0.1:8000/api}
+  spec: spec/companion.openapi.json
+  spec_sha256: f92661d7943fcc8a7641fa421e5dc0de74e4903d800c2666b60c9d103d3b548b
+security:
+  enforce_loopback: true
+  allow_external_urls: false
+auth:
+  type: none
+defaults:
+  timeout_s: 30
+  max_retries: 3
+  max_response_chars: 20000
+tools:
+  - name: schedule_message
+    operation: schedule_message
+    description: "Schedule a rendered campaign message to be dispatched to a contact at a specified ISO-8601 timestamp. Validates send_at against the virtual clock (must be in future). A result of pending_user_approval means NOT sent or scheduled yet; tell the user to approve in the UI."
+    safety: write
+    confirm: true
+    approval: ui
+    expose: true
+    inputs:
+      include:
+        - contact
+        - text
+        - send_at
+    server_side_validations:
+      - valid_phone_number: "Recipient number required and must be valid E.164 format"
+      - contact_id_membership: "Contact must be a valid contact ID from uploaded contacts file (no free-text numbers allowed)"
+      - contact_tag_rendering: "Personalization tags rendered from contact row data"
+      - unresolved_tags_block: "Any unresolved placeholder tags block dispatch immediately"
+      - word_limit_recheck: "Word limit re-verified after personalization against config word_limit"
+      - optout_footer_present: "Opt-out footer text verified present on final text"
+      - safety_guard: "Safety guard evaluated on final personalized text"
+      - dispatch_run_cap: "Enforce dispatch.max_messages_per_run limit from config"
+      - virtual_clock_validation: "send_at must be strictly in the future of the orchestrator virtual clock"
+
+  - name: cancel_scheduled_message
+    operation: cancel_scheduled_message
+    description: "Cancel a previously scheduled message job by its job ID before it is dispatched. Sets status to canceled. A result of pending_user_approval means NOT sent or scheduled yet; tell the user to approve in the UI."
+    safety: destructive
+    confirm: true
+    approval: ui
+    expose: true
+    inputs:
+      include:
+        - job_id
+
+  - name: list_scheduled_messages
+    operation: list_scheduled_messages
+    description: "List scheduled message queue jobs filtered by status (scheduled, sent, failed, canceled). Returns job IDs, contact info, and send_at timestamps."
+    safety: read
+    expose: true
+    inputs:
+      include:
+        - status
+        - limit
+      defaults:
+        limit: 20
+    output:
+      pick:
+        - job_id
+        - contact
+        - send_at
+        - status
+      max_items: 20
+
+  - name: create_trigger
+    operation: create_trigger
+    description: "Register an automated event trigger rule that executes a send_message action when a typed condition (time, delay, recurring, state, keyword) is met. A result of pending_user_approval means NOT sent or scheduled yet; tell the user to approve in the UI."
+    safety: write
+    confirm: true
+    approval: ui
+    expose: true
+    inputs:
+      include:
+        - condition_type
+        - time_spec
+        - delay_seconds
+        - recurring_interval
+        - state_match
+        - keyword
+        - action_type
+        - template_id
+        - contact_id
+    server_side_validations:
+      - recurring_subset: "Recurring interval strictly limited to regex ^(hourly|daily|weekly|every_[0-9]+[mhd])$"
+      - min_interval: "Interval must be >= dispatch.trigger_min_interval_seconds from config"
+      - max_fires: "Max trigger fires capped by dispatch.trigger_max_fires from config"
+
+  - name: list_triggers
+    operation: list_triggers
+    description: "List all active event triggers and automated reaction rules registered on the host orchestrator."
+    safety: read
+    expose: true
+    inputs:
+      include:
+        - limit
+      defaults:
+        limit: 20
+    output:
+      pick:
+        - trigger_id
+        - condition
+        - action
+        - created_at
+      max_items: 20
+
+  - name: delete_trigger
+    operation: delete_trigger
+    description: "Delete an automated event trigger rule by trigger ID (operator console only; hidden from LLM agent)."
+    safety: destructive
+    confirm: true
+    expose: operator
+    inputs:
+      include:
+        - trigger_id
+
+  - name: get_clock
+    operation: get_clock
+    description: "Retrieve the current virtual clock state, including simulated ISO-8601 time, tick speed multiplier, and paused status (operator-only)."
+    safety: read
+    expose: operator
+
+  - name: set_clock
+    operation: set_clock
+    description: "Set the orchestrator virtual clock to a specific ISO-8601 date and time. Persisted in SQLite (operator-only)."
+    safety: write
+    confirm: true
+    expose: operator
+    inputs:
+      include:
+        - iso_datetime
+
+  - name: advance_clock
+    operation: advance_clock
+    description: "Advance the virtual clock forward by a specified number of seconds (operator-only)."
+    safety: write
+    confirm: false
+    expose: operator
+    inputs:
+      include:
+        - duration_seconds
+
+  - name: set_clock_speed
+    operation: set_clock_speed
+    description: "Set the time multiplier for the virtual clock (e.g. 1.0 for real-time, 60.0 for 1 minute per second) (operator-only)."
+    safety: write
+    confirm: false
+    expose: operator
+    inputs:
+      include:
+        - speed_multiplier
+
+  - name: pause_clock
+    operation: pause_clock
+    description: "Pause or unpause the progression of the virtual clock (operator-only)."
+    safety: write
+    confirm: false
+    expose: operator
+    inputs:
+      include:
+        - paused
+
+  - name: jump_to_next_job
+    operation: jump_to_next_job
+    description: "Advance the virtual clock immediately to the send_at timestamp of the next pending scheduled message (operator-only)."
+    safety: write
+    confirm: false
+    expose: operator
+
+composites: []

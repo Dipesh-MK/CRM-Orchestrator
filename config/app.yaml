@@ -1,0 +1,26 @@
+# CampaignForge Orchestrator Configuration
+
+llm:
+  base_url: "https://api.groq.com/openai/v1"
+  model: "qwen/qwen3.8-27b"
+  api_key: "REDACTED_API_KEY"
+  temperature: 0.3
+  request_timeout_seconds: 60
+
+orchestrator:
+  word_limit: 320
+  max_retries: 3
+  max_discovery_rounds: 5
+  optout_text: "Reply STOP to unsubscribe."
+  personalization_tag_format: "{{{tag}}}"  # Jinja or regex style {{tag}}
+  default_workspace_id: "default_workspace"
+
+paths:
+  database_path: "data/campaignforge.db"
+  logs_dir: "logs"
+  prompts_dir: "prompts"
+  suppression_file: "data/suppression.json"
+
+memory:
+  enabled: true
+  max_relevant_entries: 10

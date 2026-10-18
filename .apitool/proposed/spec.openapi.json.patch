@@ -1,0 +1,34 @@
+--- .apitool/spec/spec.openapi.json	2026-10-17 21:24:57.409000780 +0530
++++ .apitool/proposed/spec.openapi.json	2026-10-17 22:33:05.030549811 +0530
+@@ -64,6 +64,7 @@
+                 "properties": {
+                   "To": {
+                     "type": "string",
++                    "pattern": "^\\+[1-9]\\d{6,14}$",
+                     "description": "Destination phone number (+E.164). Numbers ending in 0 trigger simulated failure.",
+                     "example": "+15551234561"
+                   },
+@@ -74,6 +75,7 @@
+                   },
+                   "Body": {
+                     "type": "string",
++                    "minLength": 1,
+                     "description": "Text message content (up to 1600 characters)",
+                     "example": "Your verification code is 492102. Valid for 5 minutes."
+                   },
+@@ -96,6 +98,7 @@
+                 "properties": {
+                   "To": {
+                     "type": "string",
++                    "pattern": "^\\+[1-9]\\d{6,14}$",
+                     "example": "+15551234561"
+                   },
+                   "From": {
+@@ -104,6 +107,7 @@
+                   },
+                   "Body": {
+                     "type": "string",
++                    "minLength": 1,
+                     "example": "Your verification code is 492102."
+                   },
+                   "StatusCallback": {

@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CampaignForge Orchestrator</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    :root {
+      --background: #f8fafc;
+      --card: #ffffff;
+      --foreground: #0f172a;
+      --muted-foreground: #64748b;
+      --border: #e2e8f0;
+      --primary: #2563eb;
+      --primary-foreground: #ffffff;
+      --content: #f1f5f9;
+    }
+    .dark {
+      --background: #0f172a;
+      --card: #1e293b;
+      --foreground: #f8fafc;
+      --muted-foreground: #94a3b8;
+      --border: #334155;
+      --primary: #3b82f6;
+      --primary-foreground: #ffffff;
+      --content: #1e293b;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes pulse-ring {
+      0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5); }
+      70% { box-shadow: 0 0 0 8px rgba(59, 130, 246, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+    }
+    .spin { animation: spin 1s linear infinite; }
+    .fade-in { animation: fadeInUp 0.35s ease-out forwards; }
+    .pulse-active { animation: pulse-ring 1.5s ease-out infinite; }
+
+    .step-node { transition: all 0.3s ease; }
+    .thread-line {
+      width: 2px;
+      background: var(--border);
+      transition: background 0.4s ease;
+    }
+    .thread-line.done { background: #22c55e; }
+    .thread-line.active { background: linear-gradient(to bottom, #22c55e, #3b82f6); }
+
+    .status-circle {
+      width: 36px; height: 36px; min-width: 36px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+      transition: all 0.3s ease;
+      border: 2px solid var(--border);
+      background: var(--card);
+    }
+    .status-circle.pending { border-color: var(--border); color: var(--muted-foreground); opacity: 0.4; }
+    .status-circle.active { border-color: #3b82f6; color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
+    .status-circle.waiting_for_input { border-color: #f59e0b; color: #f59e0b; background: rgba(245, 158, 11, 0.1); }
+    .status-circle.done { border-color: #22c55e; color: white; background: #22c55e; }
+    .status-circle.error { border-color: #ef4444; color: white; background: #ef4444; }
+
+    .sub-step { opacity: 0; transform: translateY(6px); transition: all 0.3s ease; }
+    .sub-step.visible { opacity: 1; transform: translateY(0); }
+    .sub-dot { width: 8px; height: 8px; min-width: 8px; border-radius: 50%; background: var(--border); transition: background 0.3s ease; }
+    .sub-dot.done { background: #22c55e; }
+    .sub-dot.active { background: #3b82f6; }
+    .sub-dot.waiting { background: #f59e0b; }
+    .sub-dot.error { background: #ef4444; }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    .dark ::-webkit-scrollbar-thumb { background: #475569; }
+
+    /* Force all form inputs & textareas to have pitch-black crisp readable text */
+    input, textarea, select {
+      color: #0f172a !important;
+      background-color: #ffffff !important;
+    }
+    .dark input, .dark textarea, .dark select {
+      color: #f8fafc !important;
+      background-color: #1e293b !important;
+    }
+    input::placeholder, textarea::placeholder {
+      color: #64748b !important;
+      opacity: 1 !important;
+    }
+    .dark input::placeholder, .dark textarea::placeholder {
+      color: #94a3b8 !important;
+      opacity: 1 !important;
+    }
+  </style>
+</head>
+<body class="bg-[var(--background)] text-[var(--foreground)] antialiased h-screen flex flex-col font-sans transition-colors duration-200">
+
+  <!-- Top Navigation Bar -->
+  <header class="border-b border-[var(--border)] bg-[var(--card)] px-6 py-3 flex items-center justify-between shrink-0 shadow-sm">
+    <div class="flex items-center gap-3">
+      <span class="text-2xl">🚀</span>
+      <div>
+        <h1 class="font-bold text-base tracking-tight leading-tight">CampaignForge Orchestrator</h1>
+        <p class="text-[11px] text-[var(--muted-foreground)]">Universal CRM Messaging & Template Planning</p>
+      </div>
+      <div id="healthBadge" class="ml-4 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span id="healthText">Connecting...</span>
+      </div>
+    </div>
+
+    <!-- Right Controls: Workspace, Theme Toggle, Tabs -->
+    <div class="flex items-center gap-4">
+      <!-- 3 Main Tabs Only -->
+      <nav class="flex p-1 bg-[var(--content)] rounded-lg border border-[var(--border)] text-xs font-medium">
+        <button id="tabChatBtn" onclick="switchTab('chat')" class="px-4 py-1.5 rounded-md bg-[var(--card)] shadow-xs text-[var(--foreground)] transition-all">💬 Chat</button>
+        <button id="tabPipelineBtn" onclick="switchTab('pipeline')" class="px-4 py-1.5 rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-all flex items-center gap-1.5">
+          <span>⚡ Pipeline</span>
+          <span id="pipelineIndicator" class="hidden w-2 h-2 rounded-full bg-blue-500"></span>
+        </button>
+        <button id="tabLogsBtn" onclick="switchTab('logs')" class="px-4 py-1.5 rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-all">📋 Logs</button>
+      </nav>
+
+      <!-- Theme Switcher -->
+      <button onclick="toggleDarkMode()" class="p-2 rounded-lg border border-[var(--border)] hover:bg-[var(--content)] text-sm" title="Toggle theme">
+        <span id="themeIcon">🌙</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main View Area -->
+  <main class="flex-1 overflow-hidden relative">
+
+    <!-- ================= TAB 1: CHAT ================= -->
+    <section id="tabChat" class="h-full flex flex-col max-w-5xl mx-auto p-4 gap-4">
+      
+      <!-- Contact Intake Bar (pluggable input adapter) -->
+      <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-3 shadow-xs shrink-0 flex items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <span class="text-xl">📇</span>
+          <div>
+            <div class="text-xs font-semibold">Contact Ingestion (Optional)</div>
+            <div class="text-[11px] text-[var(--muted-foreground)]" id="contactsStatusText">Upload CSV/XLSX or paste lines ("Name, Phone") for live tag previews</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <input type="file" id="contactFileInput" accept=".csv,.xlsx,.tsv,.txt" class="hidden" onchange="handleFileUpload(this.files[0])">
+          <button onclick="document.getElementById('contactFileInput').click()" class="px-3 py-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--content)] text-xs font-medium flex items-center gap-1.5">
+            📁 Upload File
+          </button>
+          <button onclick="openPasteModal()" class="px-3 py-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--content)] text-xs font-medium">
+            📋 Paste Lines
+          </button>
+        </div>
+      </div>
+
+      <!-- Masked Preview Card (hidden until contacts uploaded) -->
+      <div id="contactPreviewCard" class="hidden bg-blue-500/5 border border-blue-500/20 rounded-xl p-3 text-xs">
+        <div class="flex items-center justify-between font-semibold text-blue-600 dark:text-blue-400 mb-2">
+          <span>✓ Contacts Sanitized & Deduplicated (<span id="contactValidCount">0</span> ready)</span>
+          <span id="contactExtraInfo" class="text-[11px] text-[var(--muted-foreground)] font-normal"></span>
+        </div>
+        <div id="contactPreviewList" class="grid grid-cols-1 md:grid-cols-3 gap-2"></div>
+      </div>
+
+      <!-- Chat Messages Scroll Container -->
+      <div id="chatMessages" class="flex-1 overflow-y-auto space-y-4 pr-2">
+        <!-- Initial system welcome message -->
+        <div class="flex gap-3">
+          <div class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shrink-0">CF</div>
+          <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl rounded-tl-none p-4 max-w-2xl text-xs space-y-2 shadow-xs">
+            <p class="font-semibold text-sm">Welcome to CampaignForge Orchestrator!</p>
+            <p class="text-[var(--muted-foreground)]">I help you build high-converting, compliant CRM messaging campaigns for <strong>any business or organization</strong> (retail flash sales, dental clinic reminders, SaaS renewals, NGO appeals, education registrations, salon bookings, and more).</p>
+            <p>Tell me about your business and campaign idea to get started!</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tone Proposal Container (Dynamic) -->
+      <div id="toneProposalCard" class="hidden bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 shadow-md space-y-3 shrink-0">
+        <div class="flex items-center justify-between">
+          <h3 class="text-xs font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
+            <span>🎨</span> Candidate Tones Proposed — Select One to Plan Pipeline
+          </h3>
+          <span class="text-[10px] text-[var(--muted-foreground)]">Click to proceed or reply in chat to regenerate</span>
+        </div>
+        <div id="candidateTonesList" class="grid grid-cols-1 md:grid-cols-3 gap-3 max-h-80 overflow-y-auto pr-1"></div>
+      </div>
+
+      <!-- Generated Templates Container -->
+      <div id="templatesContainer" class="hidden bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 shadow-md space-y-3 shrink-0 max-h-96 overflow-y-auto">
+        <div class="flex items-center justify-between sticky top-0 bg-[var(--card)] pb-2 border-b border-[var(--border)] z-10">
+          <div>
+            <h3 class="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+              <span>✍️</span> Generated CRM Templates (<span id="scheduleText"></span>)
+            </h3>
+            <span class="text-[10px] text-[var(--muted-foreground)]">Strictly verified ≤ 320 words with mandatory opt-out</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="approveCampaignBtn" onclick="approveCampaign()" class="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs">
+              ✅ Approve Campaign
+            </button>
+            <button id="rejectCampaignBtn" onclick="openRejectModal()" class="px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-xs">
+              ❌ Reject & Revise
+            </button>
+            <button id="exportCampaignBtn" onclick="exportCampaignJson()" class="hidden px-3 py-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--content)] text-xs font-semibold">
+              📥 Download Messages
+            </button>
+          </div>
+        </div>
+        <div id="templatesList" class="space-y-4 pt-2"></div>
+      </div>
+
+      <!-- Chat Input Form -->
+      <form id="chatForm" onsubmit="handleChatSubmit(event)" class="shrink-0 flex gap-2">
+        <input type="text" id="chatInput" placeholder="Describe your campaign (e.g. 'Flash sale for artisanal bakery with 20% off code BAKE20')..." autocomplete="off"
+               class="flex-1 bg-[var(--card)] border border-[var(--border)] rounded-xl px-4 py-3 text-xs focus:outline-hidden focus:ring-2 focus:ring-blue-500 shadow-xs">
+        <button type="submit" id="sendBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 rounded-xl text-xs flex items-center gap-1.5 shadow-xs transition-all">
+          <span>Send</span>
+          <span>➔</span>
+        </button>
+      </form>
+    </section>
+
+    <!-- ================= TAB 2: PIPELINE ================= -->
+    <section id="tabPipeline" class="hidden h-full overflow-y-auto p-6 max-w-3xl mx-auto">
+      <div class="text-center mb-6">
+        <h2 class="text-lg font-bold tracking-tight">🚀 Orchestrator Execution Pipeline</h2>
+        <p class="text-[var(--muted-foreground)] text-xs mt-1">Full lifecycle timeline of your dynamic campaign orchestration</p>
+      </div>
+      <div id="pipelineStepsContainer" class="relative ml-4 space-y-2">
+        <!-- Rendered dynamically -->
+        <div class="text-center text-xs text-[var(--muted-foreground)] py-12">
+          No pipeline events yet. Start the conversation in Chat to build your campaign.
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= TAB 3: LOGS ================= -->
+    <section id="tabLogs" class="hidden h-full flex flex-col p-6 max-w-6xl mx-auto gap-4">
+      <div class="flex items-center justify-between shrink-0">
+        <div>
+          <h2 class="text-lg font-bold tracking-tight">📋 System Logs & Diagnostics</h2>
+          <p class="text-[var(--muted-foreground)] text-xs">Full transparency: every LLM prompt, raw response, validation, memory op, and error</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <select id="logCategorySelect" onchange="loadLogs()" class="bg-[var(--card)] border border-[var(--border)] text-xs rounded-lg px-3 py-1.5">
+            <option value="llm_calls">LLM Calls</option>
+            <option value="events">Pipeline Events</option>
+            <option value="validations">Compliance Validations</option>
+            <option value="memory">Workspace Memory</option>
+            <option value="memory_ops">Memory Ops</option>
+            <option value="actions">User Actions</option>
+            <option value="errors">Errors</option>
+          </select>
+          <button onclick="downloadFullRunLog()" class="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 shadow-xs">
+            📥 Download Run Log
+          </button>
+        </div>
+      </div>
+
+      <!-- Logs Content Table/Viewer -->
+      <div class="flex-1 overflow-y-auto bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-xs p-4">
+        <div id="logsOutput" class="text-xs font-mono space-y-2">Loading logs...</div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Paste Contacts Modal -->
+  <div id="pasteModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+    <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="font-bold text-sm">Paste Contact Lines</h3>
+        <button onclick="closePasteModal()" class="text-gray-400 hover:text-gray-600 text-lg">✕</button>
+      </div>
+      <p class="text-xs text-[var(--muted-foreground)]">Paste rows with <strong>Name</strong>, <strong>Phone</strong>, and any custom columns (e.g. <code>City, Amount, Note</code>). Header line is supported:</p>
+      <textarea id="pasteTextInput" rows="6" class="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl p-3 text-xs font-mono focus:outline-hidden focus:ring-2 focus:ring-blue-500" placeholder="Name, Phone, City, Amount&#10;Ramesh Adhikari, +9779841234567, Kathmandu, $50&#10;Sunita Thapa, +9779851234567, Pokhara, $100"></textarea>
+      <div class="flex justify-end gap-2">
+        <button onclick="closePasteModal()" class="px-4 py-2 rounded-xl text-xs border border-[var(--border)] hover:bg-[var(--content)]">Cancel</button>
+        <button onclick="submitPastedContacts()" class="px-4 py-2 rounded-xl text-xs bg-blue-600 hover:bg-blue-700 text-white font-medium">Parse Contacts</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Raw Log Inspection Modal -->
+  <div id="rawLogModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+    <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-6 max-w-3xl w-full shadow-2xl space-y-4 max-h-[85vh] flex flex-col">
+      <div class="flex items-center justify-between border-b border-[var(--border)] pb-3">
+        <h3 class="font-bold text-sm" id="rawLogModalTitle">LLM Call Details</h3>
+        <button onclick="closeRawLogModal()" class="text-gray-400 hover:text-gray-600 text-lg">✕</button>
+      </div>
+      <div class="flex-1 overflow-y-auto space-y-4 text-xs font-mono">
+        <div>
+          <div class="font-bold text-[var(--muted-foreground)] uppercase text-[10px] mb-1">Full Prompt (System + Messages)</div>
+          <pre id="rawLogPrompt" class="bg-[var(--content)] p-3 rounded-lg overflow-x-auto whitespace-pre-wrap"></pre>
+        </div>
+        <div>
+          <div class="font-bold text-[var(--muted-foreground)] uppercase text-[10px] mb-1">Raw Response</div>
+          <pre id="rawLogResponse" class="bg-[var(--content)] p-3 rounded-lg overflow-x-auto whitespace-pre-wrap"></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Template Modal -->
+  <div id="editTemplateModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+    <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-6 max-w-xl w-full shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-[var(--border)] pb-3">
+        <h3 class="font-bold text-sm" id="editModalTitle">✏️ Edit Message Template</h3>
+        <button onclick="closeEditModal()" class="text-gray-400 hover:text-gray-600 text-lg">✕</button>
+      </div>
+      <p class="text-xs text-[var(--muted-foreground)]">Modify the template body directly. Compliance checks (word limit ≤ 320 words & opt-out footer) and recipient previews update immediately upon saving.</p>
+      <textarea id="editModalText" rows="7" class="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl p-3 text-xs font-sans text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500"></textarea>
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeEditModal()" class="px-4 py-2 rounded-xl text-xs border border-[var(--border)] hover:bg-[var(--content)]">Cancel</button>
+        <button onclick="saveEditedTemplate()" class="px-4 py-2 rounded-xl text-xs bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-xs">Save & Re-verify</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Re-prompt / Regenerate Template Modal -->
+  <div id="repromptTemplateModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+    <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-[var(--border)] pb-3">
+        <h3 class="font-bold text-sm text-blue-600 dark:text-blue-400 flex items-center gap-2">
+          <span>🔄</span> <span id="repromptModalTitle">Re-prompt & Regenerate Message</span>
+        </h3>
+        <button onclick="closeRepromptModal()" class="text-gray-400 hover:text-gray-600 text-lg">✕</button>
+      </div>
+      <p class="text-xs text-[var(--muted-foreground)]">Give custom AI prompting instructions for this specific message in the sequence (e.g. adjust urgency, include specific payment deadlines, or emphasize academic continuity):</p>
+      <textarea id="repromptModalText" rows="4" placeholder="e.g. 'Make it slightly firmer, explicitly mention {{payment_deadline}}, and maintain strict formal tone'..."
+                class="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl p-3 text-xs font-sans text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500"></textarea>
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeRepromptModal()" class="px-4 py-2 rounded-xl text-xs border border-[var(--border)] hover:bg-[var(--content)]">Cancel</button>
+        <button onclick="submitRepromptTemplate()" class="px-4 py-2 rounded-xl text-xs bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-xs">
+          Regenerate with AI
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reject Campaign Modal -->
+  <div id="rejectCampaignModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+    <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-[var(--border)] pb-3">
+        <h3 class="font-bold text-sm text-rose-600 flex items-center gap-2">
+          <span>❌</span> Reject Campaign & Provide Feedback
+        </h3>
+        <button onclick="closeRejectModal()" class="text-gray-400 hover:text-gray-600 text-lg">✕</button>
+      </div>
+      <div class="text-xs text-slate-950 dark:text-slate-100 space-y-2">
+        <p class="font-bold text-slate-950 dark:text-white">Tell CampaignForge what went wrong or what you'd like changed:</p>
+        <div class="space-y-2 text-xs text-slate-900 dark:text-slate-200">
+          <label class="flex items-center gap-2 cursor-pointer font-medium">
+            <input type="checkbox" id="rejectReasonTone" class="rounded border-slate-400">
+            <span>Tone wasn't right (e.g. too casual, too aggressive, or too stiff)</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer font-medium">
+            <input type="checkbox" id="rejectReasonFacts" class="rounded border-slate-400">
+            <span>Incorrect statistics or details made up without my input</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer font-medium">
+            <input type="checkbox" id="rejectReasonLength" class="rounded border-slate-400">
+            <span>Too long / too short / wrong sequence cadence</span>
+          </label>
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs font-bold mb-1 text-slate-950 dark:text-slate-100">Specific revision instructions / What to change:</label>
+        <textarea id="rejectFeedbackText" rows="4" placeholder="e.g. 'Remove the 50 students claim, we haven't confirmed numbers yet. Ask me for statistics instead and use a warmer, more grateful tone.'..."
+                  class="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl p-3 text-xs font-sans text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-rose-500"></textarea>
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeRejectModal()" class="px-4 py-2 rounded-xl text-xs border border-[var(--border)] hover:bg-[var(--content)]">Cancel</button>
+        <button onclick="submitRejectFeedback()" class="px-4 py-2 rounded-xl text-xs bg-rose-600 hover:bg-rose-700 text-white font-semibold shadow-xs">
+          Submit Rejection & Revise
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // State
+    let currentSessionId = "session_" + Math.random().toString(36).substring(2, 10);
+    const workspaceId = "default_workspace";
+    let pipelineSteps = {}; // step_id -> { step, subSteps: [] }
+    let rawLLMCalls = [];
+
+    // Dark Mode Toggle
+    function toggleDarkMode() {
+      document.documentElement.classList.toggle('dark');
+      const isDark = document.documentElement.classList.contains('dark');
+      document.getElementById('themeIcon').textContent = isDark ? '☀️' : '🌙';
+    }
+
+    // Tab Switching
+    function switchTab(tab) {
+      document.getElementById('tabChat').classList.toggle('hidden', tab !== 'chat');
+      document.getElementById('tabPipeline').classList.toggle('hidden', tab !== 'pipeline');
+      document.getElementById('tabLogs').classList.toggle('hidden', tab !== 'logs');
+
+      document.getElementById('tabChatBtn').className = tab === 'chat'
+        ? "px-4 py-1.5 rounded-md bg-[var(--card)] shadow-xs text-[var(--foreground)] transition-all font-semibold"
+        : "px-4 py-1.5 rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-all";
+      document.getElementById('tabPipelineBtn').className = tab === 'pipeline'
+        ? "px-4 py-1.5 rounded-md bg-[var(--card)] shadow-xs text-[var(--foreground)] transition-all font-semibold flex items-center gap-1.5"
+        : "px-4 py-1.5 rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-all flex items-center gap-1.5";
+      document.getElementById('tabLogsBtn').className = tab === 'logs'
+        ? "px-4 py-1.5 rounded-md bg-[var(--card)] shadow-xs text-[var(--foreground)] transition-all font-semibold"
+        : "px-4 py-1.5 rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-all";
+
+      if (tab === 'logs') loadLogs();
+    }
+
+    // Health Check on startup
+    async function checkHealth() {
+      try {
+        const res = await fetch('/api/health');
+        const data = await res.json();
+        const b = document.getElementById('healthBadge');
+        const t = document.getElementById('healthText');
+        if (data.status === 'healthy') {
+          t.textContent = `Model: ${data.config.model}`;
+          b.className = "ml-4 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 flex items-center gap-1.5";
+        } else {
+          t.textContent = data.llm_health.message || "Model offline";
+          b.className = "ml-4 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-600 border border-amber-500/20 flex items-center gap-1.5";
+        }
+      } catch (e) {
+        document.getElementById('healthText').textContent = "Server unreachable";
+        document.getElementById('healthBadge').className = "ml-4 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-500/10 text-red-600 border border-red-500/20 flex items-center gap-1.5";
+      }
+    }
+    checkHealth();
+
+    // Event Stream Parser for <pipeline_event>
+    function parsePipelineEvents(chunk) {
+      const regex = /<pipeline_event>([\s\S]*?)<\/pipeline_event>/g;
+      const events = [];
+      let match;
+      while ((match = regex.exec(chunk)) !== null) {
+        try {
+          events.push(JSON.parse(match[1]));
+        } catch (e) {
+          console.warn('Failed to parse event block:', match[1]);
+        }
+      }
+      const cleanText = chunk.replace(regex, '').trim();
+      return { cleanText, events };
+    }
+
+    // Pipeline UI Rendering
+    function renderPipelineEvent(event) {
+      const container = document.getElementById('pipelineStepsContainer');
+      const stepId = event.step_id;
+
+      if (!pipelineSteps[stepId]) {
+        // If container had empty placeholder text, clear it
+        if (Object.keys(pipelineSteps).length === 0) {
+          container.innerHTML = '';
+        }
+        pipelineSteps[stepId] = {
+          info: event,
+          subSteps: []
+        };
+        const stepHTML = `
+          <div id="step-${stepId}" class="step-node flex gap-4 pb-0 fade-in cursor-pointer" onclick="toggleStepDetails('${stepId}')">
+            <div class="flex flex-col items-center">
+              <div id="circle-${stepId}" class="status-circle ${event.status}">
+                <span id="icon-${stepId}" class="text-sm">${event.step_icon || '⚡'}</span>
+              </div>
+              <div id="thread-${stepId}" class="thread-line flex-1 mt-1 mb-1" style="min-height: 24px;"></div>
+            </div>
+            <div class="flex-1 pb-5">
+              <div class="flex items-center gap-2">
+                <h3 id="title-${stepId}" class="font-semibold text-sm">${event.step_title}</h3>
+                <span id="badge-${stepId}" class="text-[10px] px-2 py-0.5 rounded-full border text-[var(--muted-foreground)] bg-[var(--content)] border-[var(--border)] capitalize font-medium">${event.status}</span>
+              </div>
+              <p class="text-[var(--muted-foreground)] text-xs mt-0.5">${event.description || ''}</p>
+              <div id="subs-${stepId}" class="mt-2 space-y-1.5"></div>
+              <div id="details-${stepId}" class="hidden mt-2 p-2.5 bg-[var(--content)] rounded-lg text-xs font-mono space-y-1"></div>
+            </div>
+          </div>
+        `;
+        container.insertAdjacentHTML('beforeend', stepHTML);
+      }
+
+      // Update circle state
+      const circleEl = document.getElementById(`circle-${stepId}`);
+      const badgeEl = document.getElementById(`badge-${stepId}`);
+      if (circleEl && badgeEl) {
+        circleEl.className = `status-circle ${event.status} ${event.status === 'active' ? 'pulse-active' : ''}`;
+        badgeEl.textContent = event.status;
+        if (event.status === 'done') {
+          circleEl.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+          badgeEl.className = "text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 font-medium";
+        } else if (event.status === 'active') {
+          badgeEl.className = "text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 border border-blue-500/20 font-medium";
+        } else if (event.status === 'waiting_for_input') {
+          badgeEl.className = "text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 border border-amber-500/20 font-medium";
+        }
+      }
+
+      // Append sub-step if provided
+      if (event.sub_step) {
+        const subsEl = document.getElementById(`subs-${stepId}`);
+        const isDone = event.sub_status === 'done';
+        const isWaiting = event.sub_status === 'waiting' || event.status === 'waiting_for_input';
+        const isActive = event.sub_status === 'processing' || event.status === 'active';
+
+        const dotClass = isDone ? 'done' : (isWaiting ? 'waiting' : (isActive ? 'active' : ''));
+        const textColor = isDone ? 'text-[var(--foreground)]' : (isWaiting ? 'text-amber-600' : 'text-blue-600');
+        const iconHTML = isDone ? '<span class="text-emerald-500 font-bold ml-1">✓</span>' : (isActive && !isWaiting ? '<svg class="spin inline ml-1" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="3"><path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/></svg>' : '');
+
+        const subHTML = `
+          <div class="sub-step visible flex items-center gap-2">
+            <div class="sub-dot ${dotClass}"></div>
+            <span class="${textColor} text-xs font-mono">${event.sub_step} ${iconHTML}</span>
+          </div>
+        `;
+        subsEl.insertAdjacentHTML('beforeend', subHTML);
+      }
+
+      // Store event data for detail view
+      if (event.data && Object.keys(event.data).length > 0) {
+        const detEl = document.getElementById(`details-${stepId}`);
+        detEl.innerHTML = `<strong>Data:</strong> <pre class="whitespace-pre-wrap">${JSON.stringify(event.data, null, 2)}</pre>`;
+      }
+    }
+
+    function toggleStepDetails(stepId) {
+      const el = document.getElementById(`details-${stepId}`);
+      if (el) el.classList.toggle('hidden');
+    }
+
+    let lastUserMessage = '';
+
+    // Append Chat Message
+    function appendChatMessage(role, text, isRateLimit = false) {
+      const container = document.getElementById('chatMessages');
+      const isUser = role === 'user';
+      const retryButtonHTML = isRateLimit ? `
+        <div class="mt-3 pt-2 border-t border-amber-500/20 flex items-center gap-2">
+          <button onclick="retryLastMessage()" class="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-semibold text-xs flex items-center gap-1 shadow-xs transition-all">
+            <span>🔄 Retry Last Message</span>
+          </button>
+          <span class="text-[11px] text-[var(--muted-foreground)]">Resends: "${lastUserMessage.slice(0, 35)}..."</span>
+        </div>
+      ` : '';
+
+      // Convert simple markdown links [text](url) to styled anchor tags for assistant messages
+      let formattedText = text;
+      if (!isUser) {
+        formattedText = formattedText.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 my-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg no-underline shadow-xs transition-colors">$1</a>');
+      }
+
+      const msgHTML = `
+        <div class="flex gap-3 ${isUser ? 'justify-end' : ''} fade-in">
+          ${!isUser ? '<div class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shrink-0">CF</div>' : ''}
+          <div class="${isUser ? 'bg-blue-600 text-white' : (isRateLimit ? 'bg-amber-500/10 border border-amber-500/30' : 'bg-[var(--card)] border border-[var(--border)]')} rounded-2xl ${isUser ? 'rounded-tr-none' : 'rounded-tl-none'} p-4 max-w-2xl text-xs space-y-2 shadow-xs whitespace-pre-wrap">
+            ${formattedText}
+            ${retryButtonHTML}
+          </div>
+          ${isUser ? '<div class="w-8 h-8 rounded-full bg-slate-600 text-white flex items-center justify-center font-bold text-xs shrink-0">You</div>' : ''}
+        </div>
+      `;
+      container.insertAdjacentHTML('beforeend', msgHTML);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    async function retryLastMessage() {
+      if (!lastUserMessage) return;
+      await sendUserMessage(lastUserMessage);
+    }
+
+    async function handleChatSubmit(e) {
+      e.preventDefault();
+      const input = document.getElementById('chatInput');
+      const msg = input.value.trim();
+      if (!msg) return;
+      input.value = '';
+      await sendUserMessage(msg);
+    }
+
+    async function sendUserMessage(msg) {
+      lastUserMessage = msg;
+      appendChatMessage('user', msg);
+
+      const sendBtn = document.getElementById('sendBtn');
+      sendBtn.disabled = true;
+
+      try {
+        const response = await fetch('/api/chat/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_id: currentSessionId,
+            workspace_id: workspaceId,
+            message: msg
+          })
+        });
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+
+          const lines = buffer.split('\n\n');
+          buffer = lines.pop();
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const payload = JSON.parse(line.substring(6));
+              if (payload.type === 'session_init') {
+                currentSessionId = payload.session_id;
+              } else if (payload.type === 'pipeline_event') {
+                renderPipelineEvent(payload.event);
+              } else if (payload.type === 'text_chunk') {
+                const { cleanText } = parsePipelineEvents(payload.text);
+                if (cleanText) appendChatMessage('assistant', cleanText, payload.is_rate_limit || false);
+                if (payload.tones) renderToneProposal(payload.tones);
+              } else if (payload.type === 'templates_ready') {
+                renderTemplates(payload.templates, payload.schedule);
+              }
+            }
+          }
+        }
+      } catch (err) {
+        appendChatMessage('assistant', `⚠️ Network error: ${err.message}`, true);
+      } finally {
+        sendBtn.disabled = false;
+      }
+    }
+
+    // Render Candidate Tones Proposal with Multi-Message Carousel
+    let activeToneProposals = [];
+    let toneMessageIndices = {}; // toneId -> current message index
+
+    function renderToneProposal(tones) {
+      activeToneProposals = tones;
+      const card = document.getElementById('toneProposalCard');
+      const list = document.getElementById('candidateTonesList');
+      list.innerHTML = '';
+      card.classList.remove('hidden');
+
+      tones.forEach(t => {
+        if (toneMessageIndices[t.id] === undefined) {
+          toneMessageIndices[t.id] = 0;
+        }
+
+        // Determine list of messages for this tone
+        const msgs = (t.example_messages && t.example_messages.length > 0)
+          ? t.example_messages
+          : [t.example_message];
+
+        const curIdx = toneMessageIndices[t.id] % msgs.length;
+        const curMsg = msgs[curIdx];
+        const hasMultiple = msgs.length > 1;
+
+        const navControls = hasMultiple ? `
+          <div class="flex items-center justify-between text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1 px-1">
+            <span class="flex items-center gap-1 font-mono text-blue-600 dark:text-blue-400">
+              <span>Message ${curIdx + 1} of ${msgs.length}</span>
+            </span>
+            <div class="flex items-center gap-1.5" onclick="event.stopPropagation();">
+              <button onclick="changeToneMessage('${t.id}', -1)" class="w-6 h-6 rounded-md bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-100 flex items-center justify-center font-bold text-xs shadow-2xs transition-all" title="Previous message">
+                ‹
+              </button>
+              <button onclick="changeToneMessage('${t.id}', 1)" class="w-6 h-6 rounded-md bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-100 flex items-center justify-center font-bold text-xs shadow-2xs transition-all" title="Next message">
+                ›
+              </button>
+            </div>
+          </div>
+        ` : '';
+
+        const tHTML = `
+          <div id="tone-card-${t.id}" class="border-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-3.5 rounded-xl hover:border-blue-500 cursor-pointer transition-all flex flex-col justify-between shadow-sm"
+               onclick="selectTone('${t.id}', '${t.name.replace(/'/g, "\\'")}')">
+            <div>
+              <div class="flex items-center justify-between gap-1">
+                <div class="font-bold text-sm text-slate-950 dark:text-white flex items-center gap-1.5">${t.name}</div>
+                ${hasMultiple ? `<span class="text-[10px] px-1.5 py-0.5 rounded-sm bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-mono font-bold">${msgs.length} msgs</span>` : ''}
+              </div>
+              <div class="text-xs text-slate-900 dark:text-slate-200 font-semibold mt-1.5 leading-snug">${t.description}</div>
+              
+              <div class="mt-2.5">
+                ${navControls}
+                <div id="tone-msg-${t.id}" class="p-2.5 bg-slate-50 dark:bg-slate-800 rounded-lg text-xs font-normal text-slate-950 dark:text-slate-100 border border-slate-300 dark:border-slate-700 leading-relaxed min-h-[90px] whitespace-pre-wrap">
+                  "${curMsg}"
+                </div>
+              </div>
+            </div>
+            <button class="mt-3.5 w-full py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs">
+              Select Tone
+            </button>
+          </div>
+        `;
+        list.insertAdjacentHTML('beforeend', tHTML);
+      });
+    }
+
+    function changeToneMessage(toneId, delta) {
+      const tone = activeToneProposals.find(t => t.id === toneId);
+      if (!tone) return;
+      const msgs = (tone.example_messages && tone.example_messages.length > 0)
+        ? tone.example_messages
+        : [tone.example_message];
+      if (msgs.length <= 1) return;
+
+      let cur = toneMessageIndices[toneId] || 0;
+      cur = (cur + delta + msgs.length) % msgs.length;
+      toneMessageIndices[toneId] = cur;
+
+      // Re-render proposals while maintaining current scroll/state
+      renderToneProposal(activeToneProposals);
+    }
+
+    // Select Tone & SSE Stream
+    async function selectTone(toneId, toneName) {
+      document.getElementById('toneProposalCard').classList.add('hidden');
+      appendChatMessage('user', `Selected tone: ${toneName}`);
+
+      try {
+        const response = await fetch('/api/chat/select_tone', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_id: currentSessionId,
+            tone_id: toneId,
+            tone_name: toneName
+          })
+        });
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+
+          const lines = buffer.split('\n\n');
+          buffer = lines.pop();
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const payload = JSON.parse(line.substring(6));
+              if (payload.type === 'pipeline_event') {
+                renderPipelineEvent(payload.event);
+              } else if (payload.type === 'templates_ready') {
+                renderTemplates(payload.templates, payload.schedule);
+              }
+            }
+          }
+        }
+      } catch (err) {
+        appendChatMessage('assistant', `⚠️ Tone selection error: ${err.message}. Please click the tone button again or select another option.`, true);
+        document.getElementById('toneProposalCard').classList.remove('hidden');
+      }
+    }
+
+    // Render Templates with Word Counts, Previews & Controls
+    function renderTemplates(templates, schedule) {
+      const container = document.getElementById('templatesContainer');
+      const list = document.getElementById('templatesList');
+      document.getElementById('scheduleText').textContent = schedule || 'Cadence';
+      list.innerHTML = '';
+      container.classList.remove('hidden');
+
+      templates.forEach(t => {
+        const hasPreviews = (t.previews || []).length > 0;
+        const previewRows = hasPreviews ? (t.previews || []).map(p => {
+          const extraBadges = p.extra && Object.keys(p.extra).length > 0
+            ? Object.entries(p.extra).map(([k, v]) => `<span class="px-1.5 py-0.5 rounded-sm bg-slate-200 dark:bg-slate-700 text-[10px] text-[var(--foreground)] font-mono">${k}: ${v}</span>`).join(' ')
+            : '';
+
+          return `
+            <div class="p-2.5 bg-[var(--background)] rounded-lg border border-[var(--border)] space-y-1">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-xs text-blue-600 dark:text-blue-400">👤 ${p.contact_name} <span class="text-[var(--muted-foreground)] font-mono text-[11px]">(${p.masked_phone || p.phone})</span></span>
+                <div class="flex items-center gap-1">${extraBadges}</div>
+              </div>
+              <div class="text-xs text-[var(--foreground)] mt-1 whitespace-pre-wrap font-sans bg-[var(--card)] p-2 rounded-md border border-[var(--border)]">${p.rendered_text}</div>
+            </div>
+          `;
+        }).join('') : `
+          <div class="p-2.5 bg-[var(--background)] rounded-lg border border-dashed border-[var(--border)] text-xs text-slate-700 dark:text-slate-300 flex items-center justify-between">
+            <span>💡 <em>No contacts file uploaded yet. Placeholders like <code class="px-1 bg-slate-200 dark:bg-slate-700 rounded-sm font-mono text-[11px] font-semibold text-blue-600 dark:text-blue-400">{{customer_name}}</code> will resolve dynamically to real recipient names upon CSV upload or dispatch.</em></span>
+          </div>
+        `;
+
+        const cardHTML = `
+          <div class="border border-[var(--border)] bg-[var(--card)] rounded-xl p-4 space-y-3 shadow-xs">
+            <div class="flex items-center justify-between border-b border-[var(--border)] pb-2">
+              <span class="font-bold text-xs uppercase tracking-wider text-blue-600 dark:text-blue-400">
+                ${t.tone} — Message ${t.message_index} (${t.stage})
+              </span>
+              <div class="flex items-center gap-2">
+                <span class="text-[11px] font-mono px-2 py-0.5 rounded-md ${t.word_count <= t.word_limit ? 'bg-emerald-500/10 text-emerald-600' : 'bg-red-500/10 text-red-600'}">
+                  📏 ${t.word_count} / ${t.word_limit} words ${t.compliant ? '✅' : '⚠️'}
+                </span>
+                <button onclick="openEditModal(${t.message_index})" class="px-2 py-1 rounded-md border border-[var(--border)] hover:bg-[var(--content)] text-xs font-medium text-[var(--foreground)]">✏️ Edit</button>
+                <button onclick="regenerateTemplateAction(${t.message_index})" class="px-2 py-1 rounded-md border border-[var(--border)] hover:bg-[var(--content)] text-xs font-medium text-blue-600 dark:text-blue-400">🔄 Regenerate</button>
+              </div>
+            </div>
+
+            <div class="text-xs whitespace-pre-wrap font-sans text-[var(--foreground)] p-3 bg-[var(--background)] rounded-lg border border-[var(--border)]" id="tmpl-body-${t.message_index}">
+              ${t.body}
+            </div>
+
+            <!-- Recipient Previews with Personalization Tags -->
+            <div>
+              <div class="text-[11px] font-semibold text-[var(--muted-foreground)] mb-1">${hasPreviews ? 'Live Recipient Previews (Real Name & Fields Injected):' : 'Recipient Personalization Preview:'}</div>
+              <div class="space-y-1.5" id="tmpl-previews-${t.message_index}">${previewRows}</div>
+            </div>
+          </div>
+        `;
+        list.insertAdjacentHTML('beforeend', cardHTML);
+      });
+    }
+
+    let currentEditingIndex = null;
+    let currentTemplatesStore = [];
+
+    function openEditModal(index) {
+      currentEditingIndex = index;
+      const bodyEl = document.getElementById(`tmpl-body-${index}`);
+      if (!bodyEl) return;
+      document.getElementById('editModalText').value = bodyEl.textContent.trim();
+      document.getElementById('editModalTitle').textContent = `Edit Message ${index}`;
+      document.getElementById('editTemplateModal').classList.remove('hidden');
+    }
+
+    function closeEditModal() {
+      document.getElementById('editTemplateModal').classList.add('hidden');
+    }
+
+    async function saveEditedTemplate() {
+      const updated = document.getElementById('editModalText').value.trim();
+      if (!updated || currentEditingIndex === null) return;
+      closeEditModal();
+
+      try {
+        const res = await fetch('/api/campaign/edit_template', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_id: currentSessionId,
+            message_index: currentEditingIndex,
+            updated_body: updated
+          })
+        });
+        const data = await res.json();
+        if (data.status === 'success' && data.all_templates) {
+          renderTemplates(data.all_templates);
+        }
+      } catch (e) {
+        alert('Edit failed: ' + e.message);
+      }
+    }
+
+    let currentRepromptIndex = null;
+
+    function openRepromptModal(index) {
+      currentRepromptIndex = index;
+      document.getElementById('repromptModalText').value = '';
+      document.getElementById('repromptModalTitle').textContent = `Re-prompt & Regenerate Message ${index}`;
+      document.getElementById('repromptTemplateModal').classList.remove('hidden');
+    }
+
+    function closeRepromptModal() {
+      document.getElementById('repromptTemplateModal').classList.add('hidden');
+    }
+
+    async function submitRepromptTemplate() {
+      if (currentRepromptIndex === null) return;
+      const index = currentRepromptIndex;
+      const instructions = document.getElementById('repromptModalText').value.trim();
+      closeRepromptModal();
+
+      const bodyEl = document.getElementById(`tmpl-body-${index}`);
+      if (bodyEl) bodyEl.innerHTML = '<span class="text-blue-600 animate-pulse font-medium">⏳ Re-prompting AI with your instructions to regenerate template...</span>';
+
+      try {
+        const res = await fetch('/api/campaign/regenerate_template', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_id: currentSessionId,
+            message_index: index,
+            instructions: instructions
+          })
+        });
+        const data = await res.json();
+        if (data.status === 'success' && data.all_templates) {
+          renderTemplates(data.all_templates);
+        }
+      } catch (e) {
+        alert('Regenerate failed: ' + e.message);
+      }
+    }
+
+    function regenerateTemplateAction(index) {
+      openRepromptModal(index);
+    }
+
+    async function approveCampaign() {
+      try {
+        const res = await fetch('/api/campaign/approve', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: currentSessionId })
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+          // Hide the templates container card so it does not stick around
+          const tmplContainer = document.getElementById('templatesContainer');
+          if (tmplContainer) {
+            tmplContainer.classList.add('hidden');
+          }
+
+          // Post final message in the chat
+          const approvalMsg = `🎉 **Campaign Package Approved!**\n\nAll messaging templates, tone criteria, and campaign facts have been locked and saved to your persistent workspace memory.\n\nReady for dispatch! You can download the complete formatted messaging sequence below:\n\n[📥 Download Campaign Messages](/api/export/campaign/${currentSessionId})`;
+          appendChatMessage('assistant', approvalMsg);
+        }
+      } catch (e) {
+        alert('Approval failed: ' + e.message);
+      }
+    }
+
+    // Rejection handling
+    function openRejectModal() {
+      document.getElementById('rejectFeedbackText').value = '';
+      document.getElementById('rejectReasonTone').checked = false;
+      document.getElementById('rejectReasonFacts').checked = false;
+      document.getElementById('rejectReasonLength').checked = false;
+      document.getElementById('rejectCampaignModal').classList.remove('hidden');
+    }
+
+    function closeRejectModal() {
+      document.getElementById('rejectCampaignModal').classList.add('hidden');
+    }
+
+    async function submitRejectFeedback() {
+      const text = document.getElementById('rejectFeedbackText').value.trim();
+      const reasons = [];
+      if (document.getElementById('rejectReasonTone').checked) reasons.push("Tone wasn't right");
+      if (document.getElementById('rejectReasonFacts').checked) reasons.push("Incorrect or fabricated statistics/details");
+      if (document.getElementById('rejectReasonLength').checked) reasons.push("Wrong length or sequence cadence");
+
+      if (!text && reasons.length === 0) {
+        alert("Please provide some feedback or select what should be changed.");
+        return;
+      }
+
+      closeRejectModal();
+
+      // Immediately hide the generated CRM templates window so the user can see the chat
+      const tmplContainer = document.getElementById('templatesContainer');
+      if (tmplContainer) {
+        tmplContainer.classList.add('hidden');
+      }
+
+      // Build rejection message for chat
+      let rejectionPrompt = "I am rejecting this campaign draft.";
+      if (reasons.length > 0) {
+        rejectionPrompt += ` Issues noticed: ${reasons.join(", ")}.`;
+      }
+      if (text) {
+        rejectionPrompt += ` Specifically: ${text}`;
+      }
+      rejectionPrompt += " Please re-explore or ask me clarifying questions for missing statistics/facts before generating new templates.";
+
+      // Send rejection feedback directly into orchestrator chat stream
+      await sendUserMessage(rejectionPrompt);
+    }
+
+    function exportCampaignJson() {
+      window.open(`/api/export/campaign/${currentSessionId}`, '_blank');
+    }
+
+    function downloadFullRunLog() {
+      window.open(`/api/export/run_log/${currentSessionId}`, '_blank');
+    }
+
+    // Contact Ingestion Handlers
+    async function handleFileUpload(file) {
+      if (!file) return;
+      const formData = new FormData();
+      formData.append('session_id', currentSessionId);
+      formData.append('file', file);
+
+      document.getElementById('contactsStatusText').textContent = `Uploading ${file.name}...`;
+
+      try {
+        const res = await fetch('/api/contacts/upload', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        if (data.result && data.result.success) {
+          showContactPreview(data.result);
+        } else {
+          const err = data.result?.error || data.result?.message || 'Failed to process file';
+          appendChatMessage('assistant', `⚠️ **Contact File Dismissed:** ${err}`, true);
+          alert(err);
+        }
+      } catch (e) {
+        alert('Upload error: ' + e.message);
+      }
+    }
+
+    function openPasteModal() { document.getElementById('pasteModal').classList.remove('hidden'); }
+    function closePasteModal() { document.getElementById('pasteModal').classList.add('hidden'); }
+
+    async function submitPastedContacts() {
+      const text = document.getElementById('pasteTextInput').value.trim();
+      if (!text) return;
+      closePasteModal();
+
+      const formData = new FormData();
+      formData.append('session_id', currentSessionId);
+      formData.append('text_data', text);
+
+      try {
+        const res = await fetch('/api/contacts/paste', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        if (data.result && data.result.success) {
+          showContactPreview(data.result);
+        } else {
+          const err = data.result?.error || data.result?.message || 'Failed to parse contacts';
+          appendChatMessage('assistant', `⚠️ **Contact Ingestion Dismissed:** ${err}`, true);
+          alert(err);
+        }
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    }
+
+    function showContactPreview(result) {
+      const card = document.getElementById('contactPreviewCard');
+      const countEl = document.getElementById('contactValidCount');
+      const extraEl = document.getElementById('contactExtraInfo');
+      const listEl = document.getElementById('contactPreviewList');
+
+      countEl.textContent = result.valid_count;
+      extraEl.textContent = `${result.duplicates_count} dupes removed · ${result.invalid_count} invalid · ${result.suppressed_count} suppressed`;
+      listEl.innerHTML = '';
+
+      (result.preview || []).forEach(p => {
+        listEl.innerHTML += `
+          <div class="bg-[var(--card)] p-2 rounded-lg border border-[var(--border)]">
+            <span class="font-semibold">${p.name}</span> — <span>${p.masked_phone}</span>
+          </div>
+        `;
+      });
+      card.classList.remove('hidden');
+      document.getElementById('contactsStatusText').textContent = `${result.valid_count} clean contacts ready for campaign preview`;
+    }
+
+    // Logs Tab Loader
+    async function loadLogs() {
+      const category = document.getElementById('logCategorySelect').value;
+      const output = document.getElementById('logsOutput');
+      output.textContent = 'Loading...';
+
+      let endpoint = `/api/logs/${category}?session_id=${currentSessionId}`;
+      if (category === 'memory') endpoint = `/api/memory?workspace_id=${workspaceId}`;
+
+      try {
+        const res = await fetch(endpoint);
+        const data = await res.json();
+        output.innerHTML = '';
+
+        if (Array.isArray(data) && data.length === 0) {
+          output.innerHTML = '<div class="text-[var(--muted-foreground)]">No records found for this session.</div>';
+          return;
+        }
+
+        if (category === 'llm_calls') {
+          rawLLMCalls = data;
+          data.forEach((call, idx) => {
+            output.innerHTML += `
+              <div class="p-3 bg-[var(--background)] rounded-lg border border-[var(--border)] space-y-1">
+                <div class="flex items-center justify-between">
+                  <span class="font-bold text-blue-600 dark:text-blue-400">#${call.id} [${call.purpose}]</span>
+                  <span class="text-[10px] text-[var(--muted-foreground)]">${call.timestamp} · ${call.latency_ms}ms · ${call.prompt_tokens}+${call.completion_tokens} tokens</span>
+                </div>
+                <div class="text-xs">Model: <code>${call.model}</code> | Status: <span class="font-semibold text-emerald-600">${call.status}</span></div>
+                <button onclick="showRawLLMModal(${idx})" class="mt-1 text-xs text-blue-600 hover:underline">
+                  🔍 View Full Prompt & Raw Response
+                </button>
+              </div>
+            `;
+          });
+        } else {
+          output.innerHTML = `<pre class="whitespace-pre-wrap">${JSON.stringify(data, null, 2)}</pre>`;
+        }
+      } catch (e) {
+        output.textContent = 'Error loading logs: ' + e.message;
+      }
+    }
+
+    function showRawLLMModal(index) {
+      const call = rawLLMCalls[index];
+      if (!call) return;
+      document.getElementById('rawLogModalTitle').textContent = `LLM Call: ${call.id} (${call.purpose})`;
+      document.getElementById('rawLogPrompt').textContent = call.full_prompt;
+      document.getElementById('rawLogResponse').textContent = call.full_raw_response;
+      document.getElementById('rawLogModal').classList.remove('hidden');
+    }
+
+    function closeRawLogModal() { document.getElementById('rawLogModal').classList.add('hidden'); }
+  </script>
+</body>
+</html>

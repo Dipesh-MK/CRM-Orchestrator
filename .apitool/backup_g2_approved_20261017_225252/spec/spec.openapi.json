@@ -1,0 +1,645 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Mock Aggregator — Twilio-Compatible SMS API",
+    "version": "1.0.0",
+    "description": "Drop-in mock aggregator simulating Twilio's Programmable SMS API with multi-tenant account isolation (IDACT, PBT), shortcode validation, deterministic delivery simulation (numbers ending in 0 -> undelivered, 1-9 -> delivered), StatusCallback webhooks, raw wire payload inspection, and two-way inbound SMS replies."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Local Mock Aggregator instance"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Twilio Programmable SMS",
+      "description": "Twilio-compatible REST API endpoints (authenticate with AccountSid and AuthToken)"
+    },
+    {
+      "name": "Admin & Telemetry",
+      "description": "Aggregator management, stats, live message stream, and wire inspection"
+    },
+    {
+      "name": "Virtual Phone Simulator",
+      "description": "Virtual phone identities, conversation threads, and two-way inbound replies"
+    }
+  ],
+  "paths": {
+    "/2010-04-01/Accounts/{AccountSid}/Messages.json": {
+      "post": {
+        "tags": [
+          "Twilio Programmable SMS"
+        ],
+        "summary": "Send an SMS (Twilio POST /Messages.json)",
+        "description": "Sends an SMS through the Mock Aggregator. The account SID and AuthToken are validated via HTTP Basic Auth. The 'From' parameter must be an active shortcode belonging to the account. Delivery status is deterministically simulated: numbers ending in 0 transition to 'undelivered' (Error 30008); numbers ending in 1-9 transition to 'delivered'.",
+        "security": [
+          {
+            "BasicAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "AccountSid",
+            "in": "path",
+            "required": true,
+            "description": "Account SID (e.g., AC_IDACT_001 or AC_PBT_002)",
+            "schema": {
+              "type": "string",
+              "example": "AC_IDACT_001"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "To",
+                  "From",
+                  "Body"
+                ],
+                "properties": {
+                  "To": {
+                    "type": "string",
+                    "description": "Destination phone number (+E.164). Numbers ending in 0 trigger simulated failure.",
+                    "example": "+15551234561"
+                  },
+                  "From": {
+                    "type": "string",
+                    "description": "Shortcode owned by the account (IDACT: 55512, 55513 | PBT: 88820, 88821)",
+                    "example": "55512"
+                  },
+                  "Body": {
+                    "type": "string",
+                    "description": "Text message content (up to 1600 characters)",
+                    "example": "Your verification code is 492102. Valid for 5 minutes."
+                  },
+                  "StatusCallback": {
+                    "type": "string",
+                    "description": "Optional webhook URL to receive asynchronous delivery receipts (DLR)",
+                    "example": "https://webhook.site/test-dlr"
+                  }
+                }
+              }
+            },
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "To",
+                  "From",
+                  "Body"
+                ],
+                "properties": {
+                  "To": {
+                    "type": "string",
+                    "example": "+15551234561"
+                  },
+                  "From": {
+                    "type": "string",
+                    "example": "55512"
+                  },
+                  "Body": {
+                    "type": "string",
+                    "example": "Your verification code is 492102."
+                  },
+                  "StatusCallback": {
+                    "type": "string",
+                    "example": "https://webhook.site/test-dlr"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Message queued successfully (Twilio 201 Created envelope)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TwilioMessageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid shortcode or missing To/From"
+          },
+          "401": {
+            "description": "Authentication failure (invalid SID or AuthToken)"
+          }
+        },
+        "x-source": "vendor-openapi: src/docs/openapi.json",
+        "x-auth": "basic",
+        "x-confidence": "vendor-documented"
+      }
+    },
+    "/2010-04-01/Accounts/{AccountSid}/Messages/{MessageSid}.json": {
+      "get": {
+        "tags": [
+          "Twilio Programmable SMS"
+        ],
+        "summary": "Fetch a Message by SID",
+        "description": "Retrieves the status and metadata for a specific message.",
+        "security": [
+          {
+            "BasicAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "AccountSid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "AC_IDACT_001"
+            }
+          },
+          {
+            "name": "MessageSid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "SM916c61b99e7b482481bfbd328707d5c8"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Twilio Message Representation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TwilioMessageResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Message not found"
+          }
+        },
+        "x-source": "vendor-openapi: src/docs/openapi.json",
+        "x-auth": "basic",
+        "x-confidence": "vendor-documented"
+      }
+    },
+    "/api/admin/accounts": {
+      "get": {
+        "tags": [
+          "Admin & Telemetry"
+        ],
+        "summary": "List all multi-tenant accounts",
+        "description": "Returns all registered client accounts (IDACT, PBT), their shortcodes, and aggregated delivery metrics.",
+        "responses": {
+          "200": {
+            "description": "List of client accounts"
+          }
+        },
+        "x-source": "vendor-openapi: src/docs/openapi.json (implemented in src/routes/admin.js)",
+        "x-auth": "none",
+        "x-confidence": "vendor-documented"
+      }
+    },
+    "/api/admin/stats": {
+      "get": {
+        "tags": [
+          "Admin & Telemetry"
+        ],
+        "summary": "Get aggregate gateway telemetry",
+        "description": "Returns counts for total messages, delivered messages, undelivered drops, and dispatched webhook callbacks.",
+        "responses": {
+          "200": {
+            "description": "System-wide metrics"
+          }
+        },
+        "x-source": "vendor-openapi: src/docs/openapi.json (implemented in src/routes/admin.js)",
+        "x-auth": "none",
+        "x-confidence": "vendor-documented"
+      }
+    },
+    "/api/admin/messages": {
+      "get": {
+        "tags": [
+          "Admin & Telemetry"
+        ],
+        "summary": "List message audit log",
+        "description": "Lists logged messages with support for filtering by account_id and limit.",
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by account ID"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Message log records"
+          }
+        },
+        "x-source": "vendor-openapi: src/docs/openapi.json (implemented in src/routes/admin.js)",
+        "x-auth": "none",
+        "x-confidence": "vendor-documented"
+      }
+    },
+    "/api/admin/messages/{sid}": {
+      "get": {
+        "tags": [
+          "Admin & Telemetry"
+        ],
+        "summary": "Get raw wire inspector details",
+        "description": "Returns full audit trace for a message, including raw HTTP request headers, raw request body, API response, and all webhook delivery logs with latency.",
+        "parameters": [
+          {
+            "name": "sid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Raw wire audit record"
+          }
+        },
+        "x-source": "vendor-openapi: src/docs/openapi.json (implemented in src/routes/admin.js)",
+        "x-auth": "none",
+        "x-confidence": "vendor-documented"
+      }
+    },
+    "/api/admin/settings": {
+      "get": {
+        "tags": [
+          "Admin & Telemetry"
+        ],
+        "summary": "Get simulation latency profile",
+        "responses": {
+          "200": {
+            "description": "Current delay configuration in ms"
+          }
+        },
+        "x-source": "vendor-openapi: src/docs/openapi.json (implemented in src/routes/admin.js)",
+        "x-auth": "none",
+        "x-confidence": "vendor-documented"
+      },
+      "patch": {
+        "tags": [
+          "Admin & Telemetry"
+        ],
+        "summary": "Update simulation latency profile",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "sent_delay_ms": {
+                    "type": "integer",
+                    "example": 500
+                  },
+                  "dlr_delay_ms": {
+                    "type": "integer",
+                    "example": 1500
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Settings updated"
+          }
+        },
+        "x-source": "vendor-openapi: src/docs/openapi.json (implemented in src/routes/admin.js)",
+        "x-auth": "none",
+        "x-confidence": "vendor-documented"
+      }
+    },
+    "/api/admin/accounts/{id}/webhooks": {
+      "patch": {
+        "tags": [
+          "Admin & Telemetry"
+        ],
+        "summary": "Configure account default webhooks",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status_callback_url": {
+                    "type": "string",
+                    "example": "https://your-server.com/dlr"
+                  },
+                  "inbound_callback_url": {
+                    "type": "string",
+                    "example": "https://your-server.com/inbound"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Webhooks updated"
+          }
+        },
+        "x-source": "vendor-openapi: src/docs/openapi.json (implemented in src/routes/admin.js)",
+        "x-auth": "none",
+        "x-confidence": "vendor-documented"
+      }
+    },
+    "/api/phone/numbers": {
+      "get": {
+        "tags": [
+          "Virtual Phone Simulator"
+        ],
+        "summary": "List virtual phone identities",
+        "responses": {
+          "200": {
+            "description": "List of test phone numbers"
+          }
+        },
+        "x-source": "vendor-openapi: src/docs/openapi.json (implemented in src/routes/phone.js:21)",
+        "x-auth": "none",
+        "x-confidence": "vendor-documented"
+      }
+    },
+    "/api/phone/{phoneNumber}/threads": {
+      "get": {
+        "tags": [
+          "Virtual Phone Simulator"
+        ],
+        "summary": "Get conversations for a virtual phone",
+        "parameters": [
+          {
+            "name": "phoneNumber",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "+15551234561"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Conversations grouped by shortcode"
+          }
+        },
+        "x-source": "vendor-openapi: src/docs/openapi.json (implemented in src/routes/phone.js:43)",
+        "x-auth": "none",
+        "x-confidence": "vendor-documented"
+      }
+    },
+    "/api/phone/reply": {
+      "post": {
+        "tags": [
+          "Virtual Phone Simulator"
+        ],
+        "summary": "Send an inbound reply from a virtual phone",
+        "description": "Simulates an end-user replying to a shortcode. Logs the inbound message and dispatches a Twilio-style inbound SMS webhook POST to the account's configured inbound_callback_url.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "from",
+                  "to",
+                  "body"
+                ],
+                "properties": {
+                  "from": {
+                    "type": "string",
+                    "example": "+15551234561"
+                  },
+                  "to": {
+                    "type": "string",
+                    "example": "55512"
+                  },
+                  "body": {
+                    "type": "string",
+                    "example": "CONFIRM 492102"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Inbound reply registered and webhook dispatched"
+          }
+        },
+        "x-source": "vendor-openapi: src/docs/openapi.json (implemented in src/routes/phone.js:80)",
+        "x-auth": "none",
+        "x-confidence": "vendor-documented"
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "Admin & Telemetry"
+        ],
+        "summary": "Healthcheck endpoint",
+        "responses": {
+          "200": {
+            "description": "Server status and uptime"
+          }
+        },
+        "x-source": "vendor-openapi: src/docs/openapi.json (implemented in src/server.js:56)",
+        "x-auth": "none",
+        "x-confidence": "vendor-documented"
+      }
+    },
+    "/api/phone/register": {
+      "post": {
+        "tags": [
+          "Virtual Phone"
+        ],
+        "summary": "Register a virtual phone identity",
+        "operationId": "post_api_phone_register",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "phone_number": {
+                    "type": "string"
+                  },
+                  "display_name": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "phone_number"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Virtual phone registered",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "x-source": "inferred-from-source: src/routes/phone.js:27",
+        "x-auth": "none",
+        "x-confidence": "inferred",
+        "x-verification": "verify with a read-only/loopback call at G4"
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BasicAuth": {
+        "type": "http",
+        "scheme": "basic",
+        "description": "HTTP Basic Auth where username is AccountSid (AC_IDACT_001 or AC_PBT_002) and password is the account AuthToken."
+      }
+    },
+    "schemas": {
+      "TwilioMessageResponse": {
+        "type": "object",
+        "properties": {
+          "sid": {
+            "type": "string",
+            "example": "SM916c61b99e7b482481bfbd328707d5c8"
+          },
+          "date_created": {
+            "type": "string",
+            "example": "Tue, 13 Oct 2026 17:48:23 +0000"
+          },
+          "date_updated": {
+            "type": "string",
+            "example": "Tue, 13 Oct 2026 17:48:23 +0000"
+          },
+          "date_sent": {
+            "type": "string",
+            "nullable": true
+          },
+          "account_sid": {
+            "type": "string",
+            "example": "AC_IDACT_001"
+          },
+          "to": {
+            "type": "string",
+            "example": "+15551234561"
+          },
+          "from": {
+            "type": "string",
+            "example": "55512"
+          },
+          "messaging_service_sid": {
+            "type": "string",
+            "nullable": true
+          },
+          "body": {
+            "type": "string",
+            "example": "Your verification code is 492102. Valid for 5 minutes."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "sent",
+              "delivered",
+              "undelivered",
+              "failed"
+            ],
+            "example": "queued"
+          },
+          "num_segments": {
+            "type": "string",
+            "example": "1"
+          },
+          "num_media": {
+            "type": "string",
+            "example": "0"
+          },
+          "direction": {
+            "type": "string",
+            "example": "outbound-api"
+          },
+          "api_version": {
+            "type": "string",
+            "example": "2010-04-01"
+          },
+          "price": {
+            "type": "string",
+            "example": "-0.0075"
+          },
+          "price_unit": {
+            "type": "string",
+            "example": "USD"
+          },
+          "error_code": {
+            "type": "integer",
+            "nullable": true,
+            "example": null
+          },
+          "error_message": {
+            "type": "string",
+            "nullable": true,
+            "example": null
+          },
+          "uri": {
+            "type": "string",
+            "example": "/2010-04-01/Accounts/AC_IDACT_001/Messages/SM916c61b99e7b482481bfbd328707d5c8.json"
+          },
+          "subresource_uris": {
+            "type": "object",
+            "properties": {
+              "media": {
+                "type": "string",
+                "example": "/2010-04-01/Accounts/AC_IDACT_001/Messages/SM916c61b99e7b482481bfbd328707d5c8/Media.json"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

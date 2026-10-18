@@ -1,0 +1,25 @@
+{
+  "ok": true,
+  "status": 200,
+  "data": {
+    "data": [
+      {
+        "sid": "SMcbcecb3c213547609a3f7f818d7b8106",
+        "account_id": "AC_IDACT_001",
+        "to_number": "+****9001",
+        "from_number": "55512",
+        "status": "delivered",
+        "created_at": "2026-10-17 23:15:25"
+      },
+      {
+        "sid": "SMfaaa3080d9574b5a988de11780d5a1b8",
+        "account_id": "AC_IDACT_001",
+        "to_number": "+****9000",
+        "from_number": "55512",
+        "status": "undelivered",
+        "error_code": "30008",
+        "created_at": "2026-10-17 23:15:25"
+      }
+    ]
+  }
+}

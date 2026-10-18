@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes pulse-ring {
+      0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5); }
+      70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+    }
+    @keyframes threadGrow {
+      from { height: 0; }
+      to { height: 100%; }
+    }
+    .spin { animation: spin 1s linear infinite; }
+    .fade-in { animation: fadeInUp 0.4s ease-out forwards; }
+    .pulse-active { animation: pulse-ring 1.5s ease-out infinite; }
+
+    .step-node {
+      transition: all 0.3s ease;
+    }
+
+    .thread-line {
+      width: 2px;
+      background: var(--border);
+      transition: background 0.5s ease;
+    }
+    .thread-line.done {
+      background: #22c55e;
+    }
+    .thread-line.active {
+      background: linear-gradient(to bottom, #22c55e, #3b82f6);
+    }
+
+    /* Status circle states */
+    .status-circle {
+      width: 36px; height: 36px; min-width: 36px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+      transition: all 0.4s ease;
+      border: 2px solid var(--border);
+      background: var(--card);
+    }
+    .status-circle.pending {
+      border-color: var(--border);
+      color: var(--muted-foreground);
+      opacity: 0.4;
+    }
+    .status-circle.active {
+      border-color: #3b82f6;
+      color: #3b82f6;
+      background: rgba(59, 130, 246, 0.08);
+    }
+    .status-circle.done {
+      border-color: #22c55e;
+      color: white;
+      background: #22c55e;
+    }
+    .status-circle.error {
+      border-color: #ef4444;
+      color: white;
+      background: #ef4444;
+    }
+
+    .sub-step {
+      opacity: 0;
+      transform: translateY(8px);
+      transition: all 0.35s ease;
+    }
+    .sub-step.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .sub-dot {
+      width: 8px; height: 8px; min-width: 8px;
+      border-radius: 50%;
+      background: var(--border);
+      transition: background 0.3s ease;
+    }
+    .sub-dot.done { background: #22c55e; }
+    .sub-dot.active { background: #3b82f6; }
+
+    .btn-start {
+      background: var(--primary);
+      color: var(--primary-foreground);
+      transition: all 0.2s ease;
+    }
+    .btn-start:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+    .btn-start:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+  </style>
+</head>
+<body class="bg-[var(--background)] text-[var(--foreground)] antialiased p-6">
+
+  <div class="max-w-2xl mx-auto">
+
+    <!-- Header -->
+    <div class="text-center mb-6">
+      <h1 class="text-xl font-bold tracking-tight">🚀 CampaignForge — Live Pipeline</h1>
+      <p class="text-[var(--muted-foreground)] text-xs mt-1">Real-time campaign orchestration progress</p>
+    </div>
+
+    <!-- Start Button -->
+    <div class="flex justify-center mb-6">
+      <button id="startBtn" onclick="startDemo()" class="btn-start rounded-full px-6 py-2.5 text-sm font-semibold shadow-sm">
+        ▶ Start Demo
+      </button>
+    </div>
+
+    <!-- Pipeline Container -->
+    <div id="pipeline" class="relative ml-4">
+      <!-- Steps will be injected here by JS -->
+    </div>
+
+  </div>
+
+  <script>
+    const STEPS = [
+      {
+        id: "ingest",
+        icon: "📄",
+        title: "File Ingestion",
+        description: "Parsing your uploaded contact file",
+        subSteps: [
+          { text: "Reading file — donors_nepal_2026.xlsx", delay: 800 },
+          { text: "Detected 1,247 rows across 6 columns", delay: 600 },
+          { text: "Columns mapped — Name: 'Donor Name', Phone: 'Mobile No'", delay: 700 },
+          { text: "Extra fields found: City, Past Donation, Email", delay: 500 },
+        ]
+      },
+      {
+        id: "sanitize",
+        icon: "🧹",
+        title: "Contact Sanitization",
+        description: "Cleaning & validating phone numbers",
+        subSteps: [
+          { text: "Normalizing 1,247 numbers to E.164 format (+91...)", delay: 900 },
+          { text: "✓ 1,198 valid numbers normalized", delay: 600 },
+          { text: "✗ 31 invalid numbers flagged & skipped", delay: 500 },
+          { text: "↔ 18 duplicates removed (kept first occurrence)", delay: 400 },
+        ]
+      },
+      {
+        id: "dnc",
+        icon: "🛡️",
+        title: "DNC & Suppression Check",
+        description: "Filtering previously opted-out contacts",
+        subSteps: [
+          { text: "Checking 1,198 numbers against suppression database", delay: 1000 },
+          { text: "7 contacts previously opted out — removed", delay: 600 },
+          { text: "✅ 1,191 clean contacts ready for campaign", delay: 500 },
+        ]
+      },
+      {
+        id: "discovery",
+        icon: "🎤",
+        title: "Campaign Discovery",
+        description: "Gathering campaign details from you",
+        subSteps: [
+          { text: "Auto-generated name: \"Nepal Flood Relief 2026\"", delay: 700 },
+          { text: "Presenting 5 campaign questions to user...", delay: 600 },
+          { text: "⏸ Waiting for your input", delay: 800, isWaiting: true },
+        ]
+      },
+      {
+        id: "strategy",
+        icon: "🎯",
+        title: "Audience Segmentation",
+        description: "Analyzing contacts & building smart segments",
+        subSteps: [
+          { text: "Analyzing past donation history for 1,191 contacts", delay: 900 },
+          { text: "Segment A: High Donors (past > ₹10K) — 186 contacts", delay: 600 },
+          { text: "Segment B: Regular Donors — 723 contacts", delay: 500 },
+          { text: "Segment C: New / Cold Contacts — 282 contacts", delay: 500 },
+        ]
+      },
+      {
+        id: "templates",
+        icon: "✍️",
+        title: "Template Generation",
+        description: "Crafting personalized message templates",
+        subSteps: [
+          { text: "Generating 5 tones × 3 messages = 15 templates", delay: 700 },
+          { text: "🙏 Empathetic set — 3 messages drafted (189, 210, 156 words)", delay: 800 },
+          { text: "🔴 Urgent set — 3 messages drafted (201, 245, 178 words)", delay: 800 },
+          { text: "📋 Professional set — 3 messages drafted (176, 198, 142 words)", delay: 700 },
+          { text: "🤝 Community set — 3 messages drafted (195, 220, 161 words)", delay: 700 },
+          { text: "📖 Storytelling set — 3 messages drafted (234, 267, 189 words)", delay: 800 },
+          { text: "Compliance check — all 15 templates ≤ 320 words ✅", delay: 500 },
+          { text: "Opt-out footer verified on all templates ✅", delay: 400 },
+        ]
+      },
+      {
+        id: "ready",
+        icon: "🚀",
+        title: "Campaign Package Ready",
+        description: "Your templates are ready for review!",
+        subSteps: [
+          { text: "15 compliant templates generated across 5 tones", delay: 600 },
+          { text: "1,191 donors segmented into 3 audience tiers", delay: 500 },
+          { text: "Recommended schedule: Day 1 → Day 4 → Day 7", delay: 500 },
+          { text: "✅ Campaign package ready — awaiting your approval", delay: 400 },
+        ]
+      },
+    ];
+
+    let isRunning = false;
+
+    function createStepHTML(step, index, total) {
+      const isLast = index === total - 1;
+      return `
+        <div id="step-${step.id}" class="step-node flex gap-4 pb-0" style="opacity: 0; transform: translateY(12px); transition: all 0.4s ease;">
+          <!-- Left: Circle + Thread -->
+          <div class="flex flex-col items-center">
+            <div id="circle-${step.id}" class="status-circle pending">
+              <span id="icon-${step.id}" class="text-sm">${step.icon}</span>
+            </div>
+            ${!isLast ? `<div id="thread-${step.id}" class="thread-line flex-1 mt-1 mb-1" style="min-height: 20px;"></div>` : ''}
+          </div>
+          <!-- Right: Content -->
+          <div class="flex-1 pb-5 ${isLast ? '' : ''}">
+            <div class="flex items-center gap-2">
+              <h3 id="title-${step.id}" class="font-semibold text-sm">${step.title}</h3>
+              <span id="badge-${step.id}" class="text-[10px] px-2 py-0.5 rounded-full bg-[var(--content)] text-[var(--muted-foreground)] border border-[var(--border)]">Pending</span>
+            </div>
+            <p class="text-[var(--muted-foreground)] text-xs mt-0.5">${step.description}</p>
+            <div id="subs-${step.id}" class="mt-2 space-y-1.5">
+              <!-- Sub-steps injected dynamically -->
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function createSubStepHTML(stepId, subIndex, text, isDone, isActive, isWaiting) {
+      const dotClass = isDone ? 'done' : (isActive ? 'active' : '');
+      const textColor = isDone ? 'text-[var(--foreground)]' : (isActive ? 'text-blue-500' : 'text-[var(--muted-foreground)]');
+      const waitingIndicator = isWaiting && isActive ? '<span class="ml-1 text-amber-500 text-[10px] font-semibold">(waiting for input)</span>' : '';
+      const spinnerHTML = isActive && !isWaiting ? `<svg class="spin ml-1" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="3"><path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/></svg>` : '';
+      const checkHTML = isDone ? '<span class="text-green-500 text-[10px] ml-1">✓</span>' : '';
+
+      return `
+        <div id="sub-${stepId}-${subIndex}" class="sub-step visible flex items-center gap-2">
+          <div class="sub-dot ${dotClass}"></div>
+          <span class="${textColor} text-xs">${text}${checkHTML}${spinnerHTML}${waitingIndicator}</span>
+        </div>
+      `;
+    }
+
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function startDemo() {
+      if (isRunning) return;
+      isRunning = true;
+
+      const btn = document.getElementById('startBtn');
+      btn.disabled = true;
+      btn.textContent = '⏳ Running...';
+
+      const pipeline = document.getElementById('pipeline');
+      pipeline.innerHTML = '';
+
+      // Render all steps (hidden)
+      STEPS.forEach((step, i) => {
+        pipeline.innerHTML += createStepHTML(step, i, STEPS.length);
+      });
+
+      // Animate through each step
+      for (let si = 0; si < STEPS.length; si++) {
+        const step = STEPS[si];
+        const stepEl = document.getElementById(`step-${step.id}`);
+        const circleEl = document.getElementById(`circle-${step.id}`);
+        const badgeEl = document.getElementById(`badge-${step.id}`);
+        const threadEl = document.getElementById(`thread-${step.id}`);
+        const subsEl = document.getElementById(`subs-${step.id}`);
+
+        // Show the step
+        await sleep(300);
+        stepEl.style.opacity = '1';
+        stepEl.style.transform = 'translateY(0)';
+
+        // Set active
+        circleEl.classList.remove('pending');
+        circleEl.classList.add('active', 'pulse-active');
+        badgeEl.textContent = 'Processing';
+        badgeEl.className = 'text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/20 font-medium';
+
+        if (threadEl) {
+          threadEl.classList.add('active');
+        }
+
+        // Animate sub-steps one by one
+        for (let ssi = 0; ssi < step.subSteps.length; ssi++) {
+          const sub = step.subSteps[ssi];
+          const isLast = ssi === step.subSteps.length - 1;
+          const isWaitingSub = sub.isWaiting || false;
+
+          // Show sub-step as active
+          subsEl.innerHTML += createSubStepHTML(step.id, ssi, sub.text, false, true, isWaitingSub);
+          await sleep(sub.delay);
+
+          // If it's a waiting step, pause longer to simulate user input
+          if (isWaitingSub) {
+            await sleep(1500);
+            // Simulate user responding
+            subsEl.innerHTML += createSubStepHTML(step.id, ssi + 0.5, "✅ User input received — proceeding", true, false, false);
+            await sleep(400);
+          }
+
+          // Mark sub-step as done
+          const subDot = document.querySelector(`#sub-${step.id}-${ssi} .sub-dot`);
+          const subSpan = document.querySelector(`#sub-${step.id}-${ssi} span`);
+          const spinner = document.querySelector(`#sub-${step.id}-${ssi} svg`);
+          if (subDot) { subDot.classList.remove('active'); subDot.classList.add('done'); }
+          if (subSpan) { subSpan.classList.remove('text-blue-500'); subSpan.classList.add('text-[var(--foreground)]'); }
+          if (spinner) spinner.remove();
+          // Add check
+          if (subSpan && !isWaitingSub) {
+            const check = document.createElement('span');
+            check.className = 'text-green-500 text-[10px] ml-1';
+            check.textContent = ' ✓';
+            subSpan.appendChild(check);
+          }
+        }
+
+        // Mark step as done
+        await sleep(200);
+        circleEl.classList.remove('active', 'pulse-active');
+        circleEl.classList.add('done');
+        circleEl.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+        badgeEl.textContent = 'Complete';
+        badgeEl.className = 'text-[10px] px-2 py-0.5 rounded-full bg-green-500/10 text-green-500 border border-green-500/20 font-medium';
+
+        if (threadEl) {
+          threadEl.classList.remove('active');
+          threadEl.classList.add('done');
+        }
+      }
+
+      // Done
+      btn.textContent = '🔄 Restart Demo';
+      btn.disabled = false;
+      isRunning = false;
+    }
+  </script>
+
+</body>
+</html>

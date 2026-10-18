@@ -1,0 +1,123 @@
+[2026-10-17T23:06:43Z] [PENDING_ACTION_STAGED] act_443349d00b1b tool=approval_tool
+[2026-10-17T23:06:43Z] [APPROVAL_REFUSED] action_id=act_443349d00b1b reason=Action status is pending, not approved
+[2026-10-17T23:06:43Z] [APPROVAL_REFUSED] action_id=act_443349d00b1b reason=Arguments sha256 mismatch
+[2026-10-17T23:06:43Z] [APPROVAL_REFUSED] action_id=act_443349d00b1b reason=Action has expired
+[2026-10-17T23:06:43Z] [APPROVAL_EXECUTED] action_id=act_443349d00b1b tool=approval_tool
+[2026-10-17T23:06:43Z] [APPROVAL_REFUSED] action_id=act_443349d00b1b reason=Action status is executed, not approved
+[2026-10-17T23:06:43Z] [APPROVAL_EXECUTED] action_id=act_dry tool=approval_write
+[2026-10-17T23:06:43Z] [APPROVAL_EXECUTED] action_id=act_bad tool=approval_write
+apitool MCP server 'sms' up: 4 tools, base_url=http://127.0.0.1:45547
+call list_messages
+call operator_phone_tool
+workspace: /tmp/apitool-selftest-0jred6gt
+
+1. discovery / analysis / drafting
+  [PASS] lint pass: no hardcoded values in templates
+  [PASS] lint fails on literal http://host:port URL inside source
+  [PASS] lint fails on literal phone number inside source
+  [PASS] lint fails on non-allowlisted URL or entry with missing written reason
+  [PASS] discover from local service folder infers routes
+  [PASS] discover local spec
+  [PASS] analyze finds 5 ops, shared AccountSid
+  [PASS] mechanical draft written with control spec
+  [PASS] control-plane spec merge tags mock tools
+  [PASS] strict validation REJECTS the raw draft (needs_review)
+  [PASS] strict validation passes curated contract with extensions
+
+2. human-in-the-loop gates
+  [PASS] generation BLOCKED before approval
+  [PASS] generation BLOCKED without G3 (mock matrix)
+  [PASS] G6 host changes gate BLOCKED before approval
+  [PASS] G6 gate succeeds once approved
+  [PASS] generation succeeds once G1+G2+G3 approved
+  [PASS] .env.example lists credentials and fixed vars
+  [PASS] .env.example has no literal default URL for APITOOL_BASE_URL
+  [PASS] scaffold.py supports --contract flag
+
+3. mock mode (generated mock server + signed webhooks)
+  [PASS] mock server starts
+
+4. generated tools against the mock
+  [PASS] exposes 3 tools + 1 composite, hides destructive
+  [PASS] send_sms without confirm is blocked (safety_blocked)
+  [PASS] odd number: accepted as queued, output trimmed
+  [PASS] magic suffix 0000 -> normalized validation error with vendor code
+  [PASS] error carries an actionable hint
+  [PASS] missing required arg caught before any HTTP call
+  [PASS] unknown arg rejected with the allowed list
+  [PASS] runtime validator rejects invalid phone number pattern
+  [PASS] runtime validator rejects trailing newline in phone number pattern
+  [PASS] runtime validator rejects empty body violating minLength
+  [PASS] runtime validator accepts valid message with matching pattern and length
+  [PASS] runtime validator enforces pattern on path parameter
+  [PASS] odd number reached 'delivered'
+  [PASS] even number 'failed' with error 30003
+  [PASS] signed webhooks received and signature VALID
+  [PASS] webhook sequence includes sent+delivered and failed
+  [PASS] composite runs send+fetch in one call
+  [PASS] list filters by recipient and trims fields
+  [PASS] secrets are redacted from output
+  [PASS] bad credentials -> kind=auth
+  [PASS] remote base URL: writes are dry-run by default (no network)
+  [PASS] 404 -> kind=not_found
+  [PASS] loopback guard rejects non-loopback base URL
+  [PASS] per-tool auth override suppresses Authorization header
+  [PASS] output masking last4 keeps only last 4 digits
+  [PASS] enveloped detail dict projection extracts inner status, not outer envelope status
+  [PASS] operator tools list excludes operator tools from agent view
+  [PASS] operator tools are in operator_tools dict
+  [PASS] operator tool called via call_tool returns not_found
+  [PASS] operator tool called via call_operator_tool succeeds
+  [PASS] LLM-supplied argument starting with __ is rejected with validation error
+  [PASS] call_tool on approval:ui tool stages and returns pending_user_approval
+  [PASS] execute_approved without injected verifier fails with permission error
+  [PASS] execute_approved refuses unapproved action
+  [PASS] execute_approved refuses modified args (sha256 mismatch)
+  [PASS] execute_approved refuses expired action
+  [PASS] execute_approved executes single-use approved action with matching args
+  [PASS] execute_approved refuses double execution (single use enforced)
+  [PASS] execute_approved respects dry_run and redacts secrets
+  [PASS] execute_approved enforces schema argument validation
+  [PASS] inbound simulation fires a signed webhook
+  [PASS] override forces next outcome (carrier_filtered -> undelivered/30007)
+  [PASS] device created via POST /__mock/devices
+  [PASS] device fetched via GET /__mock/devices/{id}
+  [PASS] device updated via PUT /__mock/devices/{id}
+  [PASS] devices imported via POST /__mock/devices/import
+  [PASS] device deleted via DELETE /__mock/devices/{id}
+  [PASS] auto_register_unknown true accepts unregistered number
+  [PASS] clock set date and paused
+  [PASS] clock advance by 2h updates virtual time
+  [PASS] scheduled message enters 'scheduled' initial state
+  [PASS] scheduled message listed in scheduler jobs
+  [PASS] scheduled message fired and transitioned upon clock jump
+  [PASS] trigger created via POST /__mock/triggers
+  [PASS] trigger fired on inbound keyword match
+  [PASS] auto_register_unknown false rejects unregistered number with vendor code
+  [PASS] restart persistence keeps chosen date and devices
+  [PASS] mock phone UI served
+
+5. chaos: injected 429s are retried honoring Retry-After
+  [PASS] 3 calls succeed despite 429 on every 2nd request
+
+6. MCP protocol (generated server over stdio)
+  [PASS] MCP lists tools with schemas (real SDK client)
+  [PASS] MCP tool list excludes operator tools
+  [PASS] MCP call to operator tool rejected with error
+  [PASS] MCP annotations: read tool readOnlyHint=true, send_sms false
+  [PASS] MCP tool call returns normalized result
+
+7. contract tests + drift detection + stale approvals
+  [PASS] contract tests pass against mock
+  [PASS] drift lock written
+  [PASS] drift: breaking changes flagged (exit 2) and affected tool named
+  [PASS] drift: names new required field and removed operation
+  [PASS] late edit makes G2 approval STALE and blocks
+  [PASS] regeneration blocked until human re-approves
+
+8. harness registration + install
+  [PASS] register prints claude command + .mcp.json
+  [PASS] register --write merges antigravity workspace mcp_config.json
+  [PASS] install_skill copies the skill into .agents/skills/
+
+93/93 checks passed  -- all good

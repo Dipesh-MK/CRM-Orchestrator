@@ -1,0 +1,4 @@
+list_messages:
+  args:
+    limit: 5
+  expect_status: 200

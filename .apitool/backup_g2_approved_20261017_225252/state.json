@@ -1,0 +1,29 @@
+{
+  "mode": "client",
+  "extensions": [
+    "host-integration"
+  ],
+  "gates": {
+    "G1": {
+      "status": "approved",
+      "note": "Mode: CLIENT ONLY against the friend's running Node mock. Spec: his openapi.json. Capabilities his mock lacks are built on MY side as a host-side companion inside the orchestrator.",
+      "at": "2026-10-17T21:14:25",
+      "extensions": [
+        "host-integration"
+      ]
+    },
+    "G2": {
+      "status": "approved",
+      "note": "Dipesh: G2 approved after revision 3 (approval hardening, operator isolation, loopback guard, 80/80 selftest). Remaining items are outside the gated files.",
+      "at": "2026-10-17T21:59:45",
+      "artifacts": {
+        "tools.spec.yaml": "7e88c8d5e199c346aefb5c3ed9230ee5771e5a51e43d8809db4a72a87c12faf7",
+        "spec/spec.openapi.json": "92ff7fa4455bf7c7dae228608432d9f31d776c08ef1d2fd5b952d09abb55ad0e",
+        "companion.spec.yaml": "aaff5673c9f38d3520a630c01c588d92167230495b0a27e48af604ca724c19af",
+        "spec/companion.openapi.json": "f92661d7943fcc8a7641fa421e5dc0de74e4903d800c2666b60c9d103d3b548b"
+      },
+      "artifact": "tools.spec.yaml",
+      "sha256": "7e88c8d5e199c346aefb5c3ed9230ee5771e5a51e43d8809db4a72a87c12faf7"
+    }
+  }
+}

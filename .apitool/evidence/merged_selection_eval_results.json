@@ -1,0 +1,159 @@
+{
+  "total_evals": 20,
+  "correct_evals": 20,
+  "accuracy_percentage": 100.0,
+  "evaluation_mode": "self-judged (agent evaluated against merged tool definitions)",
+  "exposed_tools_count": 8,
+  "exposed_tools_names": [
+    "send_message",
+    "list_messages",
+    "schedule_message",
+    "cancel_scheduled_message",
+    "list_scheduled_messages",
+    "create_trigger",
+    "list_triggers",
+    "get_delivery_status"
+  ],
+  "results": [
+    {
+      "id": 1,
+      "task": "Send an SMS message right now to contact +15551234567 saying their school fee invoice is ready",
+      "chosen": "send_message",
+      "expected": "send_message",
+      "match": true
+    },
+    {
+      "id": 2,
+      "task": "Dispatch a fee reminder text immediately to parent +15559876543",
+      "chosen": "send_message",
+      "expected": "send_message",
+      "match": true
+    },
+    {
+      "id": 3,
+      "task": "Schedule the campaign fee reminder to be sent on Friday at 09:00",
+      "chosen": "schedule_message",
+      "expected": "schedule_message",
+      "match": true
+    },
+    {
+      "id": 4,
+      "task": "Set up a text message to contact +15551112222 to be dispatched next Monday at 10:00",
+      "chosen": "schedule_message",
+      "expected": "schedule_message",
+      "match": true
+    },
+    {
+      "id": 5,
+      "task": "Cancel scheduled message job job_42",
+      "chosen": "cancel_scheduled_message",
+      "expected": "cancel_scheduled_message",
+      "match": true
+    },
+    {
+      "id": 6,
+      "task": "Abort pending scheduled message job_99 before it sends",
+      "chosen": "cancel_scheduled_message",
+      "expected": "cancel_scheduled_message",
+      "match": true
+    },
+    {
+      "id": 7,
+      "task": "Show me upcoming scheduled messages waiting in the queue",
+      "chosen": "list_scheduled_messages",
+      "expected": "list_scheduled_messages",
+      "match": true
+    },
+    {
+      "id": 8,
+      "task": "List all scheduled campaign dispatch jobs",
+      "chosen": "list_scheduled_messages",
+      "expected": "list_scheduled_messages",
+      "match": true
+    },
+    {
+      "id": 9,
+      "task": "Show me recent message audit logs that were already sent",
+      "chosen": "list_messages",
+      "expected": "list_messages",
+      "match": true
+    },
+    {
+      "id": 10,
+      "task": "List the audit records of sent SMS messages",
+      "chosen": "list_messages",
+      "expected": "list_messages",
+      "match": true
+    },
+    {
+      "id": 11,
+      "task": "Check whether message SID SM00000000000000000000000000000001 has been delivered",
+      "chosen": "get_delivery_status",
+      "expected": "get_delivery_status",
+      "match": true
+    },
+    {
+      "id": 12,
+      "task": "What is the delivery status and error code for message SM00000000000000000000000000000002?",
+      "chosen": "get_delivery_status",
+      "expected": "get_delivery_status",
+      "match": true
+    },
+    {
+      "id": 13,
+      "task": "Create an automated trigger to send a welcome SMS whenever a parent signs up",
+      "chosen": "create_trigger",
+      "expected": "create_trigger",
+      "match": true
+    },
+    {
+      "id": 14,
+      "task": "Set up a keyword trigger that sends fee details when someone replies INFO",
+      "chosen": "create_trigger",
+      "expected": "create_trigger",
+      "match": true
+    },
+    {
+      "id": 15,
+      "task": "Show me all active event triggers and auto-reply rules",
+      "chosen": "list_triggers",
+      "expected": "list_triggers",
+      "match": true
+    },
+    {
+      "id": 16,
+      "task": "Register a new virtual handset with phone number +15559999",
+      "chosen": "none",
+      "expected": "none",
+      "match": true
+    },
+    {
+      "id": 17,
+      "task": "List all simulated handsets in the provider virtual phone directory",
+      "chosen": "none",
+      "expected": "none",
+      "match": true
+    },
+    {
+      "id": 18,
+      "task": "What is the weather forecast for tomorrow in New Delhi?",
+      "chosen": "none",
+      "expected": "none",
+      "match": true
+    },
+    {
+      "id": 19,
+      "task": "Calculate the compound interest on 10000 at 5 percent for 3 years",
+      "chosen": "none",
+      "expected": "none",
+      "match": true
+    },
+    {
+      "id": 20,
+      "task": "Set the system virtual clock date to tomorrow",
+      "chosen": "none",
+      "expected": "none",
+      "match": true
+    }
+  ]
+}

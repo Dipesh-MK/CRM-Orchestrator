@@ -1,0 +1,293 @@
+{
+  "title": "Mock Aggregator — Twilio-Compatible SMS API",
+  "version": "1.0.0",
+  "servers": [
+    "http://localhost:3000"
+  ],
+  "auth": [
+    {
+      "name": "BasicAuth",
+      "type": "http",
+      "summary": "http/basic"
+    }
+  ],
+  "global_security": null,
+  "operation_count": 14,
+  "by_risk": {
+    "read": 9,
+    "write": 5,
+    "destructive": 0
+  },
+  "cost_flagged": [
+    "post_2010_04_01_accounts_account_sid_messages_json"
+  ],
+  "shared_path_params": [],
+  "webhooks": [],
+  "error_shapes": {},
+  "notes": [],
+  "operations": [
+    {
+      "id": "post_2010_04_01_accounts_account_sid_messages_json",
+      "method": "POST",
+      "path": "/2010-04-01/Accounts/{AccountSid}/Messages.json",
+      "tags": [
+        "Twilio Programmable SMS"
+      ],
+      "summary": "Send an SMS (Twilio POST /Messages.json)",
+      "risk": "write",
+      "cost_flag": true,
+      "pagination": null,
+      "list_items_path": null,
+      "body_types": [
+        "application/x-www-form-urlencoded",
+        "application/json"
+      ],
+      "has_429": false,
+      "ratelimit_headers": [],
+      "deprecated": false,
+      "callbacks": []
+    },
+    {
+      "id": "get_2010_04_01_accounts_account_sid_messages_message_sid_json",
+      "method": "GET",
+      "path": "/2010-04-01/Accounts/{AccountSid}/Messages/{MessageSid}.json",
+      "tags": [
+        "Twilio Programmable SMS"
+      ],
+      "summary": "Fetch a Message by SID",
+      "risk": "read",
+      "cost_flag": false,
+      "pagination": null,
+      "list_items_path": null,
+      "body_types": [],
+      "has_429": false,
+      "ratelimit_headers": [],
+      "deprecated": false,
+      "callbacks": []
+    },
+    {
+      "id": "get_api_admin_accounts",
+      "method": "GET",
+      "path": "/api/admin/accounts",
+      "tags": [
+        "Admin & Telemetry"
+      ],
+      "summary": "List all multi-tenant accounts",
+      "risk": "read",
+      "cost_flag": false,
+      "pagination": null,
+      "list_items_path": null,
+      "body_types": [],
+      "has_429": false,
+      "ratelimit_headers": [],
+      "deprecated": false,
+      "callbacks": []
+    },
+    {
+      "id": "get_api_admin_stats",
+      "method": "GET",
+      "path": "/api/admin/stats",
+      "tags": [
+        "Admin & Telemetry"
+      ],
+      "summary": "Get aggregate gateway telemetry",
+      "risk": "read",
+      "cost_flag": false,
+      "pagination": null,
+      "list_items_path": null,
+      "body_types": [],
+      "has_429": false,
+      "ratelimit_headers": [],
+      "deprecated": false,
+      "callbacks": []
+    },
+    {
+      "id": "get_api_admin_messages",
+      "method": "GET",
+      "path": "/api/admin/messages",
+      "tags": [
+        "Admin & Telemetry"
+      ],
+      "summary": "List message audit log",
+      "risk": "read",
+      "cost_flag": false,
+      "pagination": null,
+      "list_items_path": null,
+      "body_types": [],
+      "has_429": false,
+      "ratelimit_headers": [],
+      "deprecated": false,
+      "callbacks": []
+    },
+    {
+      "id": "get_api_admin_messages_sid",
+      "method": "GET",
+      "path": "/api/admin/messages/{sid}",
+      "tags": [
+        "Admin & Telemetry"
+      ],
+      "summary": "Get raw wire inspector details",
+      "risk": "read",
+      "cost_flag": false,
+      "pagination": null,
+      "list_items_path": null,
+      "body_types": [],
+      "has_429": false,
+      "ratelimit_headers": [],
+      "deprecated": false,
+      "callbacks": []
+    },
+    {
+      "id": "get_api_admin_settings",
+      "method": "GET",
+      "path": "/api/admin/settings",
+      "tags": [
+        "Admin & Telemetry"
+      ],
+      "summary": "Get simulation latency profile",
+      "risk": "read",
+      "cost_flag": false,
+      "pagination": null,
+      "list_items_path": null,
+      "body_types": [],
+      "has_429": false,
+      "ratelimit_headers": [],
+      "deprecated": false,
+      "callbacks": []
+    },
+    {
+      "id": "patch_api_admin_settings",
+      "method": "PATCH",
+      "path": "/api/admin/settings",
+      "tags": [
+        "Admin & Telemetry"
+      ],
+      "summary": "Update simulation latency profile",
+      "risk": "write",
+      "cost_flag": false,
+      "pagination": null,
+      "list_items_path": null,
+      "body_types": [
+        "application/json"
+      ],
+      "has_429": false,
+      "ratelimit_headers": [],
+      "deprecated": false,
+      "callbacks": []
+    },
+    {
+      "id": "patch_api_admin_accounts_id_webhooks",
+      "method": "PATCH",
+      "path": "/api/admin/accounts/{id}/webhooks",
+      "tags": [
+        "Admin & Telemetry"
+      ],
+      "summary": "Configure account default webhooks",
+      "risk": "write",
+      "cost_flag": false,
+      "pagination": null,
+      "list_items_path": null,
+      "body_types": [
+        "application/json"
+      ],
+      "has_429": false,
+      "ratelimit_headers": [],
+      "deprecated": false,
+      "callbacks": []
+    },
+    {
+      "id": "get_api_phone_numbers",
+      "method": "GET",
+      "path": "/api/phone/numbers",
+      "tags": [
+        "Virtual Phone Simulator"
+      ],
+      "summary": "List virtual phone identities",
+      "risk": "read",
+      "cost_flag": false,
+      "pagination": null,
+      "list_items_path": null,
+      "body_types": [],
+      "has_429": false,
+      "ratelimit_headers": [],
+      "deprecated": false,
+      "callbacks": []
+    },
+    {
+      "id": "get_api_phone_phone_number_threads",
+      "method": "GET",
+      "path": "/api/phone/{phoneNumber}/threads",
+      "tags": [
+        "Virtual Phone Simulator"
+      ],
+      "summary": "Get conversations for a virtual phone",
+      "risk": "read",
+      "cost_flag": false,
+      "pagination": null,
+      "list_items_path": null,
+      "body_types": [],
+      "has_429": false,
+      "ratelimit_headers": [],
+      "deprecated": false,
+      "callbacks": []
+    },
+    {
+      "id": "post_api_phone_reply",
+      "method": "POST",
+      "path": "/api/phone/reply",
+      "tags": [
+        "Virtual Phone Simulator"
+      ],
+      "summary": "Send an inbound reply from a virtual phone",
+      "risk": "write",
+      "cost_flag": false,
+      "pagination": null,
+      "list_items_path": null,
+      "body_types": [
+        "application/json"
+      ],
+      "has_429": false,
+      "ratelimit_headers": [],
+      "deprecated": false,
+      "callbacks": []
+    },
+    {
+      "id": "get_health",
+      "method": "GET",
+      "path": "/health",
+      "tags": [
+        "Admin & Telemetry"
+      ],
+      "summary": "Healthcheck endpoint",
+      "risk": "read",
+      "cost_flag": false,
+      "pagination": null,
+      "list_items_path": null,
+      "body_types": [],
+      "has_429": false,
+      "ratelimit_headers": [],
+      "deprecated": false,
+      "callbacks": []
+    },
+    {
+      "id": "post_api_phone_register",
+      "method": "POST",
+      "path": "/api/phone/register",
+      "tags": [
+        "Virtual Phone"
+      ],
+      "summary": "Register a virtual phone identity",
+      "risk": "write",
+      "cost_flag": false,
+      "pagination": null,
+      "list_items_path": null,
+      "body_types": [
+        "application/json"
+      ],
+      "has_429": false,
+      "ratelimit_headers": [],
+      "deprecated": false,
+      "callbacks": []
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "ok": true,
+  "status": 200,
+  "data": {
+    "sid": "SMfaaa3080d9574b5a988de11780d5a1b8",
+    "status": "undelivered",
+    "error_code": "30008",
+    "error_message": "Simulated aggregator delivery failure: carrier rejected message.",
+    "to_number": "+15559000",
+    "from_number": "55512",
+    "created_at": "2026-10-17 23:15:25",
+    "updated_at": "2026-10-17 23:15:27",
+    "sent_at": "2026-10-17 23:15:26"
+  }
+}

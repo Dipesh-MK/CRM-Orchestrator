@@ -1,0 +1,39 @@
+--- .apitool/companion.spec.yaml	2026-10-17 21:49:37.686844632 +0530
++++ .apitool/proposed/companion.spec.yaml	2026-10-17 22:46:26.276916973 +0530
+@@ -4,7 +4,7 @@
+   title: CampaignForge Host Companion (Virtual Clock, Scheduler, Triggers)
+   base_url: ${COMPANION_BASE_URL:-http://127.0.0.1:8000/api}
+   spec: spec/companion.openapi.json
+-  spec_sha256: f92661d7943fcc8a7641fa421e5dc0de74e4903d800c2666b60c9d103d3b548b
++  spec_sha256: 589809492b8bbed0a00ff6bbe11bdf1b78b4ddb88af28c8f082c0726af983f67
+ security:
+   enforce_loopback: true
+   allow_external_urls: false
+@@ -172,4 +172,27 @@
+     confirm: false
+     expose: operator
+ 
++  - name: get_delivery_status
++    operation: get_delivery_status
++    description: "Fetch live delivery status, carrier error codes, and timestamps for a message SID from the host orchestrator delivery reconciler."
++    safety: read
++    expose: true
++    inputs:
++      include:
++        - message_sid
++    output:
++      pick:
++        - sid
++        - status
++        - error_code
++        - error_message
++        - to
++        - from
++        - sent_at
++        - delivered_at
++        - updated_at
++      mask:
++        to: "last4"
++        from: "last4"
++
+ composites: []

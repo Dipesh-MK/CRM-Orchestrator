@@ -1,0 +1,12 @@
+TARGET: .apitool/evidence/admin_status_delivered.json | MATCHES: 0
+TARGET: .apitool/evidence/admin_status_undelivered.json | MATCHES: 0
+TARGET: .apitool/evidence/list_messages_output.json | MATCHES: 0
+TARGET: .apitool/evidence/validation_negatives.json | MATCHES: 0
+TARGET: generated/aggregator/cli.py | MATCHES: 0
+TARGET: generated/aggregator/core.py | MATCHES: 0
+TARGET: generated/aggregator/mcp_server.py | MATCHES: 0
+TARGET: generated/companion/cli.py | MATCHES: 0
+TARGET: generated/companion/core.py | MATCHES: 0
+TARGET: generated/companion/mcp_server.py | MATCHES: 0
+TOTAL_SCANNED: 10
+TOTAL_LEAKS: 0

@@ -1,0 +1,41 @@
+# Realistic tool selection evaluations across aggregator and companion tools
+- task: "Send an SMS message right now to contact +15551234567 saying their school fee invoice is ready"
+  expect: send_message
+- task: "Dispatch a fee reminder text immediately to parent +15559876543"
+  expect: send_message
+- task: "Schedule the campaign fee reminder to be sent on Friday at 09:00"
+  expect: schedule_message
+- task: "Set up a text message to contact +15551112222 to be dispatched next Monday at 10:00"
+  expect: schedule_message
+- task: "Cancel scheduled message job job_42"
+  expect: cancel_scheduled_message
+- task: "Abort pending scheduled message job_99 before it sends"
+  expect: cancel_scheduled_message
+- task: "Show me upcoming scheduled messages waiting in the queue"
+  expect: list_scheduled_messages
+- task: "List all scheduled campaign dispatch jobs"
+  expect: list_scheduled_messages
+- task: "Show me recent message audit logs that were already sent"
+  expect: list_messages
+- task: "List the audit records of sent SMS messages"
+  expect: list_messages
+- task: "Check whether message SID SM00000000000000000000000000000001 has been delivered"
+  expect: get_delivery_status
+- task: "What is the delivery status and error code for message SM00000000000000000000000000000002?"
+  expect: get_delivery_status
+- task: "Create an automated trigger to send a welcome SMS whenever a parent signs up"
+  expect: create_trigger
+- task: "Set up a keyword trigger that sends fee details when someone replies INFO"
+  expect: create_trigger
+- task: "Show me all active event triggers and auto-reply rules"
+  expect: list_triggers
+- task: "Register a new virtual handset with phone number +15559999"
+  expect: none
+- task: "List all simulated handsets in the provider virtual phone directory"
+  expect: none
+- task: "What is the weather forecast for tomorrow in New Delhi?"
+  expect: none
+- task: "Calculate the compound interest on 10000 at 5 percent for 3 years"
+  expect: none
+- task: "Set the system virtual clock date to tomorrow"
+  expect: none

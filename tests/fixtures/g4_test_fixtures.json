@@ -1,0 +1,21 @@
+{
+  "register_phone": {
+    "phone_number": "+15559001",
+    "display_name": "Scratch Test Disposable Phone (+15559001)"
+  },
+  "send_message": {
+    "To": "+15559001",
+    "Body": "Campaign automated test message via scratch aggregator"
+  },
+  "reply_as_phone": {
+    "from": "+15559001",
+    "to": "55512",
+    "body": "Inbound reply test message from disposable phone"
+  },
+  "list_messages": {
+    "To": "+15559001"
+  },
+  "get_phone_threads": {
+    "phoneNumber": "+15559001"
+  }
+}

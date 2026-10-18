@@ -1,0 +1,50 @@
+--- .apitool/backup_g2_approved_20261017_225252/spec/companion.openapi.json	2026-10-17 22:52:52.797650833 +0530
++++ .apitool/spec/companion.openapi.json	2026-10-17 22:55:10.795281638 +0530
+@@ -420,6 +420,47 @@
+           }
+         }
+       }
++    },
++    "/companion/delivery/{message_sid}": {
++      "get": {
++        "operationId": "get_delivery_status",
++        "summary": "Get message delivery status",
++        "description": "Fetch live delivery status, carrier error codes, and timestamps for a message SID from the host orchestrator delivery reconciler.",
++        "parameters": [
++          {
++            "name": "message_sid",
++            "in": "path",
++            "required": true,
++            "schema": {
++              "type": "string"
++            },
++            "description": "Message SID"
++          }
++        ],
++        "responses": {
++          "200": {
++            "description": "Delivery status record",
++            "content": {
++              "application/json": {
++                "schema": {
++                  "type": "object",
++                  "properties": {
++                    "sid": { "type": "string" },
++                    "status": { "type": "string" },
++                    "error_code": { "type": "string" },
++                    "error_message": { "type": "string" },
++                    "to": { "type": "string" },
++                    "from": { "type": "string" },
++                    "sent_at": { "type": "string" },
++                    "delivered_at": { "type": "string" },
++                    "updated_at": { "type": "string" }
++                  }
++                }
++              }
++            }
++          }
++        }
++      }
+     }
+   }
+ }

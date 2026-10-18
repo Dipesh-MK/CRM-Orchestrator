@@ -1,0 +1,425 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "CampaignForge Host Companion — Virtual Clock, Scheduler, Triggers",
+    "version": "1.0.0",
+    "description": "Host-side companion API embedded within CampaignForge Orchestrator providing virtual clock management, message scheduling against virtual time, and event triggers."
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:8000/api"
+    }
+  ],
+  "paths": {
+    "/companion/schedule": {
+      "post": {
+        "operationId": "schedule_message",
+        "summary": "Schedule a rendered campaign message",
+        "description": "Schedule a rendered campaign message to be dispatched to a contact at a specified ISO-8601 timestamp. Validates send_at against the virtual clock.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "contact",
+                  "text",
+                  "send_at"
+                ],
+                "properties": {
+                  "contact": {
+                    "type": "string",
+                    "description": "Recipient phone number or contact identifier"
+                  },
+                  "text": {
+                    "type": "string",
+                    "description": "Rendered message content to dispatch"
+                  },
+                  "send_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "ISO-8601 timestamp when message should be dispatched"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Message successfully scheduled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "job_id": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "send_at": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "list_scheduled_messages",
+        "summary": "List scheduled message jobs",
+        "description": "List scheduled message queue jobs filtered by status with send_at timestamps and recipient information.",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "scheduled",
+                "sent",
+                "failed",
+                "canceled"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of scheduled message queue jobs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/companion/schedule/{job_id}": {
+      "delete": {
+        "operationId": "cancel_scheduled_message",
+        "summary": "Cancel a pending scheduled message job",
+        "description": "Cancel a previously scheduled message job before dispatch. Sets status to canceled.",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Job canceled successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/companion/triggers": {
+      "post": {
+        "operationId": "create_trigger",
+        "summary": "Create an automated event trigger rule",
+        "description": "Register an automated trigger rule that executes an action when a specified condition is met.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "condition_type",
+                  "action_type",
+                  "template_id",
+                  "contact_id"
+                ],
+                "properties": {
+                  "condition_type": {
+                    "type": "string",
+                    "enum": [
+                      "at_time",
+                      "after_delay",
+                      "recurring",
+                      "on_state",
+                      "on_inbound_keyword"
+                    ],
+                    "description": "Trigger condition type"
+                  },
+                  "time_spec": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "ISO-8601 timestamp for at_time condition"
+                  },
+                  "delay_seconds": {
+                    "type": "integer",
+                    "description": "Seconds delay for after_delay condition"
+                  },
+                  "recurring_interval": {
+                    "type": "string",
+                    "pattern": "^(hourly|daily|weekly|every_[0-9]+[mhd])$",
+                    "description": "Safe recurring interval subset: hourly, daily, weekly, every_Xm, every_Xh, every_Xd (min interval & max fires enforced server-side from config)"
+                  },
+                  "state_match": {
+                    "type": "string",
+                    "enum": [
+                      "delivered",
+                      "undelivered",
+                      "failed",
+                      "queued"
+                    ],
+                    "description": "Target message status for on_state condition"
+                  },
+                  "keyword": {
+                    "type": "string",
+                    "description": "Exact keyword for on_inbound_keyword (e.g. STOP)"
+                  },
+                  "action_type": {
+                    "type": "string",
+                    "enum": [
+                      "send_message"
+                    ],
+                    "description": "Action restricted strictly to send_message"
+                  },
+                  "template_id": {
+                    "type": "string",
+                    "description": "ID of approved campaign template"
+                  },
+                  "contact_id": {
+                    "type": "string",
+                    "description": "ID of contact from uploaded contacts file"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Trigger created successfully"
+          }
+        }
+      },
+      "get": {
+        "operationId": "list_triggers",
+        "summary": "List active event triggers",
+        "description": "List active event trigger rules configured in the host companion module.",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of active triggers"
+          }
+        }
+      }
+    },
+    "/companion/triggers/{trigger_id}": {
+      "delete": {
+        "operationId": "delete_trigger",
+        "summary": "Delete an event trigger rule",
+        "description": "Delete an automated event trigger rule by trigger ID (operator-only).",
+        "parameters": [
+          {
+            "name": "trigger_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Trigger deleted successfully"
+          }
+        }
+      }
+    },
+    "/companion/clock": {
+      "get": {
+        "operationId": "get_clock",
+        "summary": "Get current virtual clock status",
+        "description": "Retrieve current virtual clock timestamp, tick speed factor, and paused status (operator-only).",
+        "responses": {
+          "200": {
+            "description": "Virtual clock status"
+          }
+        }
+      }
+    },
+    "/companion/clock/set": {
+      "post": {
+        "operationId": "set_clock",
+        "summary": "Set virtual clock time",
+        "description": "Set orchestrator virtual clock to a specific ISO-8601 datetime (operator-only).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "iso_datetime"
+                ],
+                "properties": {
+                  "iso_datetime": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Target ISO-8601 date and time string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Virtual clock updated"
+          }
+        }
+      }
+    },
+    "/companion/clock/advance": {
+      "post": {
+        "operationId": "advance_clock",
+        "summary": "Advance virtual clock forward",
+        "description": "Advance the virtual clock forward by a specified number of seconds (operator-only).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "duration_seconds"
+                ],
+                "properties": {
+                  "duration_seconds": {
+                    "type": "integer",
+                    "description": "Seconds to advance clock forward"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Clock advanced"
+          }
+        }
+      }
+    },
+    "/companion/clock/speed": {
+      "post": {
+        "operationId": "set_clock_speed",
+        "summary": "Set virtual clock tick speed multiplier",
+        "description": "Set virtual clock progression speed multiplier (e.g. 1.0 = real-time, 60.0 = 1 minute per sec) (operator-only).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "speed_multiplier"
+                ],
+                "properties": {
+                  "speed_multiplier": {
+                    "type": "number",
+                    "description": "Speed multiplier factor"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Clock speed updated"
+          }
+        }
+      }
+    },
+    "/companion/clock/pause": {
+      "post": {
+        "operationId": "pause_clock",
+        "summary": "Pause or unpause virtual clock",
+        "description": "Pause or unpause the virtual clock time advancement (operator-only).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "paused"
+                ],
+                "properties": {
+                  "paused": {
+                    "type": "boolean",
+                    "description": "True to pause, false to resume"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Clock pause state updated"
+          }
+        }
+      }
+    },
+    "/companion/clock/jump-next": {
+      "post": {
+        "operationId": "jump_to_next_job",
+        "summary": "Jump clock to next scheduled job",
+        "description": "Advance the virtual clock immediately to the send_at timestamp of the next pending scheduled message (operator-only).",
+        "responses": {
+          "200": {
+            "description": "Clock jumped to next scheduled job"
+          }
+        }
+      }
+    }
+  }
+}

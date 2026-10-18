@@ -1,0 +1,39 @@
+{
+  "mode": "client",
+  "extensions": [
+    "host-integration"
+  ],
+  "gates": {
+    "G1": {
+      "status": "approved",
+      "note": "Mode: CLIENT ONLY against the friend's running Node mock. Spec: his openapi.json. Capabilities his mock lacks are built on MY side as a host-side companion inside the orchestrator.",
+      "at": "2026-10-17T21:14:25",
+      "extensions": [
+        "host-integration"
+      ]
+    },
+    "G2": {
+      "status": "approved",
+      "note": "Dipesh: G2 re-approved for tools.spec.yaml and companion.spec.yaml after revision 4 (validation, masking, items_path, get_admin_message_status, get_delivery_status, operator tools). Retest findings may reopen it.",
+      "at": "2026-10-17T23:11:05",
+      "artifacts": {
+        "tools.spec.yaml": "e7594b7207dab13282c5659f729dff958e8f59bbd10ece2c7234ff0469de5de6",
+        "spec/spec.openapi.json": "4a926b1d79ac2010ebd01b5b210a312866d5cdd1455da04278e39ea59425e8e2",
+        "companion.spec.yaml": "9d8ab36c9a5dc77f13167722b8fa811b3e3b6fb91d19708ae739f6d69e01a1a6",
+        "spec/companion.openapi.json": "589809492b8bbed0a00ff6bbe11bdf1b78b4ddb88af28c8f082c0726af983f67"
+      },
+      "artifact": "tools.spec.yaml",
+      "sha256": "e7594b7207dab13282c5659f729dff958e8f59bbd10ece2c7234ff0469de5de6"
+    },
+    "G5": {
+      "status": "approved",
+      "note": "Dipesh: aggregator client approved after scratch retest. Companion client generated but UNTESTED (its endpoints do not exist yet); it is tested at G6. MCP registration skipped on purpose; orchestrator uses core.py directly.",
+      "at": "2026-10-18T06:13:57"
+    },
+    "G6": {
+      "status": "approved",
+      "note": "Dipesh: G6 approved for Milestone 1 only, with amendments 1-12 from this message. Milestones 2+ need a new approval with their own file list.",
+      "at": "2026-10-18T06:32:21"
+    }
+  }
+}

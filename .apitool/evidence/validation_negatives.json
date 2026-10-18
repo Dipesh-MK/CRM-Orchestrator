@@ -1,0 +1,29 @@
+{
+  "test_invalid_number": {
+    "ok": false,
+    "error": {
+      "kind": "validation",
+      "message": "'To' does not match pattern ^\\+[1-9]\\d{6,14}$",
+      "retryable": false,
+      "hint": "The API rejected the arguments. Fix the problem named in the message, then retry. Do not retry unchanged."
+    }
+  },
+  "test_empty_body": {
+    "ok": false,
+    "error": {
+      "kind": "validation",
+      "message": "'Body' length must be >= 1",
+      "retryable": false,
+      "hint": "The API rejected the arguments. Fix the problem named in the message, then retry. Do not retry unchanged."
+    }
+  },
+  "test_trailing_newline": {
+    "ok": false,
+    "error": {
+      "kind": "validation",
+      "message": "'To' does not match pattern ^\\+[1-9]\\d{6,14}$",
+      "retryable": false,
+      "hint": "The API rejected the arguments. Fix the problem named in the message, then retry. Do not retry unchanged."
+    }
+  }
+}

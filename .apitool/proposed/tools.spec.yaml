@@ -1,0 +1,179 @@
+version: 1
+api:
+  name: aggregator
+  title: Mock Aggregator — Twilio-Compatible SMS API
+  base_url: http://localhost:3000
+  spec: spec/spec.openapi.json
+  spec_sha256: 4a926b1d79ac2010ebd01b5b210a312866d5cdd1455da04278e39ea59425e8e2
+security:
+  enforce_loopback: true
+  allow_external_urls: false
+auth:
+  type: basic
+  username_env: AGGREGATOR_ACCOUNT_SID
+  password_env: AGGREGATOR_AUTH_TOKEN
+  note: HTTP Basic Auth used on Twilio /2010-04-01 endpoints only. Admin and phone routes require no credentials.
+defaults:
+  timeout_s: 30
+  max_retries: 3
+  max_response_chars: 20000
+tools:
+  - name: send_message
+    operation: post_2010_04_01_accounts_account_sid_messages_json
+    description: "Send an SMS message to a recipient phone number via the aggregator. Requires destination phone number in To and message body in Body. A result of pending_user_approval means NOT sent or scheduled yet; tell the user to approve in the UI."
+    safety: write
+    confirm: true
+    approval: ui
+    expose: true
+    auth:
+      type: basic
+      username_env: AGGREGATOR_ACCOUNT_SID
+      password_env: AGGREGATOR_AUTH_TOKEN
+    inputs:
+      include:
+        - To
+        - Body
+        - StatusCallback
+      fixed:
+        AccountSid: "${AGGREGATOR_ACCOUNT_SID}"
+        From: "${AGGREGATOR_FROM_NUMBER}"
+    server_side_validations:
+      - valid_phone_number: "Recipient number required and must be valid E.164 format"
+      - contact_id_membership: "Contact must be a valid contact ID from uploaded contacts file (no free-text numbers allowed)"
+      - contact_tag_rendering: "Personalization tags rendered from contact row data"
+      - unresolved_tags_block: "Any unresolved placeholder tags block dispatch immediately"
+      - word_limit_recheck: "Word limit re-verified after personalization against config word_limit"
+      - optout_footer_present: "Opt-out footer text verified present on final text"
+      - safety_guard: "Safety guard evaluated on final personalized text"
+      - dispatch_run_cap: "Enforce dispatch.max_messages_per_run limit from config"
+
+  - name: get_message_status
+    operation: get_2010_04_01_accounts_account_sid_messages_message_sid_json
+    description: "Fetch initial queued message snapshot by SID from Twilio endpoint. Note: On this mock provider, live delivery updates are not reflected on this endpoint; use companion get_delivery_status for live delivery tracking (operator wire inspection only)."
+    safety: read
+    expose: operator
+    auth:
+      type: basic
+      username_env: AGGREGATOR_ACCOUNT_SID
+      password_env: AGGREGATOR_AUTH_TOKEN
+    inputs:
+      include:
+        - MessageSid
+      fixed:
+        AccountSid: "${AGGREGATOR_ACCOUNT_SID}"
+    output:
+      pick:
+        - sid
+        - status
+        - to
+        - from
+        - error_code
+        - error_message
+        - date_created
+        - date_updated
+
+  - name: list_messages
+    operation: get_api_admin_messages
+    description: "List message audit records across accounts with delivery status, timestamps, and error codes. Masks recipient phone numbers for privacy."
+    safety: read
+    expose: true
+    auth: none
+    inputs:
+      include:
+        - account_id
+        - limit
+      defaults:
+        limit: 20
+    output:
+      items_path: data
+      pick:
+        - sid
+        - account_id
+        - to_number
+        - from_number
+        - status
+        - error_code
+        - created_at
+      max_items: 20
+      mask:
+        to_number: "last4"
+
+  - name: list_phone_numbers
+    operation: get_api_phone_numbers
+    description: "List all simulated virtual phones registered on the mock aggregator (operator console only)."
+    safety: read
+    expose: operator
+    auth: none
+
+  - name: register_phone
+    operation: post_api_phone_register
+    description: "Register a new virtual phone identity or handset on the mock aggregator with phone number and display name (operator-only)."
+    safety: write
+    confirm: false
+    expose: operator
+    auth: none
+    inputs:
+      include:
+        - phone_number
+        - display_name
+
+  - name: get_phone_threads
+    operation: get_api_phone_phone_number_threads
+    description: "Retrieve message conversation threads and chat history for a specific registered virtual phone (operator-only)."
+    safety: read
+    expose: operator
+    auth: none
+    inputs:
+      include:
+        - phoneNumber
+
+  - name: reply_as_phone
+    operation: post_api_phone_reply
+    description: "Simulate an inbound SMS reply from a virtual phone to a shortcode or business number. Dispatches incoming webhooks (operator-only)."
+    safety: write
+    confirm: false
+    expose: operator
+    auth: none
+    inputs:
+      include:
+        - from
+        - to
+        - body
+
+  - name: get_gateway_stats
+    operation: get_api_admin_stats
+    description: "Get gateway telemetry: total sent, delivered count, undelivered drops, and webhook callback count (operator-only)."
+    safety: read
+    expose: operator
+    auth: none
+
+  - name: get_gateway_health
+    operation: get_health
+    description: "Check the running status and uptime of the aggregator gateway service (operator-only)."
+    safety: read
+    expose: operator
+    auth: none
+
+  - name: get_admin_message_status
+    operation: get_api_admin_messages_sid
+    description: "Read live delivery status, error code, and timestamps for one message from aggregator admin inspection endpoint (operator reconciler only)."
+    safety: read
+    expose: operator
+    auth: none
+    inputs:
+      include:
+        - sid
+    output:
+      pick:
+        - sid
+        - status
+        - error_code
+        - error_message
+        - to_number
+        - from_number
+        - created_at
+        - updated_at
+        - sent_at
+        - delivered_at
+
+composites: []
