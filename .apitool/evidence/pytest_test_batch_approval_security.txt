@@ -1,0 +1,27 @@
+============================= test session starts ==============================
+platform linux -- Python 3.14.7, pytest-9.1.1, pluggy-1.6.0 -- /home/aracknab/Projects/CRM Orchaestrator/venv/bin/python3
+cachedir: .pytest_cache
+rootdir: /home/aracknab/Projects/CRM Orchaestrator
+configfile: pytest.ini
+plugins: anyio-4.15.1, asyncio-1.4.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 16 items
+
+tests/test_batch_approval_security.py::test_llm_call_tool_send_message_produces_zero_requests PASSED [  6%]
+tests/test_batch_approval_security.py::test_double_click_refused PASSED  [ 12%]
+tests/test_batch_approval_security.py::test_expired_approval_refused PASSED [ 18%]
+tests/test_batch_approval_security.py::test_approval_run_a_cannot_execute_run_b PASSED [ 25%]
+tests/test_batch_approval_security.py::test_body_edited_in_dispatch_items_after_approval_refused PASSED [ 31%]
+tests/test_batch_approval_security.py::test_non_loopback_base_url_refused PASSED [ 37%]
+tests/test_batch_approval_security.py::test_crash_leaves_sending_item_unknown_and_restart_does_not_resend PASSED [ 43%]
+tests/test_batch_approval_security.py::test_model_facing_tools_contain_no_write_tools PASSED [ 50%]
+tests/test_batch_approval_security.py::test_foreign_origin_refused PASSED [ 56%]
+tests/test_batch_approval_security.py::test_missing_origin_refused PASSED [ 62%]
+tests/test_batch_approval_security.py::test_missing_or_wrong_csrf_refused PASSED [ 68%]
+tests/test_batch_approval_security.py::test_decided_by_in_body_ignored PASSED [ 75%]
+tests/test_batch_approval_security.py::test_old_duplicate_routes_return_404 PASSED [ 81%]
+tests/test_batch_approval_security.py::test_forged_contact_id_in_dispatch_items_blocked PASSED [ 87%]
+tests/test_batch_approval_security.py::test_spoofed_host_refused PASSED  [ 93%]
+tests/test_batch_approval_security.py::test_fake_write_tool_in_temp_contract_excluded_automatically PASSED [100%]
+
+======================== 16 passed in 63.29s (0:01:03) =========================

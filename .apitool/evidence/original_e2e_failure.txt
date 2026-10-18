@@ -1,0 +1,82 @@
+============================= test session starts ==============================
+platform linux -- Python 3.14.7, pytest-9.1.1, pluggy-1.6.0 -- /home/aracknab/Projects/CRM Orchaestrator/venv/bin/python3
+cachedir: .pytest_cache
+rootdir: /home/aracknab/Projects/CRM Orchaestrator
+plugins: anyio-4.15.1, asyncio-1.4.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 1 item                                                               
+
+tests/test_dispatch_e2e_scratch.py::test_fresh_scratch_e2e_dispatch_flow FAILED
+
+=================================== FAILURES ===================================
+_____________________ test_fresh_scratch_e2e_dispatch_flow _____________________
+
+    @pytest.mark.asyncio
+    async def test_fresh_scratch_e2e_dispatch_flow():
+        """
+        Amendment 12: Fresh Scratch E2E
+        Executes the full send-now with human approval flow against
+        fresh scratch mock aggregator on port 3015.
+        """
+        evidence_dir = Path(".apitool/evidence")
+        evidence_dir.mkdir(parents=True, exist_ok=True)
+        evidence_file = evidence_dir / "scratch_e2e_run.json"
+        evidence_data = {"test_name": "Amendment 12 Fresh Scratch E2E"}
+    
+        session_id = "sess_e2e_scratch"
+        storage = get_storage()
+    
+        # 1. Seed Campaign and Ingested Contacts
+        storage.save_campaign(session_id, {
+            "business_name": "Apex Cleaners",
+            "campaign_name": "Fall Seasonal Promo",
+            "templates": [
+                {"step": 1, "body": "Hi {{name}}! 20% off dry cleaning this week. Reply STOP to unsubscribe."}
+            ],
+            "approved": True
+        })
+    
+        contacts = [
+            {"name": "Alice Beta", "phone": "+15551234561", "masked_phone": "+1555****561"},
+            {"name": "Bob Gamma", "phone": "+15551234562", "masked_phone": "+1555****562"}
+        ]
+        storage.persist_contacts(session_id, contacts)
+    
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://127.0.0.1:8000") as client:
+            # a) Pre-flight an approved campaign step
+            preflight_payload = {"session_id": session_id, "template_step": 1}
+            pf_res = await client.post("/api/dispatch/preflight", json=preflight_payload)
+            assert pf_res.status_code == 200, f"Preflight failed: {pf_res.text}"
+            pf_data = pf_res.json()
+            evidence_data["step_a_preflight_response"] = pf_data
+    
+            assert pf_data["success"] is True
+            assert pf_data["status"] in ("ready", "pending_approval")
+            assert pf_data["eligible_count"] == 2
+            assert pf_data["blocked_count"] == 0
+            action_id = pf_data["action_id"]
+            run_id = pf_data["run_id"]
+    
+            # b) View the pre-flight report and sample preview
+            preview_cards = pf_data["preview_cards"]
+            assert len(preview_cards) == 2
+            assert "Hi Alice Beta!" in preview_cards[0]["rendered_body"]
+            assert "Hi Bob Gamma!" in preview_cards[1]["rendered_body"]
+            evidence_data["step_b_preview_cards"] = preview_cards
+    
+            # c) Approve through the UI endpoint
+            approve_res = await client.post(
+                f"/api/dispatch/pending/{action_id}/approve",
+                headers={"Host": "127.0.0.1:8000"}
+            )
+>           assert approve_res.status_code == 200, f"Approve failed: {approve_res.text}"
+E           AssertionError: Approve failed: {"detail":"Not Found"}
+E           assert 404 == 200
+E            +  where 404 = <Response [404 Not Found]>.status_code
+
+tests/test_dispatch_e2e_scratch.py:102: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_dispatch_e2e_scratch.py::test_fresh_scratch_e2e_dispatch_flow
+============================== 1 failed in 2.58s ===============================
+

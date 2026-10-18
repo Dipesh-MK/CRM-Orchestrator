@@ -1,0 +1,8 @@
+=== SS FOR PORT 3015 ===
+State Recv-Q Send-Q Local Address:Port Peer Address:PortProcess
+=== NODE PROCESSES ===
+aracknab  998917  0.0  0.0   8144  4088 pts/0    Ss+  13:18   0:00 bash -c rm -rf /tmp/scratch_mock_m1 /tmp/.env.scratch_m1 (   echo "=== SS FOR PORT 3015 ==="   ss -tlnp '( sport = :3015 )'   echo "=== NODE PROCESSES ==="   ps aux | grep "[n]ode src/server.js" || echo "No node src/server.js process running"   echo "=== DIRECTORY STATUS ==="   ls -la /tmp/scratch_mock_m1 2>&1 || true   ls -la /tmp/.env.scratch_m1 2>&1 || true ) > .apitool/evidence/teardown_proof.txt cat .apitool/evidence/teardown_proof.txt
+aracknab  998919  0.0  0.0   8144  2236 pts/0    S+   13:18   0:00 bash -c rm -rf /tmp/scratch_mock_m1 /tmp/.env.scratch_m1 (   echo "=== SS FOR PORT 3015 ==="   ss -tlnp '( sport = :3015 )'   echo "=== NODE PROCESSES ==="   ps aux | grep "[n]ode src/server.js" || echo "No node src/server.js process running"   echo "=== DIRECTORY STATUS ==="   ls -la /tmp/scratch_mock_m1 2>&1 || true   ls -la /tmp/.env.scratch_m1 2>&1 || true ) > .apitool/evidence/teardown_proof.txt cat .apitool/evidence/teardown_proof.txt
+=== DIRECTORY STATUS ===
+ls: cannot access '/tmp/scratch_mock_m1': No such file or directory
+ls: cannot access '/tmp/.env.scratch_m1': No such file or directory

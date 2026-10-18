@@ -1,0 +1,12 @@
+============================= test session starts ==============================
+platform linux -- Python 3.14.7, pytest-9.1.1, pluggy-1.6.0 -- /home/aracknab/Projects/CRM Orchaestrator/venv/bin/python3
+cachedir: .pytest_cache
+rootdir: /home/aracknab/Projects/CRM Orchaestrator
+configfile: pytest.ini
+plugins: anyio-4.15.1, asyncio-1.4.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 1 item
+
+tests/test_dispatch_e2e_scratch.py::test_fresh_scratch_e2e_dispatch_flow PASSED [100%]
+
+============================== 1 passed in 14.17s ==============================

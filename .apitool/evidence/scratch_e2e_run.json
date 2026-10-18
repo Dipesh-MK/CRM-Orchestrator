@@ -1,0 +1,175 @@
+{
+  "test_name": "Amendment 12 Fresh Scratch E2E",
+  "step_a_preflight_response": {
+    "success": true,
+    "run_id": "run_sess_e2e_scratch_1792314135_8782b8",
+    "action_id": "act_run_sess_e2e_scratch_1792314135_8782b8",
+    "csrf_token": "3b106ebd1bdf45bfa8de0cd824ec4c3dbde47aefc060069389503193aa197abf",
+    "manifest_sha256": "1f57d93af4a75312e2a9cd807657018ea9acd43b2f3da46da28628ed27633b83",
+    "total_contacts": 2,
+    "eligible_count": 2,
+    "blocked_count": 0,
+    "blocked_items": [],
+    "preview_cards": [
+      {
+        "contact_id": "c_sess_e2e_scratch_1",
+        "masked_phone": "+1555****561",
+        "rendered_body": "Hi Alice Beta! 20% off dry cleaning this week. Reply STOP to unsubscribe.",
+        "word_count": 13
+      },
+      {
+        "contact_id": "c_sess_e2e_scratch_2",
+        "masked_phone": "+1555****562",
+        "rendered_body": "Hi Bob Gamma! 20% off dry cleaning this week. Reply STOP to unsubscribe.",
+        "word_count": 13
+      }
+    ],
+    "status": "pending_approval",
+    "message": "Pre-flight complete: 2 eligible to send, 0 blocked."
+  },
+  "step_b_preview_cards": [
+    {
+      "contact_id": "c_sess_e2e_scratch_1",
+      "masked_phone": "+1555****561",
+      "rendered_body": "Hi Alice Beta! 20% off dry cleaning this week. Reply STOP to unsubscribe.",
+      "word_count": 13
+    },
+    {
+      "contact_id": "c_sess_e2e_scratch_2",
+      "masked_phone": "+1555****562",
+      "rendered_body": "Hi Bob Gamma! 20% off dry cleaning this week. Reply STOP to unsubscribe.",
+      "word_count": 13
+    }
+  ],
+  "step_c_approve_response": {
+    "success": true,
+    "run_id": "run_sess_e2e_scratch_1792314135_8782b8",
+    "action_id": "act_run_sess_e2e_scratch_1792314135_8782b8",
+    "status": "approved",
+    "message": "Run approved. Dispatches in progress in background worker."
+  },
+  "step_d_status_polls": [
+    {
+      "elapsed": 0.0,
+      "run_status": "approved",
+      "summary": {
+        "total": 2,
+        "pending": 2,
+        "sending": 0,
+        "queued": 0,
+        "sent": 0,
+        "dispatched": 0,
+        "failed": 0,
+        "unknown": 0
+      }
+    },
+    {
+      "elapsed": 0.5,
+      "run_status": "completed",
+      "summary": {
+        "total": 2,
+        "pending": 0,
+        "sending": 0,
+        "queued": 2,
+        "sent": 0,
+        "dispatched": 2,
+        "failed": 0,
+        "unknown": 0
+      }
+    }
+  ],
+  "step_e_final_dispatch_run": {
+    "id": "run_sess_e2e_scratch_1792314135_8782b8",
+    "session_id": "sess_e2e_scratch",
+    "template_step": 1,
+    "manifest_sha256": "1f57d93af4a75312e2a9cd807657018ea9acd43b2f3da46da28628ed27633b83",
+    "total_contacts": 2,
+    "eligible_count": 2,
+    "blocked_count": 0,
+    "status": "completed",
+    "created_at": "2026-10-18T09:02:28.993198+00:00",
+    "approved_at": "2026-10-18T09:02:29.003192+00:00",
+    "completed_at": "2026-10-18T09:02:29.151386+00:00"
+  },
+  "step_e_final_dispatch_items": [
+    {
+      "id": "item_run_sess_e2e_scratch_1792314135_8782b8_1",
+      "run_id": "run_sess_e2e_scratch_1792314135_8782b8",
+      "contact_id": "c_sess_e2e_scratch_1",
+      "phone": "+15551234561",
+      "masked_phone": "+1555****561",
+      "rendered_body": "Hi Alice Beta! 20% off dry cleaning this week. Reply STOP to unsubscribe.",
+      "body_sha256": "e26c74aff1cbe3c262897498c616dc467ed482f2b4f25af680aa600ecd14de94",
+      "status": "queued",
+      "vendor_sid": "SM8c9e4f3cca594ffabde48bcdfb533177",
+      "error_code": null,
+      "error_message": null,
+      "action_id": "act_run_sess_e2e_scratch_1792314135_8782b8",
+      "created_at": "2026-10-18T09:02:28.995711+00:00",
+      "dispatched_at": "2026-10-18T09:02:29.034425+00:00"
+    },
+    {
+      "id": "item_run_sess_e2e_scratch_1792314135_8782b8_2",
+      "run_id": "run_sess_e2e_scratch_1792314135_8782b8",
+      "contact_id": "c_sess_e2e_scratch_2",
+      "phone": "+15551234562",
+      "masked_phone": "+1555****562",
+      "rendered_body": "Hi Bob Gamma! 20% off dry cleaning this week. Reply STOP to unsubscribe.",
+      "body_sha256": "412b6c35c9eac3c57635575f14ec0d5aef5e5dd1ec3f9c9f3d2d44d6de08c8b7",
+      "status": "queued",
+      "vendor_sid": "SMc9fc21d9e51d4f82a9dd321cac4f1921",
+      "error_code": null,
+      "error_message": null,
+      "action_id": "act_run_sess_e2e_scratch_1792314135_8782b8",
+      "created_at": "2026-10-18T09:02:28.995711+00:00",
+      "dispatched_at": "2026-10-18T09:02:29.098225+00:00"
+    }
+  ],
+  "channel_calls_logged": [
+    {
+      "id": 19,
+      "session_id": "system_registry",
+      "run_id": null,
+      "item_id": null,
+      "tool_name": "list_phone_numbers",
+      "operation": "get_api_phone_numbers",
+      "request_url": "http://127.0.0.1:3015/api/phone/numbers",
+      "method": "GET",
+      "redacted_request_body": null,
+      "status_code": 200,
+      "redacted_response_body": "{\"count\": 7}",
+      "latency_ms": 6,
+      "timestamp": "2026-10-18T09:02:15.684030+00:00"
+    },
+    {
+      "id": 20,
+      "session_id": "sess_e2e_scratch",
+      "run_id": "run_sess_e2e_scratch_1792314135_8782b8",
+      "item_id": "item_run_sess_e2e_scratch_1792314135_8782b8_1",
+      "tool_name": "send_message",
+      "operation": "post_2010_04_01_accounts_account_sid_messages_json",
+      "request_url": "http://127.0.0.1:3015/Messages.json",
+      "method": "POST",
+      "redacted_request_body": "{\"To\": \"+15551234561\", \"Body\": \"Hi Alice Beta! 20% off dry cleaning this week. Reply STOP to unsubscribe.\"}",
+      "status_code": 201,
+      "redacted_response_body": "{\"sid\": \"SM8c9e4f3cca594ffabde48bcdfb533177\", \"status\": \"queued\"}",
+      "latency_ms": 5,
+      "timestamp": "2026-10-18T09:02:29.031617+00:00"
+    },
+    {
+      "id": 21,
+      "session_id": "sess_e2e_scratch",
+      "run_id": "run_sess_e2e_scratch_1792314135_8782b8",
+      "item_id": "item_run_sess_e2e_scratch_1792314135_8782b8_2",
+      "tool_name": "send_message",
+      "operation": "post_2010_04_01_accounts_account_sid_messages_json",
+      "request_url": "http://127.0.0.1:3015/Messages.json",
+      "method": "POST",
+      "redacted_request_body": "{\"To\": \"+15551234562\", \"Body\": \"Hi Bob Gamma! 20% off dry cleaning this week. Reply STOP to unsubscribe.\"}",
+      "status_code": 201,
+      "redacted_response_body": "{\"sid\": \"SMc9fc21d9e51d4f82a9dd321cac4f1921\", \"status\": \"queued\"}",
+      "latency_ms": 4,
+      "timestamp": "2026-10-18T09:02:29.095298+00:00"
+    }
+  ]
+}

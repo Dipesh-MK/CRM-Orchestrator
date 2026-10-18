@@ -1,0 +1,22 @@
+============================= test session starts ==============================
+platform linux -- Python 3.14.7, pytest-9.1.1, pluggy-1.6.0 -- /home/aracknab/Projects/CRM Orchaestrator/venv/bin/python3
+cachedir: .pytest_cache
+rootdir: /home/aracknab/Projects/CRM Orchaestrator
+configfile: pytest.ini
+plugins: anyio-4.15.1, asyncio-1.4.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 5 items / 1 deselected / 4 selected
+
+tests/test_e2e_acceptance.py::test_acceptance_criteria_d_safety_guard_refusal PASSED [ 25%]
+tests/test_e2e_acceptance.py::test_acceptance_criteria_a_b_c_domain_differences PASSED [ 50%]
+tests/test_e2e_acceptance.py::test_acceptance_criteria_e_word_limit_repaired_and_logged PASSED [ 75%]
+tests/test_e2e_acceptance.py::test_acceptance_criteria_f_memory_reuse PASSED [100%]
+
+============================== slowest durations ===============================
+3381.80s call     tests/test_e2e_acceptance.py::test_acceptance_criteria_a_b_c_domain_differences
+47.55s call     tests/test_e2e_acceptance.py::test_acceptance_criteria_e_word_limit_repaired_and_logged
+39.65s call     tests/test_e2e_acceptance.py::test_acceptance_criteria_f_memory_reuse
+31.66s call     tests/test_e2e_acceptance.py::test_acceptance_criteria_d_safety_guard_refusal
+
+(8 durations < 0.005s hidden.  Use -vv to show these durations.)
+================= 4 passed, 1 deselected in 3500.76s (0:58:20) =================

@@ -1,0 +1,21 @@
+============================= test session starts ==============================
+platform linux -- Python 3.14.7, pytest-9.1.1, pluggy-1.6.0 -- /home/aracknab/Projects/CRM Orchaestrator/venv/bin/python3
+cachedir: .pytest_cache
+rootdir: /home/aracknab/Projects/CRM Orchaestrator
+plugins: anyio-4.15.1, asyncio-1.4.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 11 items
+
+tests/test_security_audit_fixes.py::test_csrf_no_stored_token_refused PASSED [  9%]
+tests/test_security_audit_fixes.py::test_csrf_wrong_token_refused PASSED [ 18%]
+tests/test_security_audit_fixes.py::test_csrf_token_from_another_session_refused PASSED [ 27%]
+tests/test_security_audit_fixes.py::test_csrf_correct_token_accepted PASSED [ 36%]
+tests/test_security_audit_fixes.py::test_origin_port_mismatch_refused PASSED [ 45%]
+tests/test_security_audit_fixes.py::test_origin_missing_refused PASSED   [ 54%]
+tests/test_security_audit_fixes.py::test_host_spoofed_refused PASSED     [ 63%]
+tests/test_security_audit_fixes.py::test_origin_and_host_configured_accepted PASSED [ 72%]
+tests/test_security_audit_fixes.py::test_allow_non_loopback_does_not_weaken_approval_security PASSED [ 81%]
+tests/test_security_audit_fixes.py::test_forbidden_tools_loader_fails_closed_on_missing_contract PASSED [ 90%]
+tests/test_security_audit_fixes.py::test_cors_foreign_origin_gets_no_allow_origin_header PASSED [100%]
+
+============================= 11 passed in 45.92s ==============================

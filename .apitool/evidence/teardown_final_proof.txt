@@ -1,0 +1,7 @@
+=== PORT 3015 CHECK ===
+State Recv-Q Send-Q Local Address:Port Peer Address:PortProcess
+=== NODE PROCESS CHECK ===
+No node processes running
+=== SCRATCH PATHS CHECK ===
+ls: cannot access '/tmp/scratch_mock_m1': No such file or directory
+ls: cannot access '/tmp/.env.scratch_m1': No such file or directory

@@ -1,0 +1,233 @@
+============================= test session starts ==============================
+platform linux -- Python 3.14.7, pytest-9.1.1, pluggy-1.6.0 -- /home/aracknab/Projects/CRM Orchaestrator/venv/bin/python3
+cachedir: .pytest_cache
+rootdir: /home/aracknab/Projects/CRM Orchaestrator
+plugins: anyio-4.15.1, asyncio-1.4.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 11 items
+
+tests/test_security_audit_fixes.py::test_csrf_no_stored_token_refused FAILED [  9%]
+tests/test_security_audit_fixes.py::test_csrf_wrong_token_refused PASSED [ 18%]
+tests/test_security_audit_fixes.py::test_csrf_token_from_another_session_refused PASSED [ 27%]
+tests/test_security_audit_fixes.py::test_csrf_correct_token_accepted PASSED [ 36%]
+tests/test_security_audit_fixes.py::test_origin_port_mismatch_refused FAILED [ 45%]
+tests/test_security_audit_fixes.py::test_origin_missing_refused PASSED   [ 54%]
+tests/test_security_audit_fixes.py::test_host_spoofed_refused PASSED     [ 63%]
+tests/test_security_audit_fixes.py::test_origin_and_host_configured_accepted PASSED [ 72%]
+tests/test_security_audit_fixes.py::test_allow_non_loopback_does_not_weaken_approval_security FAILED [ 81%]
+tests/test_security_audit_fixes.py::test_forbidden_tools_loader_fails_closed_on_missing_contract FAILED [ 90%]
+tests/test_security_audit_fixes.py::test_cors_foreign_origin_gets_no_allow_origin_header FAILED [100%]
+
+=================================== FAILURES ===================================
+______________________ test_csrf_no_stored_token_refused _______________________
+
+    def test_csrf_no_stored_token_refused():
+        """Fix 1: Server having no CSRF token for action must fail closed (403), not pass."""
+        client = TestClient(app)
+        session_id = "sess_csrf_none"
+        seed_campaign_and_contact(session_id)
+        service = get_dispatch_service(reload=True)
+        import asyncio
+        pf = asyncio.run(service.preflight_run(session_id, 1))
+        action_id = pf["action_id"]
+    
+        # Deliberately remove stored CSRF token from database
+        storage = get_storage()
+        with storage.get_connection() as conn:
+            conn.cursor().execute("UPDATE pending_actions SET csrf_token = NULL WHERE id = ?", (action_id,))
+            conn.commit()
+    
+        resp = client.post(
+            f"/api/pending/{action_id}/approve",
+            headers={"Host": "127.0.0.1:8000", "Origin": "http://127.0.0.1:8000", "X-CSRF-Token": "client_supplied_token"},
+            json={"csrf_token": "client_supplied_token"}
+        )
+>       assert resp.status_code == 403, f"Expected 403 when server has no stored token, got {resp.status_code}: {resp.text}"
+E       AssertionError: Expected 403 when server has no stored token, got 200: {"success":true,"run_id":"run_sess_csrf_none_1792307815_65be38","action_id":"act_run_sess_csrf_none_1792307815_65be38","status":"approved","message":"Run approved. Dispatches in progress in background worker."}
+E       assert 200 == 403
+E        +  where 200 = <Response [200 OK]>.status_code
+
+tests/test_security_audit_fixes.py:68: AssertionError
+----------------------------- Captured stderr call -----------------------------
+[2026-10-18T12:47:25Z] [APPROVAL_EXECUTED] action_id=act_run_sess_csrf_none_1792307815_65be38 tool=send_message
+------------------------------ Captured log call -------------------------------
+ERROR    asyncio:base_events.py:1886 Task exception was never retrieved
+future: <Task finished name='Task-5' coro=<DispatchService._run_dispatch_worker() done, defined at /home/aracknab/Projects/CRM Orchaestrator/app/services/dispatch_service.py:365> exception=KeyError('AGGREGATOR_ACCOUNT_SID')>
+Traceback (most recent call last):
+  File "/home/aracknab/Projects/CRM Orchaestrator/app/services/dispatch_service.py", line 414, in _run_dispatch_worker
+    res = self.adapter.execute_send(
+        action_id=action_id,
+    ...<5 lines>...
+        item_id=item_id
+    )
+  File "/home/aracknab/Projects/CRM Orchaestrator/app/adapters/channel_adapter.py", line 210, in execute_send
+    res = self.runtime.execute_approved(action_id, "send_message", args, verifier=verifier)
+  File "/home/aracknab/Projects/CRM Orchaestrator/generated/aggregator/core.py", line 476, in execute_approved
+    return self._final(self._call_op(opinfo, tool_cfg, args, bypass_approval=True))
+                       ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/aracknab/Projects/CRM Orchaestrator/generated/aggregator/core.py", line 539, in _call_op
+    req = self._build_request(opinfo, plan, args)
+  File "/home/aracknab/Projects/CRM Orchaestrator/generated/aggregator/core.py", line 594, in _build_request
+    items += [(loc, real, expand_env(val)) for loc, real, val in plan["fixed"]]
+                          ~~~~~~~~~~^^^^^
+  File "/home/aracknab/Projects/CRM Orchaestrator/generated/aggregator/core.py", line 136, in expand_env
+    return re.sub(r"\$\{([A-Z0-9_]+)\}", sub, value)
+           ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/re/__init__.py", line 208, in sub
+    return _compile(pattern, flags).sub(repl, string, count)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/home/aracknab/Projects/CRM Orchaestrator/generated/aggregator/core.py", line 134, in sub
+    raise KeyError(name)
+KeyError: 'AGGREGATOR_ACCOUNT_SID'
+______________________ test_origin_port_mismatch_refused _______________________
+
+    def test_origin_port_mismatch_refused():
+        """Fix 2: Full origin mismatch (different port e.g. :9999 or :3000) is refused (403)."""
+        client = TestClient(app)
+        session_id = "sess_origin_port"
+        seed_campaign_and_contact(session_id)
+        service = get_dispatch_service(reload=True)
+        import asyncio
+        pf = asyncio.run(service.preflight_run(session_id, 1))
+        action_id = pf["action_id"]
+    
+        # http://localhost:9999
+        resp1 = client.post(
+            f"/api/pending/{action_id}/approve",
+            headers={"Host": "127.0.0.1:8000", "Origin": "http://localhost:9999", "X-CSRF-Token": pf["csrf_token"]},
+            json={"csrf_token": pf["csrf_token"]}
+        )
+>       assert resp1.status_code == 403, f"Expected 403 for port 9999, got {resp1.status_code}"
+E       AssertionError: Expected 403 for port 9999, got 200
+E       assert 200 == 403
+E        +  where 200 = <Response [200 OK]>.status_code
+
+tests/test_security_audit_fixes.py:139: AssertionError
+----------------------------- Captured stderr call -----------------------------
+[2026-10-18T12:47:48Z] [APPROVAL_EXECUTED] action_id=act_run_sess_origin_port_1792307864_197065 tool=send_message
+------------------------------ Captured log call -------------------------------
+ERROR    asyncio:base_events.py:1886 Task exception was never retrieved
+future: <Task finished name='Task-34' coro=<DispatchService._run_dispatch_worker() done, defined at /home/aracknab/Projects/CRM Orchaestrator/app/services/dispatch_service.py:365> exception=KeyError('AGGREGATOR_ACCOUNT_SID')>
+Traceback (most recent call last):
+  File "/home/aracknab/Projects/CRM Orchaestrator/app/services/dispatch_service.py", line 414, in _run_dispatch_worker
+    res = self.adapter.execute_send(
+        action_id=action_id,
+    ...<5 lines>...
+        item_id=item_id
+    )
+  File "/home/aracknab/Projects/CRM Orchaestrator/app/adapters/channel_adapter.py", line 210, in execute_send
+    res = self.runtime.execute_approved(action_id, "send_message", args, verifier=verifier)
+  File "/home/aracknab/Projects/CRM Orchaestrator/generated/aggregator/core.py", line 476, in execute_approved
+    return self._final(self._call_op(opinfo, tool_cfg, args, bypass_approval=True))
+                       ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/aracknab/Projects/CRM Orchaestrator/generated/aggregator/core.py", line 539, in _call_op
+    req = self._build_request(opinfo, plan, args)
+  File "/home/aracknab/Projects/CRM Orchaestrator/generated/aggregator/core.py", line 594, in _build_request
+    items += [(loc, real, expand_env(val)) for loc, real, val in plan["fixed"]]
+                          ~~~~~~~~~~^^^^^
+  File "/home/aracknab/Projects/CRM Orchaestrator/generated/aggregator/core.py", line 136, in expand_env
+    return re.sub(r"\$\{([A-Z0-9_]+)\}", sub, value)
+           ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/re/__init__.py", line 208, in sub
+    return _compile(pattern, flags).sub(repl, string, count)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/home/aracknab/Projects/CRM Orchaestrator/generated/aggregator/core.py", line 134, in sub
+    raise KeyError(name)
+KeyError: 'AGGREGATOR_ACCOUNT_SID'
+__________ test_allow_non_loopback_does_not_weaken_approval_security ___________
+
+    def test_allow_non_loopback_does_not_weaken_approval_security():
+        """Fix 3: dispatch.allow_non_loopback=True does NOT bypass Host/Origin/CSRF validation on approval routes."""
+        os.environ["DISPATCH_ALLOW_NON_LOOPBACK"] = "true"
+        get_config(reload=True)
+    
+        client = TestClient(app)
+        session_id = "sess_split_settings"
+        seed_campaign_and_contact(session_id)
+        service = get_dispatch_service(reload=True)
+        import asyncio
+        pf = asyncio.run(service.preflight_run(session_id, 1))
+        action_id = pf["action_id"]
+        csrf_token = pf["csrf_token"]
+    
+        # Even with allow_non_loopback=True, foreign Origin must still be refused with 403
+        resp_foreign = client.post(
+            f"/api/pending/{action_id}/approve",
+            headers={"Host": "127.0.0.1:8000", "Origin": "http://evil-attacker.com", "X-CSRF-Token": csrf_token},
+            json={"csrf_token": csrf_token}
+        )
+>       assert resp_foreign.status_code == 403, f"Expected 403 for foreign origin under allow_non_loopback=True, got {resp_foreign.status_code}"
+E       AssertionError: Expected 403 for foreign origin under allow_non_loopback=True, got 200
+E       assert 200 == 403
+E        +  where 200 = <Response [200 OK]>.status_code
+
+tests/test_security_audit_fixes.py:218: AssertionError
+----------------------------- Captured stderr call -----------------------------
+[2026-10-18T12:48:07Z] [APPROVAL_EXECUTED] action_id=act_run_sess_split_settings_1792307882_4a4390 tool=send_message
+------------------------------ Captured log call -------------------------------
+ERROR    asyncio:base_events.py:1886 Task exception was never retrieved
+future: <Task finished name='Task-60' coro=<DispatchService._run_dispatch_worker() done, defined at /home/aracknab/Projects/CRM Orchaestrator/app/services/dispatch_service.py:365> exception=KeyError('AGGREGATOR_ACCOUNT_SID')>
+Traceback (most recent call last):
+  File "/home/aracknab/Projects/CRM Orchaestrator/app/services/dispatch_service.py", line 414, in _run_dispatch_worker
+    res = self.adapter.execute_send(
+        action_id=action_id,
+    ...<5 lines>...
+        item_id=item_id
+    )
+  File "/home/aracknab/Projects/CRM Orchaestrator/app/adapters/channel_adapter.py", line 210, in execute_send
+    res = self.runtime.execute_approved(action_id, "send_message", args, verifier=verifier)
+  File "/home/aracknab/Projects/CRM Orchaestrator/generated/aggregator/core.py", line 476, in execute_approved
+    return self._final(self._call_op(opinfo, tool_cfg, args, bypass_approval=True))
+                       ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/aracknab/Projects/CRM Orchaestrator/generated/aggregator/core.py", line 539, in _call_op
+    req = self._build_request(opinfo, plan, args)
+  File "/home/aracknab/Projects/CRM Orchaestrator/generated/aggregator/core.py", line 594, in _build_request
+    items += [(loc, real, expand_env(val)) for loc, real, val in plan["fixed"]]
+                          ~~~~~~~~~~^^^^^
+  File "/home/aracknab/Projects/CRM Orchaestrator/generated/aggregator/core.py", line 136, in expand_env
+    return re.sub(r"\$\{([A-Z0-9_]+)\}", sub, value)
+           ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/re/__init__.py", line 208, in sub
+    return _compile(pattern, flags).sub(repl, string, count)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/home/aracknab/Projects/CRM Orchaestrator/generated/aggregator/core.py", line 134, in sub
+    raise KeyError(name)
+KeyError: 'AGGREGATOR_ACCOUNT_SID'
+_________ test_forbidden_tools_loader_fails_closed_on_missing_contract _________
+
+    def test_forbidden_tools_loader_fails_closed_on_missing_contract():
+        """Fix 4: Contract loader must raise on missing contract file, never return empty set."""
+        missing_path = Path("/tmp/nonexistent_contract_missing_file_xyz.yaml")
+>       with pytest.raises(FileNotFoundError):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE FileNotFoundError
+
+tests/test_security_audit_fixes.py:232: Failed
+_____________ test_cors_foreign_origin_gets_no_allow_origin_header _____________
+
+    def test_cors_foreign_origin_gets_no_allow_origin_header():
+        """Fix 5: Foreign origin gets no Access-Control-Allow-Origin header."""
+        client = TestClient(app)
+        # Pre-flight OPTIONS request from foreign origin
+        resp = client.options(
+            "/api/dispatch/preflight",
+            headers={
+                "Origin": "http://evil-third-party.com",
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "Content-Type"
+            }
+        )
+        allow_origin = resp.headers.get("access-control-allow-origin")
+        assert allow_origin != "*", "CORS policy must not allow wildcard '*'"
+>       assert allow_origin != "http://evil-third-party.com", "CORS policy must not allow foreign origin"
+E       AssertionError: CORS policy must not allow foreign origin
+E       assert 'http://evil-third-party.com' != 'http://evil-third-party.com'
+
+tests/test_security_audit_fixes.py:250: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_security_audit_fixes.py::test_csrf_no_stored_token_refused
+FAILED tests/test_security_audit_fixes.py::test_origin_port_mismatch_refused
+FAILED tests/test_security_audit_fixes.py::test_allow_non_loopback_does_not_weaken_approval_security
+FAILED tests/test_security_audit_fixes.py::test_forbidden_tools_loader_fails_closed_on_missing_contract
+FAILED tests/test_security_audit_fixes.py::test_cors_foreign_origin_gets_no_allow_origin_header
+==================== 5 failed, 6 passed in 71.91s (0:01:11) ====================

@@ -32,8 +32,8 @@
     },
     "G6": {
       "status": "approved",
-      "note": "Dipesh: G6 approved for Milestone 1 only, with amendments 1-12 from this message. Milestones 2+ need a new approval with their own file list.",
-      "at": "2026-10-18T06:32:21"
+      "note": "Dipesh: G6 re-scoped. Milestone 1 machinery replaced by a simple send flow: one confirm click in the existing UI sends via the generated aggregator client. No new tabs, no clock/scheduler/triggers/phones/reconciler.",
+      "at": "2026-10-18T17:43:52"
     }
   }
 }

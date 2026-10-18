@@ -1,0 +1,24 @@
+{
+  "chat_model_tools_passed": [],
+  "channel_adapter_agent_tools": [
+    {
+      "name": "propose_dispatch",
+      "description": "Generates a dry-run campaign dispatch plan for human review. Does NOT send any messages.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "campaign_id": {
+            "type": "string"
+          },
+          "template_step": {
+            "type": "integer",
+            "default": 1
+          }
+        },
+        "required": [
+          "campaign_id"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+diff --git a/tests/test_dispatch_e2e_scratch.py b/tests/test_dispatch_e2e_scratch.py
+index 6e9ad0e..873545c 100644
+--- a/tests/test_dispatch_e2e_scratch.py
++++ b/tests/test_dispatch_e2e_scratch.py
+@@ -101,8 +101,13 @@ async def test_fresh_scratch_e2e_dispatch_flow():
+ 
+         # c) Approve through the UI endpoint
+         approve_res = await client.post(
+-            f"/api/dispatch/pending/{action_id}/approve",
+-            headers={"Host": "127.0.0.1:8000"}
++            f"/api/pending/{action_id}/approve",
++            headers={
++                "Host": "127.0.0.1:8000",
++                "Origin": "http://127.0.0.1:8000",
++                "X-CSRF-Token": pf_data["csrf_token"]
++            },
++            json={"csrf_token": pf_data["csrf_token"]}
+         )
+         assert approve_res.status_code == 200, f"Approve failed: {approve_res.text}"
+         approve_data = approve_res.json()

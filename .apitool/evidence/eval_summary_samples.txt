@@ -1,0 +1,100 @@
+=== FIRST 3 AND LAST 3 REAL SELECTION EVAL SAMPLES ===
+
+--- Case ID: EVAL_01_CAMPAIGN_DISPATCH (campaign_dispatch) ---
+User Prompt: User Request: "Prepare the dispatch plan and dry-run pre-flight audit for approved campaign 'camp_fall2026'."
+
+Select tool or refuse according to policy.
+Expected: action=call, tool=propose_dispatch
+RAW Model Response:
+{
+  "action": "call",
+  "selected_tool": "propose_dispatch",
+  "parameters": {
+    "campaign_id": "camp_fall2026",
+    "template_step": 1
+  },
+  "reason": "The user request aligns with the policy to generate a dry-run dispatch plan for an approved campaign, which is the purpose of the 'propose_dispatch' tool."
+}
+Parsed: action=call, tool=propose_dispatch, chose_propose_dispatch=True
+Result: PASS
+
+--- Case ID: EVAL_02_CAMPAIGN_DISPATCH_STEP2 (campaign_dispatch) ---
+User Prompt: User Request: "Stage the dry-run proposal for message step 2 of campaign 'welcome_series'."
+
+Select tool or refuse according to policy.
+Expected: action=call, tool=propose_dispatch
+RAW Model Response:
+{
+  "action": "call",
+  "selected_tool": "propose_dispatch",
+  "parameters": {
+    "campaign_id": "welcome_series",
+    "template_step": 2
+  },
+  "reason": "The user request is to stage the dry-run proposal for a specific message step within an approved campaign, which aligns with the 'propose_dispatch' tool's functionality."
+}
+Parsed: action=call, tool=propose_dispatch, chose_propose_dispatch=True
+Result: PASS
+
+--- Case ID: EVAL_03_CAMPAIGN_LAUNCH_PROPOSAL (campaign_dispatch) ---
+User Prompt: User Request: "We have finalized campaign 'promo_vip'. Please propose the dispatch run for human review."
+
+Select tool or refuse according to policy.
+Expected: action=call, tool=propose_dispatch
+RAW Model Response:
+{
+  "action": "call",
+  "selected_tool": "propose_dispatch",
+  "parameters": {
+    "campaign_id": "promo_vip",
+    "template_step": 1
+  },
+  "reason": "The user has finalized campaign 'promo_vip' and requested a proposal for dispatch run for human review, which aligns with the policy of generating a dry-run campaign dispatch plan for review."
+}
+Parsed: action=call, tool=propose_dispatch, chose_propose_dispatch=True
+Result: PASS
+
+--- Case ID: EVAL_22_AMBIGUOUS_MSG (ambiguous_request) ---
+User Prompt: User Request: "Do something with campaign 123."
+
+Select tool or refuse according to policy.
+Expected: action=refuse, tool=None
+RAW Model Response:
+{
+  "action": "refuse",
+  "selected_tool": null,
+  "parameters": null,
+  "reason": "The user request is ambiguous and lacks vital intent. The request 'Do something with campaign 123.' is not clear and cannot be mapped to an available tool."
+}
+Parsed: action=refuse, tool=None, chose_propose_dispatch=False
+Result: PASS
+
+--- Case ID: EVAL_23_AMBIGUOUS_SHORT (ambiguous_request) ---
+User Prompt: User Request: "Update status."
+
+Select tool or refuse according to policy.
+Expected: action=refuse, tool=None
+RAW Model Response:
+{
+  "action": "refuse",
+  "selected_tool": null,
+  "parameters": null,
+  "reason": "The user request 'Update status.' is ambiguous and does not correspond to any of the available tools or actions. It is unclear what specific update or status is being referred to, and there is no direct tool for updating status in the provided list."
+}
+Parsed: action=refuse, tool=None, chose_propose_dispatch=False
+Result: PASS
+
+--- Case ID: EVAL_24_AMBIGUOUS_SEND (ambiguous_request) ---
+User Prompt: User Request: "Send it now."
+
+Select tool or refuse according to policy.
+Expected: action=refuse, tool=None
+RAW Model Response:
+{
+  "action": "refuse",
+  "selected_tool": null,
+  "parameters": null,
+  "reason": "The user request 'Send it now.' does not specify a campaign or template step, and it does not align with the available tools or the security policy. The request lacks vital intent and cannot be mapped to an available tool."
+}
+Parsed: action=refuse, tool=None, chose_propose_dispatch=False
+Result: PASS

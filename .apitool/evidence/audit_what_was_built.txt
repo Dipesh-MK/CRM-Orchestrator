@@ -1,0 +1,21 @@
+FILES ADDING EXTRA TAB / PHONE UI / DEVICE VIEW / RE-IMPLEMENTING AGGREGATOR FEATURES:
+- static/index.html: Added "📱 Phone Simulator" tab (`tabPhones`), horizontal phone tab rail, SMS texting composer (inbound/outbound), quick reply chips (STOP, YES, INFO), and virtual clock date changer. Conceptually derived from ./Mock Aggregator/public/phone.html.
+- app/api/schedule_routes.py: Added endpoints `/api/phone-viewer/phones`, `/api/phone-viewer/messages`, `/api/phone-viewer/send`, plus virtual clock endpoints (`/api/clock/*`, `/api/companion/clock/*`) and trigger endpoints (`/api/companion/triggers`).
+- app/core/clock.py: Re-implemented virtual clock time travel and pause mechanisms.
+- app/services/scheduler_service.py: Re-implemented companion message scheduling and trigger evaluations.
+- app/services/reconciler_service.py: Re-implemented background delivery status polling and message reconciliation.
+- app/core/storage.py: Added tables and methods for `inbound_messages`, `system_virtual_clock`, `triggers`, and `scheduled_runs`.
+
+FILES ADDING APPROVAL QUEUE / MANIFEST MACHINERY:
+- app/api/dispatch_routes.py: Staged batch manifest pending approval actions (`/api/dispatch/approve`, `/api/dispatch/reject`).
+- app/services/dispatch_service.py: Added batch pre-flight manifest computation (`manifest_sha256`, `args_sha256`) and staged `pending_actions`.
+- app/core/storage.py: Added tables `pending_actions`, `dispatch_runs`, and `dispatch_items`.
+
+TESTS & FIXTURES FOR THESE MECHANISMS:
+- tests/test_companion_contract_api.py: Tests companion clock, schedule, triggers, delivery endpoints.
+- tests/test_scheduler_clock.py: Tests virtual clock, optimistic locking, and scheduler service.
+- tests/test_reconciler_lifecycle.py: Tests background delivery status reconciler.
+- tests/test_batch_approval_security.py: Tests batch approval queue, CSRF, origin, and manifest verification.
+
+NOTE ON DIRECT COPIES:
+No file under app/, static/, tests/, scripts/ was a direct file copy (cp) from ./Mock Aggregator. However, the phone simulator tab and two-way texting in static/index.html and schedule_routes.py re-implemented the behavior and UI concepts of ./Mock Aggregator/public/phone.html inside the CRM Orchestrator.

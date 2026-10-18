@@ -1,0 +1,13 @@
+============================= test session starts ==============================
+platform linux -- Python 3.14.7, pytest-9.1.1, pluggy-1.6.0 -- /home/aracknab/Projects/CRM Orchaestrator/venv/bin/python3
+cachedir: .pytest_cache
+rootdir: /home/aracknab/Projects/CRM Orchaestrator
+configfile: pytest.ini
+plugins: anyio-4.15.1, asyncio-1.4.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 2 items
+
+tests/test_no_token_leak.py::test_token_leak_scanner_positive_control PASSED [ 50%]
+tests/test_no_token_leak.py::test_no_token_leak_in_logs_and_databases PASSED [100%]
+
+============================== 2 passed in 0.08s ===============================

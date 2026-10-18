@@ -1,11 +1,12 @@
 # CampaignForge Orchestrator Configuration
 
 llm:
-  base_url: "https://api.groq.com/openai/v1"
-  model: "qwen/qwen3.8-27b"
-  api_key: "REDACTED_API_KEY"
+  base_url: "http://localhost:11434/v1"
+  model: "qwen2.5:7b-instruct"
+  api_key_env: "LLM_API_KEY"
   temperature: 0.3
   request_timeout_seconds: 60
+
 
 orchestrator:
   word_limit: 320

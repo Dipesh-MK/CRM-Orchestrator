@@ -1,0 +1,15 @@
+============================= test session starts ==============================
+platform linux -- Python 3.14.7, pytest-9.1.1, pluggy-1.6.0 -- /home/aracknab/Projects/CRM Orchaestrator/venv/bin/python3
+cachedir: .pytest_cache
+rootdir: /home/aracknab/Projects/CRM Orchaestrator
+plugins: anyio-4.15.1, asyncio-1.4.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 5 items
+
+tests/test_e2e_acceptance.py::test_acceptance_criteria_d_safety_guard_refusal PASSED [ 20%]
+tests/test_e2e_acceptance.py::test_acceptance_criteria_a_b_c_domain_differences PASSED [ 40%]
+tests/test_e2e_acceptance.py::test_acceptance_criteria_e_word_limit_repaired_and_logged PASSED [ 60%]
+tests/test_e2e_acceptance.py::test_acceptance_criteria_f_memory_reuse PASSED [ 80%]
+tests/test_e2e_acceptance.py::test_acceptance_criteria_g_all_llm_calls_logged PASSED [100%]
+
+======================== 5 passed in 3974.83s (1:06:14) ========================
