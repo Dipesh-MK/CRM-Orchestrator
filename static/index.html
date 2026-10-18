@@ -642,8 +642,9 @@
               } else if (payload.type === 'pipeline_event') {
                 renderPipelineEvent(payload.event);
               } else if (payload.type === 'text_chunk') {
-                const { cleanText } = parsePipelineEvents(payload.text);
-                if (cleanText) appendChatMessage('assistant', cleanText, payload.is_rate_limit || false);
+                const { cleanText } = parsePipelineEvents(payload.text || '');
+                const displayText = cleanText || (payload.text && payload.text.trim());
+                if (displayText) appendChatMessage('assistant', displayText, payload.is_rate_limit || false);
                 if (payload.tones) renderToneProposal(payload.tones);
               } else if (payload.type === 'templates_ready') {
                 if (payload.csrf_token) currentCsrfToken = payload.csrf_token;

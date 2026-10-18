@@ -9,6 +9,113 @@ from app.core.llm_client import get_llm_client
 from app.services.compliance_service import check_template_compliance, count_words
 from app.services.safety_service import get_safety_service
 
+def parse_json_robust(raw: str) -> Optional[Dict[str, Any]]:
+    """
+    Robust JSON parser handling common LLM quirks:
+    - Markdown code fences (```json ... ```)
+    - Trailing commas before } or ]
+    - Unclosed brackets/braces
+    - Outermost JSON object extraction
+    """
+    if not raw or not isinstance(raw, str):
+        return None
+    clean = re.sub(r"^```(?:json)?\s*", "", raw.strip(), flags=re.IGNORECASE)
+    clean = re.sub(r"\s*```$", "", clean).strip()
+    if not clean:
+        return None
+
+    # Attempt 1: Direct JSON parse
+    try:
+        res = json.loads(clean)
+        if isinstance(res, dict):
+            return res
+    except Exception:
+        pass
+
+    # Attempt 2: Strip trailing commas before } or ]
+    candidate = re.sub(r",\s*([\}\]])", r"\1", clean)
+    try:
+        res = json.loads(candidate)
+        if isinstance(res, dict):
+            return res
+    except Exception:
+        pass
+
+    # Attempt 3: Close unclosed braces/brackets
+    open_curly = candidate.count("{") - candidate.count("}")
+    open_square = candidate.count("[") - candidate.count("]")
+    candidate_balanced = candidate + ("]" * max(0, open_square)) + ("}" * max(0, open_curly))
+    try:
+        res = json.loads(candidate_balanced)
+        if isinstance(res, dict):
+            return res
+    except Exception:
+        pass
+
+    # Attempt 4: Extract the outermost {...} substring
+    first_brace = clean.find("{")
+    last_brace = clean.rfind("}")
+    if first_brace != -1 and last_brace != -1 and last_brace > first_brace:
+        snippet = clean[first_brace:last_brace+1]
+        try:
+            res = json.loads(snippet)
+            if isinstance(res, dict):
+                return res
+        except Exception:
+            snippet_commas = re.sub(r",\s*([\}\]])", r"\1", snippet)
+            try:
+                res = json.loads(snippet_commas)
+                if isinstance(res, dict):
+                    return res
+            except Exception:
+                pass
+
+    return None
+
+def normalize_discovery_output(data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Normalizes discovery output dictionary:
+    - Hoists top-level fields (discovery_complete, assumptions_made, next_question_to_user, business_type)
+      if the LLM accidentally nested them inside `slots`.
+    - Normalizes discovery_complete boolean.
+    - Ensures non-empty next_question_to_user when discovery is incomplete.
+    """
+    if not isinstance(data, dict):
+        return {}
+
+    slots = data.get("slots", {})
+    if not isinstance(slots, dict):
+        slots = {}
+        data["slots"] = slots
+
+    # Hoist any top-level keys that the model inadvertently placed inside slots
+    hoist_keys = ["discovery_complete", "assumptions_made", "next_question_to_user", "business_type"]
+    for k in hoist_keys:
+        if k in slots:
+            val = slots.pop(k)
+            if k not in data or data[k] is None or data[k] == "":
+                data[k] = val
+
+    # Normalize discovery_complete
+    is_complete = data.get("discovery_complete")
+    next_q = (data.get("next_question_to_user") or "").strip()
+
+    if is_complete is None:
+        if not next_q and any(k in slots for k in ["offer_or_cta", "business_name", "campaign_name", "campaign_goal"]):
+            data["discovery_complete"] = True
+        else:
+            data["discovery_complete"] = False
+    elif is_complete is False and not next_q:
+        if any(k in slots for k in ["offer_or_cta", "business_name", "campaign_name", "campaign_goal"]):
+            data["discovery_complete"] = True
+        else:
+            data["next_question_to_user"] = "Could you tell me your business name and the main discount or offer you'd like to share?"
+
+    if data.get("discovery_complete"):
+        data["next_question_to_user"] = ""
+
+    return data
+
 class OrchestratorEngine:
     def __init__(self):
         self.config = get_config()
@@ -72,19 +179,16 @@ class OrchestratorEngine:
 
             if llm_res.get("status") == "success":
                 raw = llm_res.get("raw_response", "")
-                try:
-                    clean = re.sub(r"^```json\s*", "", raw.strip())
-                    clean = re.sub(r"\s*```$", "", clean)
-                    data = json.loads(clean)
-                    if "slots" in data:
-                        parsed = data
-                        break
-                except Exception as e:
+                data = parse_json_robust(raw)
+                if data and ("slots" in data or "business_type" in data or "next_question_to_user" in data):
+                    parsed = normalize_discovery_output(data)
+                    break
+                else:
                     self.storage.log_validation(
                         session_id=session_id,
                         validation_type="discovery_json_parse",
                         passed=False,
-                        details={"error": str(e), "raw": raw, "attempt": attempt}
+                        details={"error": "Malformed or non-dict discovery JSON output", "raw": raw, "attempt": attempt}
                     )
 
         if not parsed:
@@ -96,10 +200,13 @@ class OrchestratorEngine:
                 "assumptions_made": ["Assumed default CRM campaign configuration due to retry limits."],
                 "next_question_to_user": "Could you confirm your business name and main campaign goal?"
             }
+        else:
+            parsed = normalize_discovery_output(parsed)
 
         # Check if max discovery rounds reached
         if round_index >= self.config.orchestrator.max_discovery_rounds:
             parsed["discovery_complete"] = True
+            parsed["next_question_to_user"] = ""
             if "assumptions_made" not in parsed or not parsed["assumptions_made"]:
                 parsed["assumptions_made"] = ["Standard campaign parameters assumed based on business type."]
 
@@ -156,19 +263,16 @@ class OrchestratorEngine:
 
             if llm_res.get("status") == "success":
                 raw = llm_res.get("raw_response", "")
-                try:
-                    clean = re.sub(r"^```json\s*", "", raw.strip())
-                    clean = re.sub(r"\s*```$", "", clean)
-                    data = json.loads(clean)
-                    if "candidate_tones" in data and len(data["candidate_tones"]) > 0:
-                        parsed = data
-                        break
-                except Exception as e:
+                data = parse_json_robust(raw)
+                if data and "candidate_tones" in data and len(data["candidate_tones"]) > 0:
+                    parsed = data
+                    break
+                else:
                     self.storage.log_validation(
                         session_id=session_id,
                         validation_type="tone_explorer_json_parse",
                         passed=False,
-                        details={"error": str(e), "raw": raw, "attempt": attempt}
+                        details={"error": "Failed to parse candidate_tones", "raw": raw, "attempt": attempt}
                     )
 
         min_candidates = getattr(self.config.orchestrator, "min_tone_candidates", 3)
@@ -218,10 +322,8 @@ Respond in strict JSON:
                 json_mode=True
             )
             if rep_res.get("status") == "success":
-                try:
-                    c_clean = re.sub(r"^```json\s*", "", rep_res.get("raw_response", "").strip())
-                    c_clean = re.sub(r"\s*```$", "", c_clean)
-                    rep_data = json.loads(c_clean)
+                rep_data = parse_json_robust(rep_res.get("raw_response", ""))
+                if rep_data:
                     new_tones = rep_data.get("additional_tones") or rep_data.get("candidate_tones") or []
                     for t in new_tones:
                         name = (t.get("name") or "").strip()
@@ -237,13 +339,6 @@ Respond in strict JSON:
                             })
                             if len(cleaned_tones) >= min_candidates:
                                 break
-                except Exception as e:
-                    self.storage.log_validation(
-                        session_id=session_id,
-                        validation_type="tone_repair_json_parse",
-                        passed=False,
-                        details={"error": str(e)}
-                    )
 
         # Fallback complement if still under min_candidates
         if len(cleaned_tones) < min_candidates:
@@ -310,19 +405,16 @@ Respond in strict JSON:
 
             if llm_res.get("status") == "success":
                 raw = llm_res.get("raw_response", "")
-                try:
-                    clean = re.sub(r"^```json\s*", "", raw.strip())
-                    clean = re.sub(r"\s*```$", "", clean)
-                    data = json.loads(clean)
-                    if "steps" in data and len(data["steps"]) > 0:
-                        parsed = data
-                        break
-                except Exception as e:
+                data = parse_json_robust(raw)
+                if data and "steps" in data and len(data["steps"]) > 0:
+                    parsed = data
+                    break
+                else:
                     self.storage.log_validation(
                         session_id=session_id,
                         validation_type="planner_json_parse",
                         passed=False,
-                        details={"error": str(e), "raw": raw, "attempt": attempt}
+                        details={"error": "Failed to parse planning blueprint", "raw": raw, "attempt": attempt}
                     )
 
         if not parsed:
@@ -436,19 +528,16 @@ Respond in strict JSON:
 
             if llm_res.get("status") == "success":
                 raw = llm_res.get("raw_response", "")
-                try:
-                    clean = re.sub(r"^```json\s*", "", raw.strip())
-                    clean = re.sub(r"\s*```$", "", clean)
-                    data = json.loads(clean)
-                    if "templates" in data and len(data["templates"]) > 0:
-                        parsed = data
-                        break
-                except Exception as e:
+                data = parse_json_robust(raw)
+                if data and "templates" in data and len(data["templates"]) > 0:
+                    parsed = data
+                    break
+                else:
                     self.storage.log_validation(
                         session_id=session_id,
                         validation_type="template_writer_json_parse",
                         passed=False,
-                        details={"error": str(e), "raw": raw, "attempt": attempt}
+                        details={"error": "Failed to parse templates JSON", "raw": raw, "attempt": attempt}
                     )
 
         if not parsed:
@@ -500,10 +589,8 @@ Respond in strict JSON:
                 )
 
                 if rep_res.get("status") == "success":
-                    try:
-                        c_raw = re.sub(r"^```json\s*", "", rep_res.get("raw_response", "").strip())
-                        c_raw = re.sub(r"\s*```$", "", c_raw)
-                        rep_data = json.loads(c_raw)
+                    rep_data = parse_json_robust(rep_res.get("raw_response", ""))
+                    if rep_data:
                         repaired_body = rep_data.get("repaired_body")
                         if repaired_body:
                             body = repaired_body
@@ -514,8 +601,6 @@ Respond in strict JSON:
                                 optout_text=optout_text,
                                 link_or_contact=link_or_contact
                             )
-                    except Exception:
-                        pass
 
             # Final safety check on the template body
             safety_res = await self.safety.evaluate_safety(session_id, body, f"template_{tmpl.get('message_index')}")

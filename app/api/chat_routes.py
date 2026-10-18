@@ -188,7 +188,12 @@ async def chat_send(req: ChatMessageRequest):
                 campaign_name=camp_name
             )
 
-            if discovery_res.get("discovery_complete"):
+            is_complete = bool(discovery_res.get("discovery_complete"))
+            if not is_complete and isinstance(discovery_res.get("slots"), dict):
+                if discovery_res["slots"].get("discovery_complete"):
+                    is_complete = True
+
+            if is_complete:
                 state["discovery_complete"] = True
                 ev_done = emit_event(
                     state, "discovery", "Campaign Discovery", "🎤", "done",
@@ -262,7 +267,9 @@ async def chat_send(req: ChatMessageRequest):
                 )
                 yield f"data: {json.dumps({'type': 'pipeline_event', 'event': ev_wait, 'tag': format_pipeline_event_tag(ev_wait)})}\n\n"
 
-                reply_text = discovery_res.get("next_question_to_user", "Could you provide more details about your campaign?")
+                reply_text = (discovery_res.get("next_question_to_user") or "").strip()
+                if not reply_text:
+                    reply_text = "Could you tell me your business name and what discount or offer you'd like to share?"
                 state["conversation_history"].append({"role": "assistant", "content": reply_text})
                 yield f"data: {json.dumps({'type': 'text_chunk', 'text': reply_text})}\n\n"
 

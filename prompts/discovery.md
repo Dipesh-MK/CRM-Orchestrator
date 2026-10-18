@@ -43,21 +43,28 @@ TASK:
 9. If all required slots are adequately filled, set `discovery_complete: true`.
 
 OUTPUT FORMAT (Strict JSON):
+CRITICAL JSON RULES:
+- Output raw, valid JSON only. Do NOT include inline comments like // or /* */ anywhere.
+- "discovery_complete", "assumptions_made", and "next_question_to_user" MUST be top-level keys OUTSIDE the "slots" object.
+- Make sure every opening bracket and brace is closed with its corresponding closing bracket and brace.
+- If discovery is complete, set "discovery_complete": true and "next_question_to_user": "".
+- If discovery is NOT complete, set "discovery_complete": false and provide the 1-2 questions in "next_question_to_user".
+
 ```json
 {
-  "business_type": "string (e.g. Dental Clinic)",
+  "business_type": "Retail",
   "slots": {
-    "slot_key": {
+    "business_name": {
       "value": "extracted value or null",
       "required": true,
       "confidence": 0.9,
-      "source": "user" // "user" | "memory" | "assumed" | "pending"
+      "source": "user"
     }
   },
   "discovery_complete": false,
   "assumptions_made": [
     "string assumption"
   ],
-  "next_question_to_user": "string (the natural 1-2 questions to ask the user, or empty if complete)"
+  "next_question_to_user": "string question for user or empty if complete"
 }
 ```
