@@ -43,6 +43,12 @@ def test_contact_adapters_and_normalization():
     norm_in = normalize_phone_e164("9876543210", default_country="IN")
     assert norm_in == "+919876543210"
 
+    # 3b. Mock aggregator test numbers (+1555...)
+    norm_mock1 = normalize_phone_e164("+15551234561")
+    assert norm_mock1 == "+15551234561"
+    norm_mock2 = normalize_phone_e164("+15551234562")
+    assert norm_mock2 == "+15551234562"
+
     # 4. Column detection
     sample = {"Donor Name": "Alice", "Mobile No": "9999999999", "Amount": "500"}
     n_col, p_col, extra = detect_columns(sample)

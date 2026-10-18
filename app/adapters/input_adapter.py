@@ -129,10 +129,15 @@ def normalize_phone_e164(raw_phone: str, default_country: Optional[str] = None) 
             region = default_country.upper() if default_country else None
             parsed = phonenumbers.parse(cleaned, region)
         
-        if phonenumbers.is_valid_number(parsed):
+        if phonenumbers.is_valid_number(parsed) or phonenumbers.is_possible_number(parsed):
             return phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164)
     except Exception:
         pass
+
+    # Fallback for standard E.164 strings (e.g. test simulator / mock aggregator numbers)
+    if cleaned.startswith("+") and 8 <= len(cleaned) <= 16 and cleaned[1:].isdigit():
+        return cleaned
+
     return None
 
 def mask_phone(e164: str) -> str:
