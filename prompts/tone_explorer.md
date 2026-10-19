@@ -15,7 +15,7 @@ Campaign Context:
 
 TASK:
 1. Propose at least 3 distinct candidate tones tailored to this specific use case (e.g. "Warm & Community-Focused", "Urgent & Direct", "Inspiring & Hopeful"). DO NOT use a hardcoded list.
-2. For EACH candidate tone, provide a concise explanation and exactly 1 preview example message (under {{word_limit}} words) demonstrating the tone.
+2. For EACH candidate tone, provide a concise explanation and a 3-touchpoint sequence preview (`example_messages`: Message 1 Announcement, Message 2 Follow-up, Message 3 Final Call), each under {{word_limit}} words demonstrating how the tone evolves across the CRM sequence.
 3. Ensure each preview includes the business/organization name (or `{{organization_name}}` if not provided) and finishes with "{{optout_text}}".
 4. NEVER fabricate statistics or impact metrics in tone previews.
 5. If the business/organization name was not provided by the user, use `{{organization_name}}`. DO NOT invent a brand name!
@@ -29,7 +29,12 @@ OUTPUT FORMAT (Strict JSON):
       "id": "tone_identifier",
       "name": "Display Name with Emoji (e.g. 🤝 Warm & Community-Focused)",
       "description": "Why this works for the audience",
-      "example_message": "Short preview message with {{organization_name}} and {{optout_text}}"
+      "example_message": "Message 1 (Announcement) preview...",
+      "example_messages": [
+        "Message 1 (Announcement) preview with {{organization_name}} and {{optout_text}}",
+        "Message 2 (Follow-up) preview with {{organization_name}} and {{optout_text}}",
+        "Message 3 (Final Call) preview with {{organization_name}} and {{optout_text}}"
+      ]
     }
   ]
 }

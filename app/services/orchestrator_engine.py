@@ -278,21 +278,35 @@ class OrchestratorEngine:
         min_candidates = getattr(self.config.orchestrator, "min_tone_candidates", 3)
         raw_tones = parsed.get("candidate_tones", []) if parsed else []
 
+        def build_multi_examples(t_obj: Dict[str, Any], tone_name: str) -> List[str]:
+            raw_list = t_obj.get("example_messages")
+            if isinstance(raw_list, list) and len(raw_list) >= 2:
+                return [str(m).strip() for m in raw_list if str(m).strip()]
+            
+            single = (t_obj.get("example_message") or "").strip()
+            if not single:
+                single = f"Hello {{{{customer_name}}}}, important update from {business_name} regarding {campaign_goal}. {self.config.orchestrator.optout_text}"
+            
+            return [
+                single,
+                f"Follow-up from {business_name}: We wanted to check in regarding {campaign_goal}. Please review details at {{{{link}}}}. {self.config.orchestrator.optout_text}",
+                f"Final reminder from {business_name}: Last notice regarding {campaign_goal}. Immediate action required. {self.config.orchestrator.optout_text}"
+            ]
+
         cleaned_tones = []
         seen_names = set()
         for t in raw_tones:
             name = (t.get("name") or "").strip()
             desc = (t.get("description") or "").strip()
-            ex = t.get("example_message")
-            if not ex and t.get("example_messages"):
-                ex = t["example_messages"][0]
             if name and name.lower() not in seen_names:
                 seen_names.add(name.lower())
+                msgs = build_multi_examples(t, name)
                 cleaned_tones.append({
                     "id": t.get("id") or f"tone_{len(cleaned_tones)+1}",
                     "name": name,
                     "description": desc or f"Campaign messaging tone: {name}",
-                    "example_message": ex or f"Update from {business_name}: {campaign_goal}. {self.config.orchestrator.optout_text}"
+                    "example_message": msgs[0],
+                    "example_messages": msgs
                 })
 
         # If fewer than min_candidates, run a lightweight repair prompt (up to 1 retry)
@@ -309,7 +323,12 @@ Respond in strict JSON:
       "id": "new_tone_id",
       "name": "Distinct Tone Name with Emoji",
       "description": "Short explanation of the tone",
-      "example_message": "Single preview message ending with {self.config.orchestrator.optout_text}"
+      "example_message": "Message 1 preview...",
+      "example_messages": [
+        "Message 1 (Announcement) preview...",
+        "Message 2 (Follow-up) preview...",
+        "Message 3 (Final Call) preview..."
+      ]
     }}
   ]
 }}"""
@@ -328,14 +347,15 @@ Respond in strict JSON:
                     for t in new_tones:
                         name = (t.get("name") or "").strip()
                         desc = (t.get("description") or "").strip()
-                        ex = t.get("example_message") or (t.get("example_messages")[0] if t.get("example_messages") else "")
                         if name and name.lower() not in seen_names:
                             seen_names.add(name.lower())
+                            msgs = build_multi_examples(t, name)
                             cleaned_tones.append({
                                 "id": t.get("id") or f"tone_{len(cleaned_tones)+1}",
                                 "name": name,
                                 "description": desc or f"Campaign messaging tone: {name}",
-                                "example_message": ex or f"Update from {business_name}: {campaign_goal}. {self.config.orchestrator.optout_text}"
+                                "example_message": msgs[0],
+                                "example_messages": msgs
                             })
                             if len(cleaned_tones) >= min_candidates:
                                 break
@@ -343,18 +363,31 @@ Respond in strict JSON:
         # Fallback complement if still under min_candidates
         if len(cleaned_tones) < min_candidates:
             fallback_options = [
-                ("warm_friendly", "✨ Warm & Friendly", "Engaging, conversational tone focused on customer connection."),
-                ("clear_direct", "🎯 Clear & Direct", "Concise and action-driven message with clear next steps."),
-                ("formal_admin", "🏛️ Formal & Professional", "Professional, structured communication adhering to official policy standards.")
+                ("warm_friendly", "✨ Warm & Friendly", "Engaging, conversational tone focused on customer connection.", [
+                    f"Hello {{{{customer_name}}}}, we hope this message finds you well! {business_name} wanted to let you know about {campaign_goal}. {self.config.orchestrator.optout_text}",
+                    f"Hi {{{{customer_name}}}}, just a gentle follow-up from {business_name} regarding {campaign_goal}. We are here to help if you have questions! {self.config.orchestrator.optout_text}",
+                    f"Hello {{{{customer_name}}}}, final friendly reminder from {business_name} regarding {campaign_goal}. Please let us know if we can assist you. {self.config.orchestrator.optout_text}"
+                ]),
+                ("clear_direct", "🎯 Clear & Direct", "Concise and action-driven message with clear next steps.", [
+                    f"Notice from {business_name}: Please be informed regarding {campaign_goal}. Visit {{{{link}}}} to complete your action. {self.config.orchestrator.optout_text}",
+                    f"Reminder from {business_name}: This is a follow-up regarding {campaign_goal}. Timely action is required. {self.config.orchestrator.optout_text}",
+                    f"Final Notice from {business_name}: Urgent action required regarding {campaign_goal}. Immediate payment/response needed. {self.config.orchestrator.optout_text}"
+                ]),
+                ("formal_admin", "🏛️ Formal & Professional", "Professional, structured communication adhering to official policy standards.", [
+                    f"Dear Parent/Guardian, this is an official notification from {business_name} concerning {campaign_goal}. {self.config.orchestrator.optout_text}",
+                    f"Dear Parent/Guardian, this is a formal follow-up from {business_name} regarding {campaign_goal}. {self.config.orchestrator.optout_text}",
+                    f"Dear Parent/Guardian, final administrative reminder from {business_name}: {campaign_goal} must be settled immediately to avoid restriction. {self.config.orchestrator.optout_text}"
+                ])
             ]
-            for f_id, f_name, f_desc in fallback_options:
+            for f_id, f_name, f_desc, f_msgs in fallback_options:
                 if f_name.lower() not in seen_names:
                     seen_names.add(f_name.lower())
                     cleaned_tones.append({
                         "id": f_id,
                         "name": f_name,
                         "description": f_desc,
-                        "example_message": f"Hello {{{{customer_name}}}}, important update from {business_name} regarding {campaign_goal}.\n\n{self.config.orchestrator.optout_text}"
+                        "example_message": f_msgs[0],
+                        "example_messages": f_msgs
                     })
                 if len(cleaned_tones) >= min_candidates:
                     break

@@ -226,6 +226,17 @@
         <div id="templatesList" class="space-y-4 pt-2"></div>
       </div>
 
+      <!-- Approved Campaign Templates Collapsed Banner -->
+      <div id="approvedTemplatesBanner" class="hidden bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3 flex items-center justify-between text-xs shrink-0 shadow-xs">
+        <div class="flex items-center gap-2 text-emerald-700 dark:text-emerald-300 font-semibold">
+          <span>✅</span>
+          <span>Campaign Templates Approved & Locked</span>
+        </div>
+        <button type="button" onclick="toggleTemplatesWindow()" class="px-3 py-1 bg-[var(--card)] border border-[var(--border)] rounded-md hover:bg-[var(--content)] text-xs font-semibold shadow-xs">
+          👁️ View / Review Templates
+        </button>
+      </div>
+
       <!-- Send to Aggregator Card (Step 5: Final send step) -->
       <div id="sendAggregatorContainer" class="hidden bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 shadow-lg space-y-4 shrink-0 max-h-[32rem] overflow-y-auto">
       </div>
@@ -685,26 +696,34 @@
           toneMessageIndices[t.id] = 0;
         }
 
-        // Determine list of messages for this tone
-        const msgs = (t.example_messages && t.example_messages.length > 0)
+        // Determine list of messages for this tone with fallback to 3-part sequence
+        let msgs = (t.example_messages && t.example_messages.length > 0)
           ? t.example_messages
           : [t.example_message];
+        if (msgs.length <= 1 && msgs[0]) {
+          msgs = [
+            msgs[0],
+            `Follow-up reminder: Just following up on our previous notice. Please let us know if we can assist you. Reply STOP to unsubscribe.`,
+            `Final notice: Timely action is required regarding this notice. Reply STOP to unsubscribe.`
+          ];
+          t.example_messages = msgs;
+        }
 
         const curIdx = toneMessageIndices[t.id] % msgs.length;
         const curMsg = msgs[curIdx];
         const hasMultiple = msgs.length > 1;
 
         const navControls = hasMultiple ? `
-          <div class="flex items-center justify-between text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1 px-1">
-            <span class="flex items-center gap-1 font-mono text-blue-600 dark:text-blue-400">
-              <span>Message ${curIdx + 1} of ${msgs.length}</span>
+          <div class="flex items-center justify-between text-xs font-semibold mb-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-md border border-slate-200 dark:border-slate-700">
+            <span class="font-mono text-blue-600 dark:text-blue-400 font-bold flex items-center gap-1 pl-1 text-[11px]">
+              <span id="tone-counter-${t.id}">Message ${curIdx + 1} of ${msgs.length}</span>
             </span>
-            <div class="flex items-center gap-1.5" onclick="event.stopPropagation();">
-              <button onclick="changeToneMessage('${t.id}', -1)" class="w-6 h-6 rounded-md bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-100 flex items-center justify-center font-bold text-xs shadow-2xs transition-all" title="Previous message">
-                ‹
+            <div class="flex items-center gap-1" onclick="event.stopPropagation();">
+              <button type="button" onclick="changeToneMessage('${t.id}', -1)" class="px-2 py-0.5 rounded bg-white hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-600 text-[11px] font-bold transition-all shadow-2xs flex items-center gap-1 cursor-pointer" title="Previous message in sequence">
+                ◀ Prev
               </button>
-              <button onclick="changeToneMessage('${t.id}', 1)" class="w-6 h-6 rounded-md bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-100 flex items-center justify-center font-bold text-xs shadow-2xs transition-all" title="Next message">
-                ›
+              <button type="button" onclick="changeToneMessage('${t.id}', 1)" class="px-2 py-0.5 rounded bg-white hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-600 text-[11px] font-bold transition-all shadow-2xs flex items-center gap-1 cursor-pointer" title="Next message in sequence">
+                Next ▶
               </button>
             </div>
           </div>
@@ -723,7 +742,7 @@
               <div class="mt-2.5">
                 ${navControls}
                 <div id="tone-msg-${t.id}" class="p-2.5 bg-slate-50 dark:bg-slate-800 rounded-lg text-xs font-normal text-slate-950 dark:text-slate-100 border border-slate-300 dark:border-slate-700 leading-relaxed min-h-[90px] whitespace-pre-wrap">
-                  "${curMsg}"
+"${curMsg}"
                 </div>
               </div>
             </div>
@@ -748,8 +767,14 @@
       cur = (cur + delta + msgs.length) % msgs.length;
       toneMessageIndices[toneId] = cur;
 
-      // Re-render proposals while maintaining current scroll/state
-      renderToneProposal(activeToneProposals);
+      const msgEl = document.getElementById(`tone-msg-${toneId}`);
+      const counterEl = document.getElementById(`tone-counter-${toneId}`);
+      if (msgEl && counterEl) {
+        msgEl.textContent = `"${msgs[cur]}"`;
+        counterEl.textContent = `Message ${cur + 1} of ${msgs.length}`;
+      } else {
+        renderToneProposal(activeToneProposals);
+      }
     }
 
     // Select Tone & SSE Stream
@@ -805,6 +830,9 @@
     // Render Templates Carousel with Word Counts, Previews & Controls
     function renderTemplates(templates, schedule) {
       isCampaignApproved = false;
+      const approvedBanner = document.getElementById('approvedTemplatesBanner');
+      if (approvedBanner) approvedBanner.classList.add('hidden');
+
       const approveBtn = document.getElementById('approveCampaignBtn');
       if (approveBtn) {
         approveBtn.disabled = false;
@@ -819,6 +847,16 @@
       currentTemplatesStore = templates || [];
       currentTemplateSlideIndex = 0;
       updateTemplateSlide();
+    }
+
+    function toggleTemplatesWindow() {
+      const tmpl = document.getElementById('templatesContainer');
+      if (tmpl) {
+        tmpl.classList.toggle('hidden');
+        if (!tmpl.classList.contains('hidden')) {
+          tmpl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }
     }
 
     function updateTemplateSlide() {
@@ -1063,6 +1101,16 @@
           approveBtn.innerHTML = `<span>✅</span> Approved`;
           approveBtn.classList.remove('bg-emerald-600', 'hover:bg-emerald-700');
           approveBtn.classList.add('bg-slate-500', 'opacity-70', 'cursor-not-allowed');
+        }
+
+        // Collapse templates container so the chatbot and dispatch card are open & visible
+        const tmplContainer = document.getElementById('templatesContainer');
+        if (tmplContainer) {
+          tmplContainer.classList.add('hidden');
+        }
+        const approvedBanner = document.getElementById('approvedTemplatesBanner');
+        if (approvedBanner) {
+          approvedBanner.classList.remove('hidden');
         }
 
         // Post final message in the chat (only once)
@@ -1310,8 +1358,12 @@
         const data = await res.json();
         if (data.result && data.result.success) {
           showContactPreview(data.result);
-          appendChatMessage('assistant', `✅ **Loaded Mock Phone Test Contacts:** Added 2 test recipient numbers (\`+15551234561\` and \`+15551234562\`). Ready for aggregator dispatch!`);
-          await renderSendAggregatorCard(currentSessionId);
+          if (isCampaignApproved) {
+            appendChatMessage('assistant', `✅ **Loaded Mock Phone Test Contacts:** Added 2 test recipient numbers (\`+15551234561\` and \`+15551234562\`). Running pre-flight verification report...`);
+            await renderSendAggregatorCard(currentSessionId);
+          } else {
+            appendChatMessage('assistant', `✅ **Loaded Mock Phone Test Contacts:** Added 2 test recipient numbers (\`+15551234561\` and \`+15551234562\`). They will be verified and dispatched once you approve your campaign!`);
+          }
         } else {
           alert(data.result?.error || 'Failed to load test contacts');
         }
@@ -1342,6 +1394,28 @@
         const data = await res.json();
         if (!res.ok) {
           const errMsg = data.detail || data.error || 'Failed';
+          if (errMsg.includes('not approved') || errMsg.includes('not found') || errMsg.includes('must be approved')) {
+            container.innerHTML = `
+              <div class="p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl space-y-2">
+                <div class="flex items-center gap-2 text-xs font-bold text-blue-600 dark:text-blue-400">
+                  <span>ℹ️</span> Campaign Approval Required Before Dispatch
+                </div>
+                <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                  Recipient contacts are staged and ready. Please review and click <strong>Approve Campaign</strong> on your generated templates above to run pre-flight verification and dispatch to the aggregator.
+                </p>
+              </div>
+            `;
+            renderPipelineEvent({
+              step_id: 'dispatch_preflight',
+              step_order: 5,
+              step_title: 'Step 5: Send to Aggregator',
+              step_icon: '🚀',
+              status: 'waiting_for_input',
+              description: 'Awaiting campaign approval above before running pre-flight verification.',
+              details: {}
+            });
+            return;
+          }
           if (errMsg.includes('No contacts found')) {
             container.innerHTML = `
               <div class="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-3">
