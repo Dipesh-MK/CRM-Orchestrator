@@ -115,9 +115,13 @@
 
     <!-- Right Controls: Workspace, Theme Toggle, Tabs -->
     <div class="flex items-center gap-4">
-      <!-- 3 Main Tabs Only -->
+      <!-- Main Tabs -->
       <nav class="flex p-1 bg-[var(--content)] rounded-lg border border-[var(--border)] text-xs font-medium">
         <button id="tabChatBtn" onclick="switchTab('chat')" class="px-4 py-1.5 rounded-md bg-[var(--card)] shadow-xs text-[var(--foreground)] transition-all">💬 Chat</button>
+        <button id="tabPhonesBtn" onclick="switchTab('phones')" class="px-4 py-1.5 rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-all flex items-center gap-1.5">
+          <span>📱 Phones & Aggregators</span>
+          <span id="phoneCountBadge" class="hidden px-1.5 py-0.2 text-[10px] bg-blue-500 text-white rounded-full">0</span>
+        </button>
         <button id="tabPipelineBtn" onclick="switchTab('pipeline')" class="px-4 py-1.5 rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-all flex items-center gap-1.5">
           <span>⚡ Pipeline</span>
           <span id="pipelineIndicator" class="hidden w-2 h-2 rounded-full bg-blue-500"></span>
@@ -250,6 +254,89 @@
           <span>➔</span>
         </button>
       </form>
+    </section>
+
+    <!-- ================= TAB: PHONES & AGGREGATORS (Section 5) ================= -->
+    <section id="tabPhones" class="hidden h-full flex flex-col p-6 max-w-6xl mx-auto gap-4 overflow-hidden">
+      <!-- Top header bar -->
+      <div class="flex items-center justify-between border-b border-[var(--border)] pb-3 shrink-0">
+        <div>
+          <h2 class="text-base font-bold flex items-center gap-2">
+            <span>📱</span> Phone Numbers & Aggregator Routing
+          </h2>
+          <p class="text-xs text-[var(--muted-foreground)]">
+            Configure each phone's aggregator (Mock, Twilio, Infobip) with dynamic discovery & live handshake
+          </p>
+        </div>
+        <button onclick="openPhoneConfigModal()" class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-all">
+          <span>➕</span> Add Phone Number
+        </button>
+      </div>
+
+      <div class="flex-1 flex gap-4 overflow-hidden min-h-0">
+        <!-- Left: Phone Slots List -->
+        <div class="w-80 flex flex-col bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 shadow-sm shrink-0 overflow-hidden">
+          <div class="flex items-center justify-between mb-3 shrink-0">
+            <span class="text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)]">Phone Slots</span>
+            <span id="phoneSlotsCounter" class="text-[11px] font-mono text-[var(--muted-foreground)]">0 configured</span>
+          </div>
+
+          <!-- Empty State (Section 5 requirement: completely empty by default) -->
+          <div id="emptyPhoneState" class="flex-1 flex flex-col items-center justify-center p-6 text-center border-2 border-dashed border-[var(--border)] rounded-xl space-y-3">
+            <div class="text-3xl">📭</div>
+            <div class="text-xs font-bold text-[var(--foreground)]">No Phone Numbers Configured</div>
+            <p class="text-[11px] text-[var(--muted-foreground)] leading-relaxed">
+              No numbers are configured yet. Click below to add a phone number and pair it with an aggregator.
+            </p>
+            <button onclick="openPhoneConfigModal()" class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium shadow-xs">
+              Configure First Phone
+            </button>
+          </div>
+
+          <!-- Configured Phones List -->
+          <div id="phoneSlotsList" class="hidden flex-1 overflow-y-auto space-y-2 pr-1">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <!-- Right: Two-Way Conversation View -->
+        <div class="flex-1 flex flex-col bg-[var(--card)] border border-[var(--border)] rounded-2xl shadow-sm overflow-hidden min-h-0">
+          <!-- Conversation Header -->
+          <div id="conversationHeader" class="p-3.5 border-b border-[var(--border)] flex items-center justify-between bg-[var(--content)] shrink-0">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-blue-600/10 text-blue-600 flex items-center justify-center font-bold text-sm">
+                💬
+              </div>
+              <div>
+                <h3 id="activePhoneTitle" class="text-xs font-bold">Select a phone number</h3>
+                <p id="activePhoneProviderInfo" class="text-[11px] text-[var(--muted-foreground)]">Two-way conversation history & real-time messaging</p>
+              </div>
+            </div>
+            <div id="activePhoneActions" class="hidden flex items-center gap-2">
+              <button onclick="openEditActivePhone()" class="px-2.5 py-1 rounded-lg border border-[var(--border)] hover:bg-[var(--card)] text-xs font-medium flex items-center gap-1 shadow-2xs" title="Configure aggregator">
+                <span>⚙️</span> Settings
+              </button>
+            </div>
+          </div>
+
+          <!-- Messages Stream -->
+          <div id="conversationMessages" class="flex-1 p-4 overflow-y-auto space-y-2.5 bg-[var(--background)]">
+            <div class="h-full flex items-center justify-center text-xs text-[var(--muted-foreground)]">
+              Select or configure a phone number to view messages.
+            </div>
+          </div>
+
+          <!-- SMS Composer -->
+          <form id="conversationComposerForm" onsubmit="handleSendPhoneSMS(event)" class="p-3 border-t border-[var(--border)] bg-[var(--card)] flex gap-2 items-center shrink-0">
+            <input type="text" id="composerRecipientInput" placeholder="Recipient (+1...)" class="w-40 bg-[var(--background)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs font-mono">
+            <input type="text" id="composerTextInput" placeholder="Type SMS message..." class="flex-1 bg-[var(--background)] border border-[var(--border)] rounded-xl px-4 py-2 text-xs focus:outline-hidden focus:ring-2 focus:ring-blue-500">
+            <button type="submit" id="composerSendBtn" class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-all">
+              <span>Send</span>
+              <span>➔</span>
+            </button>
+          </form>
+        </div>
+      </div>
     </section>
 
     <!-- ================= TAB 2: PIPELINE ================= -->
@@ -416,6 +503,65 @@
           Submit Rejection & Revise
         </button>
       </div>
+  <!-- Phone Configuration Modal (Section 5: Gear Icon Prompt) -->
+  <div id="phoneConfigModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+    <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-6 max-w-xl w-full shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
+      <div class="flex items-center justify-between border-b border-[var(--border)] pb-3">
+        <h3 class="font-bold text-sm flex items-center gap-2">
+          <span>⚙️</span> <span id="phoneModalTitle">Configure Phone & Aggregator</span>
+        </h3>
+        <button onclick="closePhoneConfigModal()" class="text-gray-400 hover:text-gray-600 text-lg">✕</button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto space-y-3.5 pr-1 text-xs">
+        <!-- Phone Number input -->
+        <div>
+          <label class="block font-bold mb-1">Phone Number (E.164 format):</label>
+          <input type="text" id="configPhoneInput" placeholder="+15551234561" class="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl p-2.5 font-mono text-xs">
+        </div>
+
+        <!-- Aggregator Selection -->
+        <div>
+          <label class="block font-bold mb-1">Select Aggregator Provider:</label>
+          <select id="configProviderSelect" onchange="onProviderSelectChanged()" class="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl p-2.5 text-xs">
+            <option value="mock">Mock Aggregator (Pluggable / Dynamic Discovery)</option>
+            <option value="twilio">Twilio (Live Account SID / Auth Token validation)</option>
+            <option value="infobip">Infobip (Live API Key / Account Balance verification)</option>
+          </select>
+        </div>
+
+        <!-- Endpoint URL & Handshake Trigger -->
+        <div>
+          <label class="block font-bold mb-1">Provider Endpoint Base URL:</label>
+          <div class="flex gap-2">
+            <input type="text" id="configEndpointInput" placeholder="http://localhost:3000" class="flex-1 bg-[var(--background)] border border-[var(--border)] rounded-xl p-2.5 text-xs font-mono">
+            <button type="button" onclick="triggerEndpointHandshake()" id="btnHandshake" class="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center gap-1.5 shrink-0 shadow-xs">
+              <span>⚡</span> Handshake & Discover
+            </button>
+          </div>
+          <span class="text-[11px] text-[var(--muted-foreground)] mt-1 block">Initiates handshake against provider to discover capabilities or validate credentials.</span>
+        </div>
+
+        <!-- Handshake Result / Feedback Banner -->
+        <div id="handshakeFeedback" class="hidden p-3 rounded-xl border text-xs"></div>
+
+        <!-- Dynamic Form Area (Rendered dynamically from /capabilities or provider-specific fields) -->
+        <div id="dynamicConfigFieldsContainer" class="space-y-2.5 border-t border-[var(--border)] pt-3">
+          <!-- Injected dynamically -->
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between border-t border-[var(--border)] pt-3">
+        <button type="button" onclick="deleteCurrentPhone()" id="btnDeletePhone" class="hidden text-rose-600 hover:text-rose-700 text-xs font-medium">
+          🗑️ Remove Phone
+        </button>
+        <div class="flex gap-2 ml-auto">
+          <button type="button" onclick="closePhoneConfigModal()" class="px-4 py-2 rounded-xl text-xs border border-[var(--border)] hover:bg-[var(--content)]">Cancel</button>
+          <button type="button" onclick="saveCurrentPhoneConfig()" id="btnSavePhoneConfig" class="px-4 py-2 rounded-xl text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-xs flex items-center gap-1.5">
+            <span>💾</span> Save & Open Conversation
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -437,12 +583,16 @@
     // Tab Switching
     function switchTab(tab) {
       document.getElementById('tabChat').classList.toggle('hidden', tab !== 'chat');
+      document.getElementById('tabPhones').classList.toggle('hidden', tab !== 'phones');
       document.getElementById('tabPipeline').classList.toggle('hidden', tab !== 'pipeline');
       document.getElementById('tabLogs').classList.toggle('hidden', tab !== 'logs');
 
       document.getElementById('tabChatBtn').className = tab === 'chat'
         ? "px-4 py-1.5 rounded-md bg-[var(--card)] shadow-xs text-[var(--foreground)] transition-all font-semibold"
         : "px-4 py-1.5 rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-all";
+      document.getElementById('tabPhonesBtn').className = tab === 'phones'
+        ? "px-4 py-1.5 rounded-md bg-[var(--card)] shadow-xs text-[var(--foreground)] transition-all font-semibold flex items-center gap-1.5"
+        : "px-4 py-1.5 rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-all flex items-center gap-1.5";
       document.getElementById('tabPipelineBtn').className = tab === 'pipeline'
         ? "px-4 py-1.5 rounded-md bg-[var(--card)] shadow-xs text-[var(--foreground)] transition-all font-semibold flex items-center gap-1.5"
         : "px-4 py-1.5 rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-all flex items-center gap-1.5";
@@ -451,6 +601,443 @@
         : "px-4 py-1.5 rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-all";
 
       if (tab === 'logs') loadLogs();
+      if (tab === 'phones') loadPhoneConfigurations();
+    }
+
+    // =========================================================================
+    // Phone Configuration & Dynamic Handshake Discovery (Section 2 & 5)
+    // =========================================================================
+    let configuredPhonesList = [];
+    let currentActivePhone = null;
+    let currentHandshakeSchema = [];
+    let currentEditingPhone = null;
+
+    async function loadPhoneConfigurations() {
+      try {
+        const res = await fetch('/api/phones');
+        const phones = await res.json();
+        configuredPhonesList = phones || [];
+
+        const badge = document.getElementById('phoneCountBadge');
+        const counter = document.getElementById('phoneSlotsCounter');
+        const emptyState = document.getElementById('emptyPhoneState');
+        const slotsList = document.getElementById('phoneSlotsList');
+
+        badge.textContent = configuredPhonesList.length;
+        badge.classList.toggle('hidden', configuredPhonesList.length === 0);
+        counter.textContent = `${configuredPhonesList.length} configured`;
+
+        if (configuredPhonesList.length === 0) {
+          emptyState.classList.remove('hidden');
+          slotsList.classList.add('hidden');
+          currentActivePhone = null;
+          document.getElementById('activePhoneTitle').textContent = 'No phone configured';
+          document.getElementById('activePhoneProviderInfo').textContent = 'Configure a phone number to start messaging';
+          document.getElementById('activePhoneActions').classList.add('hidden');
+          document.getElementById('conversationMessages').innerHTML = '<div class="h-full flex items-center justify-center text-xs text-[var(--muted-foreground)]">No phone numbers configured. Click "Add Phone Number" to begin.</div>';
+          return;
+        }
+
+        emptyState.classList.add('hidden');
+        slotsList.classList.remove('hidden');
+        slotsList.innerHTML = '';
+
+        configuredPhonesList.forEach(p => {
+          const isSelected = p.phone === currentActivePhone;
+          const isVerified = p.status === 'verified';
+          const providerLabel = p.provider_id === 'twilio' ? 'Twilio' : (p.provider_id === 'infobip' ? 'Infobip' : 'Mock Aggregator');
+          const providerBadgeColor = p.provider_id === 'twilio' ? 'bg-red-500/10 text-red-600 border-red-500/20' : (p.provider_id === 'infobip' ? 'bg-orange-500/10 text-orange-600 border-orange-500/20' : 'bg-blue-500/10 text-blue-600 border-blue-500/20');
+          const statusBadge = isVerified
+            ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">Verified ✓</span>'
+            : '<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-600 border border-amber-500/20">Unverified ⚠️</span>';
+
+          const slotHTML = `
+            <div onclick="selectPhone('${p.phone}')" class="p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
+              isSelected ? 'bg-blue-500/10 border-blue-500 dark:bg-blue-900/20 shadow-xs' : 'bg-[var(--background)] border-[var(--border)] hover:border-slate-400'
+            }">
+              <div class="space-y-1">
+                <div class="font-bold text-xs font-mono text-[var(--foreground)]">${p.phone}</div>
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <span class="px-2 py-0.5 rounded text-[10px] font-medium border ${providerBadgeColor}">${providerLabel}</span>
+                  ${statusBadge}
+                </div>
+              </div>
+              <button onclick="event.stopPropagation(); openPhoneConfigModal('${p.phone}')" class="p-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--card)] text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] shadow-2xs" title="Configure aggregator">
+                ⚙️
+              </button>
+            </div>
+          `;
+          slotsList.insertAdjacentHTML('beforeend', slotHTML);
+        });
+
+        // Auto-select first phone if none selected
+        if (!currentActivePhone && configuredPhonesList.length > 0) {
+          selectPhone(configuredPhonesList[0].phone);
+        }
+      } catch (e) {
+        console.error('Failed to load phone configurations:', e);
+      }
+    }
+
+    async function selectPhone(phone) {
+      currentActivePhone = phone;
+      const phoneObj = configuredPhonesList.find(p => p.phone === phone);
+      if (!phoneObj) return;
+
+      document.getElementById('activePhoneTitle').textContent = phone;
+      document.getElementById('activePhoneProviderInfo').textContent = `Aggregator: ${phoneObj.provider_id.toUpperCase()} · Status: ${phoneObj.status}`;
+      document.getElementById('activePhoneActions').classList.remove('hidden');
+
+      // Highlight slot in list
+      loadPhoneConfigurations();
+
+      // Fetch messages for this phone
+      const msgContainer = document.getElementById('conversationMessages');
+      msgContainer.innerHTML = '<div class="text-xs text-[var(--muted-foreground)] text-center py-4">Loading messages...</div>';
+
+      try {
+        const res = await fetch(`/api/phones/${encodeURIComponent(phone)}/messages`);
+        const data = await res.json();
+        const msgs = data.messages || [];
+
+        if (msgs.length === 0) {
+          msgContainer.innerHTML = `
+            <div class="h-full flex flex-col items-center justify-center text-xs text-[var(--muted-foreground)] space-y-1">
+              <span>No messages in thread yet.</span>
+              <span class="text-[11px]">Send an outbound SMS below or trigger an inbound simulation.</span>
+            </div>
+          `;
+          return;
+        }
+
+        msgContainer.innerHTML = '';
+        msgs.forEach(m => {
+          const isInbound = m.direction === 'inbound';
+          const bubbleClass = isInbound
+            ? 'bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)] self-start rounded-2xl rounded-tl-none'
+            : 'bg-blue-600 text-white self-end rounded-2xl rounded-tr-none';
+          const time = m.timestamp ? m.timestamp.substring(11, 16) : '';
+
+          msgContainer.innerHTML += `
+            <div class="flex flex-col max-w-[80%] ${isInbound ? 'items-start' : 'items-end ml-auto'}">
+              <div class="px-3.5 py-2 text-xs shadow-xs ${bubbleClass}">
+                <div class="whitespace-pre-wrap">${m.body}</div>
+              </div>
+              <div class="flex items-center gap-1.5 text-[10px] text-[var(--muted-foreground)] mt-0.5 px-1">
+                <span>${isInbound ? '📥 Inbound' : '📤 Outbound'}</span>
+                <span>·</span>
+                <span>${time}</span>
+                ${m.status ? `<span>·</span><span class="uppercase font-mono">${m.status}</span>` : ''}
+              </div>
+            </div>
+          `;
+        });
+        msgContainer.scrollTop = msgContainer.scrollHeight;
+      } catch (err) {
+        msgContainer.innerHTML = `<div class="text-xs text-rose-600 p-3">Failed to load conversation: ${err.message}</div>`;
+      }
+    }
+
+    function openEditActivePhone() {
+      if (currentActivePhone) {
+        openPhoneConfigModal(currentActivePhone);
+      }
+    }
+
+    function openPhoneConfigModal(phoneToEdit = null) {
+      currentEditingPhone = phoneToEdit;
+      const modal = document.getElementById('phoneConfigModal');
+      const title = document.getElementById('phoneModalTitle');
+      const phoneInput = document.getElementById('configPhoneInput');
+      const providerSelect = document.getElementById('configProviderSelect');
+      const endpointInput = document.getElementById('configEndpointInput');
+      const feedback = document.getElementById('handshakeFeedback');
+      const deleteBtn = document.getElementById('btnDeletePhone');
+
+      feedback.classList.add('hidden');
+
+      if (phoneToEdit) {
+        title.textContent = `Configure Phone (${phoneToEdit})`;
+        const obj = configuredPhonesList.find(p => p.phone === phoneToEdit);
+        phoneInput.value = phoneToEdit;
+        phoneInput.disabled = true;
+        deleteBtn.classList.remove('hidden');
+
+        if (obj) {
+          providerSelect.value = obj.provider_id || 'mock';
+          endpointInput.value = obj.endpoint_url || '';
+          renderProviderFields(obj.provider_id, obj.config || {});
+        }
+      } else {
+        title.textContent = 'Add & Configure New Phone';
+        phoneInput.value = '';
+        phoneInput.disabled = false;
+        deleteBtn.classList.add('hidden');
+        providerSelect.value = 'mock';
+        endpointInput.value = 'http://localhost:3000';
+        renderProviderFields('mock', {});
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    function closePhoneConfigModal() {
+      document.getElementById('phoneConfigModal').classList.add('hidden');
+    }
+
+    function onProviderSelectChanged() {
+      const prov = document.getElementById('configProviderSelect').value;
+      const endpointInput = document.getElementById('configEndpointInput');
+      if (prov === 'mock') {
+        endpointInput.placeholder = 'http://localhost:3000';
+        if (!endpointInput.value || endpointInput.value.includes('twilio') || endpointInput.value.includes('infobip')) {
+          endpointInput.value = 'http://localhost:3000';
+        }
+      } else if (prov === 'twilio') {
+        endpointInput.placeholder = 'https://api.twilio.com';
+        endpointInput.value = 'https://api.twilio.com';
+      } else if (prov === 'infobip') {
+        endpointInput.placeholder = 'https://xxxxx.api.infobip.com';
+        endpointInput.value = '';
+      }
+      renderProviderFields(prov, {});
+    }
+
+    function renderProviderFields(providerId, existingConfig = {}) {
+      const container = document.getElementById('dynamicConfigFieldsContainer');
+      container.innerHTML = '';
+
+      if (providerId === 'twilio') {
+        container.innerHTML = `
+          <div class="space-y-2">
+            <div class="font-bold text-[11px] uppercase tracking-wider text-[var(--muted-foreground)]">Twilio Account Credentials</div>
+            <div>
+              <label class="block font-medium mb-1">Account SID <span class="text-rose-500">*</span>:</label>
+              <input type="text" id="field_account_sid" value="${existingConfig.account_sid || ''}" placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" class="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl p-2.5 font-mono text-xs">
+            </div>
+            <div>
+              <label class="block font-medium mb-1">Auth Token <span class="text-rose-500">*</span>:</label>
+              <input type="password" id="field_auth_token" value="${existingConfig.auth_token || ''}" placeholder="••••••••••••••••••••••••••••••••" class="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl p-2.5 font-mono text-xs">
+            </div>
+          </div>
+        `;
+      } else if (providerId === 'infobip') {
+        container.innerHTML = `
+          <div class="space-y-2">
+            <div class="font-bold text-[11px] uppercase tracking-wider text-[var(--muted-foreground)]">Infobip API Credentials</div>
+            <div>
+              <label class="block font-medium mb-1">API Key <span class="text-rose-500">*</span>:</label>
+              <input type="password" id="field_api_key" value="${existingConfig.api_key || ''}" placeholder="App xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" class="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl p-2.5 font-mono text-xs">
+            </div>
+            <div>
+              <label class="block font-medium mb-1">Base URL <span class="text-rose-500">*</span>:</label>
+              <input type="text" id="field_base_url" value="${existingConfig.base_url || document.getElementById('configEndpointInput').value || ''}" placeholder="https://xxxxx.api.infobip.com" class="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl p-2.5 font-mono text-xs">
+            </div>
+          </div>
+        `;
+      } else {
+        // Mock Aggregator: render discovered schema if available, else standard mock fields
+        if (currentHandshakeSchema && currentHandshakeSchema.length > 0) {
+          container.innerHTML = `<div class="font-bold text-[11px] uppercase tracking-wider text-[var(--muted-foreground)] mb-2">Discovered Dynamic Capabilities Form</div>`;
+          currentHandshakeSchema.forEach(f => {
+            const val = existingConfig[f.key] !== undefined ? existingConfig[f.key] : (f.default || '');
+            const inputType = f.secret ? 'password' : (f.type === 'number' ? 'number' : 'text');
+            container.innerHTML += `
+              <div>
+                <label class="block font-medium mb-1">${f.label} ${f.required ? '<span class="text-rose-500">*</span>' : ''}:</label>
+                <input type="${inputType}" id="field_${f.key}" value="${val}" class="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl p-2.5 text-xs font-mono">
+              </div>
+            `;
+          });
+        } else {
+          container.innerHTML = `
+            <div class="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl space-y-1.5">
+              <div class="font-bold text-blue-600 dark:text-blue-400">⚡ Dynamic Capability Discovery</div>
+              <p class="text-[11px] text-[var(--muted-foreground)] leading-relaxed">
+                Click <strong>Handshake & Discover</strong> above to query <code>${document.getElementById('configEndpointInput').value || 'endpoint'}/capabilities</code>. The form will render dynamically based on what this specific aggregator requires.
+              </p>
+            </div>
+          `;
+        }
+      }
+    }
+
+    async function triggerEndpointHandshake() {
+      const providerId = document.getElementById('configProviderSelect').value;
+      const endpoint = document.getElementById('configEndpointInput').value.trim();
+      const btn = document.getElementById('btnHandshake');
+      const feedback = document.getElementById('handshakeFeedback');
+
+      btn.disabled = true;
+      btn.innerHTML = '<span>⏳</span> Probing...';
+      feedback.className = 'p-3 rounded-xl border text-xs bg-[var(--content)] border-[var(--border)]';
+      feedback.textContent = `Initiating live handshake with ${endpoint || 'provider'}...`;
+      feedback.classList.remove('hidden');
+
+      // Gather partial config from current fields
+      const partial = {};
+      document.querySelectorAll('#dynamicConfigFieldsContainer input').forEach(inp => {
+        const k = inp.id.replace('field_', '');
+        if (k) partial[k] = inp.value;
+      });
+
+      try {
+        const res = await fetch('/api/phones/handshake', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            provider_id: providerId,
+            endpoint_url: endpoint,
+            partial_config: partial
+          })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          feedback.className = 'p-3 rounded-xl border text-xs bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-medium space-y-1';
+          feedback.innerHTML = `
+            <div class="flex items-center gap-1.5 font-bold">
+              <span>✅</span> Handshake Succeeded (Status: VERIFIED)
+            </div>
+            <div>${data.message}</div>
+          `;
+          if (data.dynamic_form_schema && data.dynamic_form_schema.length > 0) {
+            currentHandshakeSchema = data.dynamic_form_schema;
+            renderProviderFields(providerId, partial);
+          }
+        } else {
+          // Graceful fallback per Section 2
+          feedback.className = 'p-3 rounded-xl border text-xs bg-amber-500/10 border-amber-500/20 text-amber-800 dark:text-amber-300 font-medium space-y-1';
+          feedback.innerHTML = `
+            <div class="flex items-center gap-1.5 font-bold">
+              <span>⚠️</span> Handshake Incomplete / Unverified
+            </div>
+            <div>${data.message}</div>
+            <div class="text-[11px] font-normal mt-1 opacity-90">You can still save this configuration as <strong>unverified</strong> (for dummy or local endpoints) and retry handshake later.</div>
+          `;
+          if (data.dynamic_form_schema && data.dynamic_form_schema.length > 0) {
+            currentHandshakeSchema = data.dynamic_form_schema;
+            renderProviderFields(providerId, partial);
+          }
+        }
+      } catch (e) {
+        feedback.className = 'p-3 rounded-xl border text-xs bg-amber-500/10 border-amber-500/20 text-amber-800 dark:text-amber-300';
+        feedback.innerHTML = `<div>⚠️ Connection failure: ${e.message}. Fallback manual form enabled.</div>`;
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span>⚡</span> Handshake & Discover';
+      }
+    }
+
+    async function saveCurrentPhoneConfig() {
+      const phoneInput = document.getElementById('configPhoneInput');
+      const phone = phoneInput.value.trim();
+      const providerId = document.getElementById('configProviderSelect').value;
+      const endpoint = document.getElementById('configEndpointInput').value.trim();
+
+      if (!phone.startsWith('+') || phone.length < 8) {
+        alert('Please enter a valid E.164 phone number starting with + (e.g. +15551234561).');
+        return;
+      }
+
+      // Gather all form fields
+      const config = {};
+      document.querySelectorAll('#dynamicConfigFieldsContainer input').forEach(inp => {
+        const k = inp.id.replace('field_', '');
+        if (k) config[k] = inp.value;
+      });
+      if (endpoint) config['endpoint_url'] = endpoint;
+
+      const feedback = document.getElementById('handshakeFeedback');
+      const isVerified = feedback && feedback.textContent.includes('VERIFIED');
+
+      try {
+        const res = await fetch('/api/phones/configure', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phone: phone,
+            provider_id: providerId,
+            endpoint_url: endpoint,
+            config: config,
+            status: isVerified ? 'verified' : 'unverified'
+          })
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+          closePhoneConfigModal();
+          await loadPhoneConfigurations();
+          // Requirement Section 5: automatically open the number's messaging interface upon save!
+          selectPhone(phone);
+        } else {
+          alert('Configuration error: ' + (data.detail || data.error || 'Server error'));
+        }
+      } catch (err) {
+        alert('Failed to save phone configuration: ' + err.message);
+      }
+    }
+
+    async function deleteCurrentPhone() {
+      if (!currentEditingPhone) return;
+      if (!confirm(`Are you sure you want to remove ${currentEditingPhone}?`)) return;
+
+      try {
+        const res = await fetch(`/api/phones/${encodeURIComponent(currentEditingPhone)}`, { method: 'DELETE' });
+        if (res.ok) {
+          closePhoneConfigModal();
+          currentActivePhone = null;
+          loadPhoneConfigurations();
+        } else {
+          alert('Delete failed');
+        }
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    }
+
+    async function handleSendPhoneSMS(e) {
+      e.preventDefault();
+      if (!currentActivePhone) {
+        alert('Please select or configure a phone number first.');
+        return;
+      }
+      const toInput = document.getElementById('composerRecipientInput');
+      const textInput = document.getElementById('composerTextInput');
+      const sendBtn = document.getElementById('composerSendBtn');
+
+      const to = toInput.value.trim();
+      const body = textInput.value.trim();
+
+      if (!to || !body) {
+        alert('Please enter both recipient number (+1...) and message body.');
+        return;
+      }
+
+      sendBtn.disabled = true;
+      sendBtn.innerHTML = '<span>Sending...</span>';
+
+      try {
+        const res = await fetch(`/api/phones/${encodeURIComponent(currentActivePhone)}/send`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ to_phone: to, body: body })
+        });
+        const data = await res.json();
+        if (res.ok && data.status === 'success') {
+          textInput.value = '';
+          // Refresh conversation
+          selectPhone(currentActivePhone);
+        } else {
+          const err = data.result?.error_reason || data.detail || 'Send failed';
+          alert('SMS send failed: ' + err);
+        }
+      } catch (err) {
+        alert('Send request error: ' + err.message);
+      } finally {
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = '<span>Send</span><span>➔</span>';
+      }
     }
 
     // Health Check on startup

@@ -11,6 +11,8 @@ from app.core.llm_client import get_llm_client
 from app.api.chat_routes import router as chat_router
 from app.api.logs_routes import router as logs_router
 from app.api.dispatch_routes import router as dispatch_router
+from app.api.phone_routes import router as phone_router
+from app.api.webhook_routes import router as webhook_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -47,6 +49,8 @@ app.add_middleware(
 app.include_router(chat_router)
 app.include_router(logs_router)
 app.include_router(dispatch_router)
+app.include_router(phone_router)
+app.include_router(webhook_router)
 
 # Health endpoint
 @app.get("/api/health")

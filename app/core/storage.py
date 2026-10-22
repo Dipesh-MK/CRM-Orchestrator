@@ -239,6 +239,37 @@ class Storage:
             )
             """)
 
+            # Phone Configurations (Multi-Aggregator per-phone routing)
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS phone_configurations (
+                phone TEXT PRIMARY KEY,
+                provider_id TEXT NOT NULL,
+                endpoint_url TEXT,
+                config_json TEXT,
+                status TEXT DEFAULT 'unverified',
+                capabilities_json TEXT,
+                created_at TEXT,
+                updated_at TEXT
+            )
+            """)
+
+            # Phone Messages (Two-way texting conversation thread and webhook ingestion)
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS phone_messages (
+                id TEXT PRIMARY KEY,
+                phone TEXT NOT NULL,
+                direction TEXT NOT NULL,
+                body TEXT NOT NULL,
+                media_urls_json TEXT,
+                status TEXT DEFAULT 'queued',
+                provider_id TEXT,
+                provider_message_id TEXT,
+                error TEXT,
+                timestamp TEXT,
+                FOREIGN KEY (phone) REFERENCES phone_configurations(phone)
+            )
+            """)
+
             # Ensure columns exist if table was already created
             cursor.execute("PRAGMA table_info(channel_calls)")
             existing_cols = [col[1] for col in cursor.fetchall()]
@@ -713,6 +744,169 @@ class Storage:
         with self.get_connection() as conn:
             rows = conn.cursor().execute(query, params).fetchall()
             return [dict(r) for r in rows]
+
+    # Phone Configurations (Multi-Aggregator Management)
+    def save_phone_configuration(self, phone: str, provider_id: str,
+                                 endpoint_url: Optional[str] = None,
+                                 config: Optional[Dict[str, Any]] = None,
+                                 status: str = "unverified",
+                                 capabilities: Optional[Dict[str, bool]] = None) -> Dict[str, Any]:
+        now = utc_now_iso()
+        cfg_str = json.dumps(config or {})
+        caps_str = json.dumps(capabilities or {"sms": True, "mms": False, "delivery_receipts": True})
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+            INSERT INTO phone_configurations (phone, provider_id, endpoint_url, config_json, status, capabilities_json, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(phone) DO UPDATE SET
+                provider_id=?,
+                endpoint_url=?,
+                config_json=?,
+                status=?,
+                capabilities_json=?,
+                updated_at=?
+            """, (phone, provider_id, endpoint_url, cfg_str, status, caps_str, now, now,
+                  provider_id, endpoint_url, cfg_str, status, caps_str, now))
+            conn.commit()
+        return self.get_phone_configuration(phone) or {}
+
+    def get_phone_configuration(self, phone: str) -> Optional[Dict[str, Any]]:
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            row = cursor.execute("SELECT * FROM phone_configurations WHERE phone = ?", (phone,)).fetchone()
+            if not row:
+                return None
+            d = dict(row)
+            d["config"] = json.loads(d.get("config_json") or "{}")
+            d["capabilities"] = json.loads(d.get("capabilities_json") or "{}")
+            return d
+
+    def list_phone_configurations(self) -> List[Dict[str, Any]]:
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            rows = cursor.execute("SELECT * FROM phone_configurations ORDER BY created_at ASC").fetchall()
+            res = []
+            for r in rows:
+                d = dict(r)
+                d["config"] = json.loads(d.get("config_json") or "{}")
+                d["capabilities"] = json.loads(d.get("capabilities_json") or "{}")
+                res.append(d)
+            return res
+
+    def delete_phone_configuration(self, phone: str) -> bool:
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM phone_messages WHERE phone = ?", (phone,))
+            cursor.execute("DELETE FROM phone_configurations WHERE phone = ?", (phone,))
+            conn.commit()
+            return cursor.rowcount > 0
+
+    # Phone Messages (Two-way texting conversation thread)
+    def save_phone_message(self, msg_id: str, phone: str, direction: str, body: str,
+                           media_urls: Optional[List[str]] = None,
+                           status: str = "queued",
+                           provider_id: Optional[str] = None,
+                           provider_message_id: Optional[str] = None,
+                           error: Optional[str] = None,
+                           timestamp: Optional[str] = None) -> Dict[str, Any]:
+        now = timestamp or utc_now_iso()
+        media_str = json.dumps(media_urls or [])
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+            INSERT INTO phone_messages (id, phone, direction, body, media_urls_json, status, provider_id, provider_message_id, error, timestamp)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                status=COALESCE(?, status),
+                error=COALESCE(?, error),
+                provider_message_id=COALESCE(?, provider_message_id)
+            """, (msg_id, phone, direction, body, media_str, status, provider_id, provider_message_id, error, now,
+                  status, error, provider_message_id))
+            conn.commit()
+        return {
+            "id": msg_id,
+            "phone": phone,
+            "direction": direction,
+            "body": body,
+            "media_urls": media_urls or [],
+            "status": status,
+            "provider_id": provider_id,
+            "provider_message_id": provider_message_id,
+            "error": error,
+            "timestamp": now
+        }
+
+    def get_phone_messages(self, phone: str, limit: int = 100) -> List[Dict[str, Any]]:
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            rows = cursor.execute("""
+            SELECT * FROM phone_messages
+            WHERE phone = ?
+            ORDER BY timestamp ASC
+            LIMIT ?
+            """, (phone, limit)).fetchall()
+            res = []
+            for r in rows:
+                d = dict(r)
+                d["media_urls"] = json.loads(d.get("media_urls_json") or "[]")
+                res.append(d)
+            return res
+
+    def update_phone_message_status(self, provider_message_id: str, status: str, error: Optional[str] = None) -> bool:
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+            UPDATE phone_messages
+            SET status = ?, error = ?
+            WHERE provider_message_id = ?
+            """, (status, error, provider_message_id))
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def find_or_create_contact_for_inbound(self, from_phone: str, to_phone: str, body: str) -> Dict[str, Any]:
+        """
+        Guarantees that every inbound message attaches to a valid contact record in CRM.
+        If unrecognized, automatically creates a new contact rather than dropping.
+        """
+        import uuid
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            row = cursor.execute("SELECT * FROM contacts WHERE phone = ?", (from_phone,)).fetchone()
+            if row:
+                d = dict(row)
+                d["extra"] = json.loads(d.get("extra_json") or "{}")
+                return d
+
+            # Create new contact for unrecognized number
+            contact_id = f"cnt_{uuid.uuid4().hex[:8]}"
+            name = f"Sender {from_phone[-4:] if len(from_phone) >= 4 else from_phone}"
+            extra = {"source": "inbound_sms", "first_message": body[:80], "to_phone": to_phone}
+            now = utc_now_iso()
+            cursor.execute("PRAGMA table_info(contacts)")
+            cols = [col[1] for col in cursor.fetchall()]
+            has_masked = "masked_phone" in cols
+            masked = f"{from_phone[:3]}••••••{from_phone[-4:]}" if len(from_phone) > 6 else from_phone
+            if has_masked:
+                cursor.execute("""
+                INSERT INTO contacts (contact_id, session_id, name, phone, masked_phone, extra_json, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (contact_id, "inbound_webhooks", name, from_phone, masked, json.dumps(extra), now))
+            else:
+                cursor.execute("""
+                INSERT INTO contacts (contact_id, session_id, name, phone, extra_json, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """, (contact_id, "inbound_webhooks", name, from_phone, json.dumps(extra), now))
+            conn.commit()
+            return {
+                "contact_id": contact_id,
+                "session_id": "inbound_webhooks",
+                "name": name,
+                "phone": from_phone,
+                "masked_phone": masked,
+                "extra": extra,
+                "created_at": now
+            }
 
 # Singleton storage getter
 _storage: Optional[Storage] = None

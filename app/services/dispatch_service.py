@@ -11,6 +11,7 @@ from app.core.storage import get_storage
 from app.services.safety_service import get_safety_service
 from app.services.compliance_service import count_words
 from app.adapters.channel_adapter import get_channel_adapter
+from app.providers.registry import get_provider_registry
 
 E164_REGEX = re.compile(r"^\+[1-9]\d{7,14}$")
 
@@ -317,6 +318,20 @@ class DispatchService:
         failed_count = 0
         send_interval = self.config.dispatch.send_interval_ms / 1000.0
 
+        # Determine sender phone & provider from phone configurations if configured
+        sender_phone = (campaign.get("from_phone") or os.getenv("AGGREGATOR_FROM_NUMBER") or "").strip()
+        configured_phones = self.storage.list_phone_configurations()
+        if not sender_phone and configured_phones:
+            sender_phone = configured_phones[0]["phone"]
+
+        active_provider = None
+        active_provider_cfg = {}
+        if sender_phone:
+            p_obj, p_cfg = get_provider_registry().get_provider_for_phone(sender_phone, storage=self.storage)
+            if p_obj.provider_id != "mock":
+                active_provider = p_obj
+                active_provider_cfg = p_cfg
+
         for item in items:
             item_id = item["item_id"]
             phone = item["phone"]
@@ -335,14 +350,29 @@ class DispatchService:
             self.storage.update_send_item_status(item_id, status="sending")
 
             try:
-                # Call aggregator send_message through generated client
-                res = self.adapter.stage_send(
-                    to=phone,
-                    body=rendered_body,
-                    session_id=session_id,
-                    job_id=job_id,
-                    item_id=item_id
-                )
+                if active_provider is not None:
+                    # Routed through selected provider adapter (e.g. TwilioProvider, InfobipProvider)
+                    send_res = await active_provider.send_message(
+                        from_phone=sender_phone,
+                        to_phone=phone,
+                        body=rendered_body,
+                        config=active_provider_cfg
+                    )
+                    if send_res.status in ("queued", "sent", "delivered"):
+                        self.storage.update_send_item_status(item_id, status="queued", message_sid=send_res.provider_message_id)
+                        successful_count += 1
+                    else:
+                        self.storage.update_send_item_status(item_id, status="failed", error=send_res.error_reason or "Send failed")
+                        failed_count += 1
+                else:
+                    # Call aggregator send_message through generated client
+                    res = self.adapter.stage_send(
+                        to=phone,
+                        body=rendered_body,
+                        session_id=session_id,
+                        job_id=job_id,
+                        item_id=item_id
+                    )
                 
                 # Check outcome
                 if res.get("status") in ("pending_user_approval", "pending_approval") or "action_id" in res:
