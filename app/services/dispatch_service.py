@@ -339,6 +339,40 @@ class DispatchService:
 
         all_unresolved_tags = sorted(list(set(tag for it in evaluated_items for tag in it.get("unresolved_tags", []))))
 
+        # External Compliance Cascade Check
+        compliance_passed = True
+        compliance_record = None
+        try:
+            from app.services.external_compliance_evaluator import get_compliance_evaluator
+            from app.core.compliance_evaluator_models import TemplateSchema
+            evaluator = get_compliance_evaluator()
+            brand = campaign.get("business_name") or campaign.get("organization_name") or "Our Store"
+            contact_number = campaign.get("customer_care_contact") or "1-800-555-0199"
+            sample_text = previews[0]["preview_text"] if previews else selected_templates[0].get("body", "")
+            reg_domains = list(campaign.get("registered_domains") or [])
+            if not reg_domains:
+                url_m = re.findall(r"(?:https?://)?([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})", sample_text)
+                reg_domains = [d for d in url_m if d not in evaluator.stage1.url_shorteners]
+
+            tmpl_schema = TemplateSchema(
+                template_id=selected_templates[0].get("id") or f"tmpl_{session_id[:8]}",
+                moment="regular_send",
+                requires_rates_disclosure=False,
+                registered_domains=reg_domains,
+                brand_name=brand,
+                customer_care_contact=contact_number,
+                fallback_template_id="safe_fallback_notice",
+            )
+            compliance_record = await evaluator.evaluate_single_message(
+                message_text=sample_text,
+                template=tmpl_schema,
+                campaign_id=session_id,
+                session_id=session_id,
+            )
+            compliance_passed = (compliance_record.outcome == "approved")
+        except Exception as e:
+            print(f"[DispatchService] External compliance evaluator check failed: {e}")
+
         preflight_passed = (
             all_e164_ok
             and all_tags_ok
@@ -348,6 +382,7 @@ class DispatchService:
             and all_registered_ok
             and tool_webhook_configured
             and run_cap_ok
+            and compliance_passed
         )
 
         unregistered_policy_message = None
@@ -367,6 +402,7 @@ class DispatchService:
             "job_id": job_id,
             "csrf_token": csrf_token,
             "passed": preflight_passed,
+            "compliance_evaluator": compliance_record.model_dump() if compliance_record else None,
             "checks": {
                 "e164_valid": all_e164_ok,
                 "tags_resolved": all_tags_ok,

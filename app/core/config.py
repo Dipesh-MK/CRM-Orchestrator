@@ -52,6 +52,33 @@ class DispatchConfig(BaseModel):
     status_callback_url: Optional[str] = None
     catch_up_policy: str = "all"
 
+class Stage2Config(BaseModel):
+    model_name: str = "SCAMBERT-distilbert"
+    model_version: str = "scambert-v1.2"
+    safe_threshold: float = 0.95
+    harmful_threshold: float = 0.90
+
+class Stage3Config(BaseModel):
+    judge_model_version: str = "qwen2.5:7b-instruct-judge"
+    temperature: float = 0.0
+    timeout_seconds: int = 30
+
+class RetryCapsConfig(BaseModel):
+    format: int = 3
+    harmful_intent: int = 2
+
+class ExternalEvaluatorConfig(BaseModel):
+    version: str = "1.0.0"
+    enabled: bool = True
+    scam_phrases_file: str = "config/scam_phrases.json"
+    url_shorteners: list[str] = Field(default_factory=lambda: [
+        "bit.ly", "tinyurl.com", "t.co", "goo.gl", "ow.ly", "is.gd",
+        "buff.ly", "adf.ly", "bit.do", "rb.gy", "cutt.ly"
+    ])
+    stage2: Stage2Config = Field(default_factory=Stage2Config)
+    stage3: Stage3Config = Field(default_factory=Stage3Config)
+    retry_caps: RetryCapsConfig = Field(default_factory=RetryCapsConfig)
+
 class AppConfig(BaseModel):
     llm: LLMConfig = Field(default_factory=LLMConfig)
     orchestrator: OrchestratorConfig = Field(default_factory=OrchestratorConfig)
@@ -59,6 +86,7 @@ class AppConfig(BaseModel):
     memory: MemoryConfig = Field(default_factory=MemoryConfig)
     channel: ChannelConfig = Field(default_factory=ChannelConfig)
     dispatch: DispatchConfig = Field(default_factory=DispatchConfig)
+    external_evaluator: ExternalEvaluatorConfig = Field(default_factory=ExternalEvaluatorConfig)
 
     @property
     def send(self) -> DispatchConfig:

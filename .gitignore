@@ -6,6 +6,7 @@ __pycache__/
 data/*.db
 data/test_*.db
 data/e2e_test.db
+data/*.jsonl
 logs/
 .env
 .env.scratch*

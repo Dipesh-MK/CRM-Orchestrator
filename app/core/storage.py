@@ -467,6 +467,14 @@ class Storage:
             conn.commit()
         self._append_jsonl("events.jsonl", event_data)
 
+    def get_pipeline_events(self, session_id: str) -> List[Dict[str, Any]]:
+        with self.get_connection() as conn:
+            rows = conn.cursor().execute(
+                "SELECT * FROM pipeline_events WHERE session_id = ? ORDER BY step_order ASC, id ASC",
+                (session_id,)
+            ).fetchall()
+            return [dict(r) for r in rows]
+
     # User action logging
     def log_user_action(self, session_id: str, action_type: str, payload: Dict[str, Any]):
         timestamp = utc_now_iso()

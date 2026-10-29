@@ -58,3 +58,32 @@ dispatch:
   require_registered_phone: true
   send_interval_ms: 50
   status_callback_url: null
+
+external_evaluator:
+  version: "1.0.0"
+  enabled: true
+  scam_phrases_file: "config/scam_phrases.json"
+  url_shorteners:
+    - "bit.ly"
+    - "tinyurl.com"
+    - "t.co"
+    - "goo.gl"
+    - "ow.ly"
+    - "is.gd"
+    - "buff.ly"
+    - "adf.ly"
+    - "bit.do"
+    - "rb.gy"
+    - "cutt.ly"
+  stage2:
+    model_name: "SCAMBERT-distilbert"
+    model_version: "scambert-v1.2"
+    safe_threshold: 0.95
+    harmful_threshold: 0.90
+  stage3:
+    judge_model_version: "qwen2.5:7b-instruct-judge"
+    temperature: 0.0
+    timeout_seconds: 30
+  retry_caps:
+    format: 3
+    harmful_intent: 2

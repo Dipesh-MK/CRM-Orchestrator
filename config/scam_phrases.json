@@ -1,0 +1,12 @@
+[
+  "you('ve)?\\s+(won|been\\s+selected)",
+  "claim\\s+(your\\s+)?prize",
+  "claim\\s+your\\s+(gift\\s+card|reward|voucher|cash)",
+  "wire\\s+transfer",
+  "crypto\\s+investment\\s+opportunity",
+  "urgent\\s+wire\\s+payment",
+  "inherit\\s+millions",
+  "get\\s+rich\\s+quick",
+  "guaranteed\\s+returns",
+  "foreign\\s+lottery"
+]
