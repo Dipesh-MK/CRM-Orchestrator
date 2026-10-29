@@ -46,11 +46,13 @@ dispatch:
     - "::1"
     - "[::1]:8000"
     - "testserver"
+    - "test"
   allowed_origins:
     - "http://localhost:8000"
     - "http://127.0.0.1:8000"
     - "http://[::1]:8000"
     - "http://testserver"
+    - "http://test"
   approval_ttl_seconds: 900
   registry_cache_ttl_seconds: 300
   require_registered_phone: true

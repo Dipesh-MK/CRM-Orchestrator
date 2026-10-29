@@ -135,3 +135,25 @@ def test_chat_send_never_yields_empty_text_chunk(monkeypatch):
     assert len(text_chunks) > 0
     for chunk in text_chunks:
         assert chunk.strip() != "", "text_chunk must never be empty or whitespace"
+
+def test_discovery_quiz_options_claude_style_and_slot_gating():
+    # Model claims discovery_complete: True, but business_name is missing
+    raw_data = {
+        "business_type": "Utility",
+        "slots": {
+            "campaign_goal": {"value": "Electricity bill payment reminder"}
+        },
+        "discovery_complete": True,
+        "next_question_to_user": ""
+    }
+    normalized = normalize_discovery_output(raw_data)
+    
+    # Must NOT complete discovery until business_name is resolved
+    assert normalized["discovery_complete"] is False
+    assert len(normalized["next_question_to_user"]) > 0
+    
+    # Must provide Claude-style quiz options with 'Other' as the final choice
+    opts = normalized.get("question_options", [])
+    assert len(opts) >= 3
+    assert opts[-1] == "Other (Type custom answer)"
+

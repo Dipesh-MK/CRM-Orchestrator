@@ -113,7 +113,7 @@ async def test_scratch_aggregator_e2e_send():
         assert p2 in registered
 
         # 2. Ingest contacts via real contact flow
-        session_id = "sess_e2e_scratch"
+        session_id = f"sess_e2e_scratch_{int(time.time()*1000)}"
         csv_content = f"Name,Phone,Donor_Type\nAmir,{p1},Monthly\nBina,{p2},Annual\n".encode("utf-8")
         contact_svc = get_contact_service()
         ingest_res = contact_svc.process_contacts(

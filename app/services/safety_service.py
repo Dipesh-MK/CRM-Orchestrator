@@ -9,7 +9,9 @@ from app.core.llm_client import get_llm_client
 CHIT_CHAT_WORDS = {
     "hi", "hello", "hey", "greetings", "there", "good", "morning", "afternoon", "evening",
     "ok", "okay", "sure", "sounds", "continue", "next", "proceed", "yes", "no", "yep", "nope",
-    "thanks", "thank", "you", "great", "awesome", "perfect", "got", "it", "fine", "done", "please", "go", "ahead"
+    "thanks", "thank", "you", "great", "awesome", "perfect", "got", "it", "fine", "done", "please", "go", "ahead",
+    "just", "already", "selected", "testing", "sample", "test", "try", "pls", "plz", "keep", "going", "cool",
+    "its", "it's", "am"
 }
 
 def is_chit_chat_or_ack(text: str) -> bool:
@@ -18,7 +20,7 @@ def is_chit_chat_or_ack(text: str) -> bool:
     if not clean:
         return True
     words = clean.split()
-    if len(words) <= 5 and all(w in CHIT_CHAT_WORDS for w in words):
+    if len(words) <= 10 and all(w in CHIT_CHAT_WORDS for w in words):
         return True
     return False
 
@@ -83,16 +85,24 @@ You MUST respond with a valid JSON object matching this schema:
 
             if llm_res.get("status") == "success":
                 raw = llm_res.get("raw_response", "")
-                try:
-                    # Clean markdown fence if present
-                    clean = re.sub(r"^```json\s*", "", raw.strip())
-                    clean = re.sub(r"\s*```$", "", clean)
-                    data = json.loads(clean)
-                    if "allowed" in data:
-                        result = data
-                        break
-                except Exception as e:
-                    last_error = str(e)
+                from app.services.orchestrator_engine import parse_json_robust
+                data = parse_json_robust(raw)
+                if data and "allowed" in data:
+                    cat = str(data.get("category", "")).strip().lower()
+                    reason_text = str(data.get("reason", "")).strip().lower()
+
+                    # Inversion guard: If category is none or reason says 'does not violate', content is ALLOWED
+                    if cat in ("none", "null", "", "n/a", "no_violation") or "does not violate" in reason_text or "complies" in reason_text or "no violation" in reason_text or "is legitimate" in reason_text:
+                        data["allowed"] = True
+                        data["category"] = "none"
+                    elif data.get("allowed") is False and cat in ("none", ""):
+                        data["allowed"] = True
+                        data["category"] = "none"
+
+                    result = data
+                    break
+                else:
+                    last_error = "Malformed or missing 'allowed' in safety output"
             else:
                 last_error = llm_res.get("error")
 

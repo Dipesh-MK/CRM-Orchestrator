@@ -94,10 +94,14 @@ class AggregatorChannelAdapter(ChannelAdapter):
             Path(".apitool/companion.spec.yaml")
         ]
         
-        # Sync AGGREGATOR_BASE_URL if set
-        base_url_val = os.getenv("AGGREGATOR_BASE_URL") or (cfg.channel.base_url_env and os.getenv(cfg.channel.base_url_env))
-        if base_url_val:
-            os.environ["APITOOL_BASE_URL"] = base_url_val
+        # Sync AGGREGATOR environment variables with safe defaults for runtime tool specs
+        base_url_val = os.getenv("AGGREGATOR_BASE_URL") or (cfg.channel.base_url_env and os.getenv(cfg.channel.base_url_env)) or "http://localhost:3000"
+        os.environ["APITOOL_BASE_URL"] = base_url_val
+        os.environ["AGGREGATOR_BASE_URL"] = base_url_val
+        if "AGGREGATOR_ACCOUNT_SID" not in os.environ:
+            os.environ["AGGREGATOR_ACCOUNT_SID"] = os.getenv("AGGREGATOR_ACCOUNT_SID", "AC_IDACT_001")
+        if "AGGREGATOR_AUTH_TOKEN" not in os.environ:
+            os.environ["AGGREGATOR_AUTH_TOKEN"] = os.getenv("AGGREGATOR_AUTH_TOKEN", "mock_auth_token")
 
         # Load generated runtime ApiTools
         sys.path.insert(0, str(self.tool_dir.resolve()))

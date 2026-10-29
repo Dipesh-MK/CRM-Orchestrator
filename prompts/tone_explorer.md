@@ -15,10 +15,12 @@ Campaign Context:
 
 TASK:
 1. Propose at least 3 distinct candidate tones tailored to this specific use case (e.g. "Warm & Community-Focused", "Urgent & Direct", "Inspiring & Hopeful"). DO NOT use a hardcoded list.
-2. For EACH candidate tone, provide a concise explanation and a 3-touchpoint sequence preview (`example_messages`: Message 1 Announcement, Message 2 Follow-up, Message 3 Final Call), each under {{word_limit}} words demonstrating how the tone evolves across the CRM sequence.
+2. For EACH candidate tone, provide a concise explanation and a preview message (`example_message`), under {{word_limit}} words demonstrating the tone for this CRM message.
 3. Ensure each preview includes the business/organization name (or `{{organization_name}}` if not provided) and finishes with "{{optout_text}}".
 4. NEVER fabricate statistics or impact metrics in tone previews.
 5. If the business/organization name was not provided by the user, use `{{organization_name}}`. DO NOT invent a brand name!
+6. USER TEMPLATE PRESERVATION: If the user provided a specific message draft, template idea, or requested phrasing in {{user_tone_idea}} or in conversation, you MUST honor that request! Include that template (or a closely styled variant) as one of the candidate tones, and generate similar stylistic variations matching what the user requested. DO NOT disregard what the user asked for!
+7. NEVER invent placeholders from unrelated domains (e.g., do NOT put `{{school_phone}}` into an electricity or utility campaign; use `{{contact_phone}}` or `{{customer_care}}`).
 
 OUTPUT FORMAT (Strict JSON):
 ```json
@@ -29,12 +31,7 @@ OUTPUT FORMAT (Strict JSON):
       "id": "tone_identifier",
       "name": "Display Name with Emoji (e.g. 🤝 Warm & Community-Focused)",
       "description": "Why this works for the audience",
-      "example_message": "Message 1 (Announcement) preview...",
-      "example_messages": [
-        "Message 1 (Announcement) preview with {{organization_name}} and {{optout_text}}",
-        "Message 2 (Follow-up) preview with {{organization_name}} and {{optout_text}}",
-        "Message 3 (Final Call) preview with {{organization_name}} and {{optout_text}}"
-      ]
+      "example_message": "Preview message with {{organization_name}} and {{optout_text}}"
     }
   ]
 }

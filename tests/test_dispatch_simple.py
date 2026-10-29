@@ -319,3 +319,51 @@ def test_at_most_once_restart_never_resends(setup_dispatch_test_env):
     assert res["success"] is False
     assert "cannot be sent" in res["error"]
     assert len(adapter.sent_calls) == 0
+
+def test_single_message_sending_and_resend_lockout(setup_dispatch_test_env):
+    """Verifies that only 1 message template is staged and once sent, resend is strictly refused."""
+    storage = setup_dispatch_test_env["storage"]
+    session_id = "sess_single_send_lockout"
+    
+    # Create campaign with 3 templates to verify clamp to 1
+    create_approved_campaign(storage, session_id)
+    campaign = storage.get_campaign(session_id)
+    campaign["templates"] = [
+        {"message_index": 1, "body": "Msg 1: {{customer_name}}, bill reminder. STOP to optout", "stage": "Touch 1"},
+        {"message_index": 2, "body": "Msg 2: {{customer_name}}, outage warning. STOP to optout", "stage": "Touch 2"},
+        {"message_index": 3, "body": "Msg 3: {{customer_name}}, power cut notice. STOP to optout", "stage": "Touch 3"}
+    ]
+    storage.save_campaign(session_id, campaign)
+    storage.save_contacts(session_id, [
+        {"contact_id": "c1", "session_id": session_id, "name": "Alice", "phone": "+14155550001", "extra": {}},
+        {"contact_id": "c2", "session_id": session_id, "name": "Bob", "phone": "+14155550002", "extra": {}}
+    ])
+    
+    adapter = DummyMockAdapter()
+    service = DispatchService(storage=storage, adapter=adapter)
+    import asyncio
+    
+    # 1. Preflight verifies only 1 message template per contact (total = 2 messages, not 6)
+    pre = asyncio.run(service.preflight_run(session_id))
+    assert pre["success"] is True
+    assert pre["total_messages"] == 2
+    assert pre["sequence_count"] == 1
+    
+    # 2. Confirm and send
+    job_id = pre["job_id"]
+    csrf_token = pre["csrf_token"]
+    res = asyncio.run(service.confirm_and_send(job_id=job_id, csrf_token=csrf_token))
+    assert res["success"] is True
+    assert res["successful"] == 2
+    assert len(adapter.sent_calls) == 2
+    
+    # 3. Attempting to resend the same job must be refused
+    res_repeat = asyncio.run(service.confirm_and_send(job_id=job_id, csrf_token=csrf_token))
+    assert res_repeat["success"] is False
+    assert "already been dispatched" in res_repeat["error"]
+    
+    # 4. Attempting to preflight a new job for the already dispatched campaign must be refused
+    pre_repeat = asyncio.run(service.preflight_run(session_id))
+    assert pre_repeat["success"] is False
+    assert "already been dispatched and cannot be resent" in pre_repeat["error"]
+

@@ -23,8 +23,13 @@ class Storage:
         self.init_db()
 
     def get_connection(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=30.0)
         conn.row_factory = sqlite3.Row
+        try:
+            conn.execute("PRAGMA journal_mode = WAL;")
+            conn.execute("PRAGMA busy_timeout = 30000;")
+        except Exception:
+            pass
         return conn
 
     def init_db(self):
@@ -270,6 +275,22 @@ class Storage:
             )
             """)
 
+            # Tool Webhooks (Configurable custom webhooks for broadcasting outbound messages)
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS tool_webhooks (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                url TEXT NOT NULL,
+                headers_json TEXT,
+                enabled INTEGER DEFAULT 1,
+                last_status TEXT DEFAULT 'untested',
+                last_status_code INTEGER,
+                last_tested_at TEXT,
+                created_at TEXT,
+                updated_at TEXT
+            )
+            """)
+
             # Ensure columns exist if table was already created
             cursor.execute("PRAGMA table_info(channel_calls)")
             existing_cols = [col[1] for col in cursor.fetchall()]
@@ -292,9 +313,23 @@ class Storage:
     def save_session(self, session_id: str, workspace_id: str, business_type: Optional[str] = None,
                      campaign_name: Optional[str] = None, status: str = "active", meta: Optional[Dict[str, Any]] = None):
         now = utc_now_iso()
-        meta_str = json.dumps(meta or {})
         with self.get_connection() as conn:
             cursor = conn.cursor()
+            existing = cursor.execute("SELECT meta_json, campaign_name FROM sessions WHERE id = ?", (session_id,)).fetchone()
+            merged_meta = {}
+            if existing and existing[0]:
+                try:
+                    merged_meta = json.loads(existing[0])
+                except Exception:
+                    merged_meta = {}
+            if meta:
+                merged_meta.update(meta)
+            
+            # Preserve custom title if previously saved by user
+            if merged_meta.get("custom_title") and not campaign_name:
+                campaign_name = merged_meta["custom_title"]
+
+            meta_str = json.dumps(merged_meta)
             cursor.execute("""
             INSERT INTO sessions (id, workspace_id, business_type, campaign_name, status, created_at, updated_at, meta_json)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -307,6 +342,26 @@ class Storage:
             """, (session_id, workspace_id, business_type, campaign_name, status, now, now, meta_str,
                   business_type, campaign_name, status, now, meta_str))
             conn.commit()
+
+    def update_session_title(self, session_id: str, title: str) -> bool:
+        clean_title = (title or "").strip()
+        if not clean_title:
+            return False
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            row = cursor.execute("SELECT meta_json FROM sessions WHERE id = ?", (session_id,)).fetchone()
+            if not row:
+                return False
+            meta = json.loads(row[0]) if row[0] else {}
+            meta["custom_title"] = clean_title
+            now = utc_now_iso()
+            cursor.execute("""
+                UPDATE sessions
+                SET campaign_name = ?, meta_json = ?, updated_at = ?
+                WHERE id = ?
+            """, (clean_title, json.dumps(meta), now, session_id))
+            conn.commit()
+            return True
 
     def get_session(self, session_id: str) -> Optional[Dict[str, Any]]:
         with self.get_connection() as conn:
@@ -323,7 +378,32 @@ class Storage:
             results = []
             for r in rows:
                 d = dict(r)
-                d["meta"] = json.loads(d["meta_json"]) if d["meta_json"] else {}
+                meta = json.loads(d["meta_json"]) if d["meta_json"] else {}
+                d["meta"] = meta
+                
+                # Derive display_title
+                custom = meta.get("custom_title")
+                camp_name = d.get("campaign_name")
+                auto = meta.get("auto_title")
+                
+                if custom and str(custom).strip():
+                    display_title = str(custom).strip()
+                elif camp_name and str(camp_name).strip():
+                    display_title = str(camp_name).strip()
+                elif auto and str(auto).strip():
+                    display_title = str(auto).strip()
+                else:
+                    btype = d.get("business_type")
+                    if btype:
+                        display_title = f"{btype.capitalize()} Campaign"
+                    else:
+                        display_title = f"Campaign {d['id'][:8]}"
+                
+                d["display_title"] = display_title
+                
+                # Check if campaign approved
+                camp_row = conn.cursor().execute("SELECT approved FROM campaigns WHERE session_id = ?", (d["id"],)).fetchone()
+                d["is_approved"] = bool(camp_row and camp_row[0])
                 results.append(d)
             return results
 
@@ -559,29 +639,39 @@ class Storage:
                 return d
             return None
 
-    # Contacts persistence (Amendment 1)
     def save_contacts(self, session_id: str, contacts: List[Dict[str, Any]]) -> None:
+        if not contacts:
+            return
         now = utc_now_iso()
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("PRAGMA table_info(contacts)")
             cols = [col[1] for col in cursor.fetchall()]
             has_masked = "masked_phone" in cols
-            for c in contacts:
-                c_id = c.get("contact_id") or f"c_{uuid.uuid4().hex[:10]}"
-                c["contact_id"] = c_id
-                extra = json.dumps(c.get("extra", {}))
-                masked = c.get("masked_phone") or c.get("phone", "")
-                if has_masked:
-                    cursor.execute("""
-                    INSERT OR REPLACE INTO contacts (contact_id, session_id, name, phone, masked_phone, extra_json, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                    """, (c_id, session_id, c.get("name", ""), c.get("phone", ""), masked, extra, now))
-                else:
-                    cursor.execute("""
-                    INSERT OR REPLACE INTO contacts (contact_id, session_id, name, phone, extra_json, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                    """, (c_id, session_id, c.get("name", ""), c.get("phone", ""), extra, now))
+
+            if has_masked:
+                batch = []
+                for c in contacts:
+                    c_id = c.get("contact_id") or f"c_{uuid.uuid4().hex[:10]}"
+                    c["contact_id"] = c_id
+                    extra = json.dumps(c.get("extra", {}))
+                    masked = c.get("masked_phone") or c.get("phone", "")
+                    batch.append((c_id, session_id, c.get("name", ""), c.get("phone", ""), masked, extra, now))
+                cursor.executemany("""
+                INSERT OR REPLACE INTO contacts (contact_id, session_id, name, phone, masked_phone, extra_json, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, batch)
+            else:
+                batch = []
+                for c in contacts:
+                    c_id = c.get("contact_id") or f"c_{uuid.uuid4().hex[:10]}"
+                    c["contact_id"] = c_id
+                    extra = json.dumps(c.get("extra", {}))
+                    batch.append((c_id, session_id, c.get("name", ""), c.get("phone", ""), extra, now))
+                cursor.executemany("""
+                INSERT OR REPLACE INTO contacts (contact_id, session_id, name, phone, extra_json, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """, batch)
             conn.commit()
 
     def get_contacts_by_session(self, session_id: str) -> List[Dict[str, Any]]:
@@ -907,6 +997,106 @@ class Storage:
                 "extra": extra,
                 "created_at": now
             }
+
+    # Session Deletion & User Actions
+    def delete_session(self, session_id: str) -> bool:
+        """Deletes a session and its associated memory, actions, campaigns, and jobs."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM user_actions WHERE session_id = ?", (session_id,))
+            cursor.execute("DELETE FROM validations WHERE session_id = ?", (session_id,))
+            cursor.execute("DELETE FROM memory_ops WHERE session_id = ?", (session_id,))
+            cursor.execute("DELETE FROM errors WHERE session_id = ?", (session_id,))
+            cursor.execute("DELETE FROM campaigns WHERE session_id = ?", (session_id,))
+            cursor.execute("DELETE FROM contacts WHERE session_id = ?", (session_id,))
+            cursor.execute("DELETE FROM send_items WHERE job_id IN (SELECT job_id FROM send_jobs WHERE session_id = ?)", (session_id,))
+            cursor.execute("DELETE FROM send_jobs WHERE session_id = ?", (session_id,))
+            cursor.execute("DELETE FROM channel_calls WHERE session_id = ?", (session_id,))
+            cursor.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def get_user_actions(self, session_id: str) -> List[Dict[str, Any]]:
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            rows = cursor.execute(
+                "SELECT * FROM user_actions WHERE session_id = ? ORDER BY id ASC",
+                (session_id,)
+            ).fetchall()
+            res = []
+            for r in rows:
+                d = dict(r)
+                d["payload"] = json.loads(d.get("payload_json") or "{}")
+                res.append(d)
+            return res
+
+    # Tool Webhooks Management
+    def save_tool_webhook(self, webhook_id: str, name: str, url: str,
+                          headers: Optional[Dict[str, str]] = None,
+                          enabled: bool = True,
+                          last_status: str = "untested",
+                          last_status_code: Optional[int] = None) -> Dict[str, Any]:
+        now = utc_now_iso()
+        hdr_str = json.dumps(headers or {})
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+            INSERT INTO tool_webhooks (id, name, url, headers_json, enabled, last_status, last_status_code, last_tested_at, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                name=?,
+                url=?,
+                headers_json=?,
+                enabled=?,
+                last_status=?,
+                last_status_code=?,
+                updated_at=?
+            """, (webhook_id, name, url, hdr_str, 1 if enabled else 0, last_status, last_status_code, now, now, now,
+                  name, url, hdr_str, 1 if enabled else 0, last_status, last_status_code, now))
+            conn.commit()
+        return self.get_tool_webhook(webhook_id) or {}
+
+    def get_tool_webhook(self, webhook_id: str) -> Optional[Dict[str, Any]]:
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            row = cursor.execute("SELECT * FROM tool_webhooks WHERE id = ?", (webhook_id,)).fetchone()
+            if not row:
+                return None
+            d = dict(row)
+            d["headers"] = json.loads(d.get("headers_json") or "{}")
+            d["enabled"] = bool(d.get("enabled", 1))
+            return d
+
+    def list_tool_webhooks(self) -> List[Dict[str, Any]]:
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            rows = cursor.execute("SELECT * FROM tool_webhooks ORDER BY created_at ASC").fetchall()
+            res = []
+            for r in rows:
+                d = dict(r)
+                d["headers"] = json.loads(d.get("headers_json") or "{}")
+                d["enabled"] = bool(d.get("enabled", 1))
+                res.append(d)
+            return res
+
+    def delete_tool_webhook(self, webhook_id: str) -> bool:
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM tool_webhooks WHERE id = ?", (webhook_id,))
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def update_tool_webhook_status(self, webhook_id: str, status: str, status_code: Optional[int] = None) -> bool:
+        now = utc_now_iso()
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+            UPDATE tool_webhooks
+            SET last_status = ?, last_status_code = ?, last_tested_at = ?, updated_at = ?
+            WHERE id = ?
+            """, (status, status_code, now, now, webhook_id))
+            conn.commit()
+            return cursor.rowcount > 0
 
 # Singleton storage getter
 _storage: Optional[Storage] = None

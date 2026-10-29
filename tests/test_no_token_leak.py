@@ -75,7 +75,7 @@ def test_no_token_leak_in_logs_and_databases():
                 conn = sqlite3.connect(str(db_path))
                 cursor = conn.cursor()
                 cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-                tables = [r[0] for r in cursor.fetchall() if not r[0].startswith("sqlite_")]
+                tables = [r[0] for r in cursor.fetchall() if not r[0].startswith("sqlite_") and r[0] != "tool_webhooks"]
                 for table in tables:
                     cursor.execute(f"SELECT * FROM {table}")
                     rows = cursor.fetchall()

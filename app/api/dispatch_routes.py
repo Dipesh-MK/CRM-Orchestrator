@@ -1,5 +1,5 @@
 import hmac
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Union
 from fastapi import APIRouter, HTTPException, Request, Header
 from pydantic import BaseModel
 from app.core.config import get_config
@@ -9,18 +9,21 @@ router = APIRouter(prefix="/api/dispatch", tags=["dispatch"])
 
 class PreflightRequest(BaseModel):
     session_id: str
-    template_step: int = 1
+    template_step: Optional[Union[int, str]] = "all"
 
 class SendRequest(BaseModel):
     job_id: str
     csrf_token: str
 
-def verify_loopback_headers(request: Request, host: Optional[str], origin: Optional[str], cfg: Any):
+def verify_loopback_headers(request: Request, host: Optional[str] = None, origin: Optional[str] = None, cfg: Any = None, require_origin: bool = True):
     """
     Host and Origin must be verified against config allowed lists.
-    A spoofed Host header or a missing/foreign Origin is refused with HTTP 403.
+    A spoofed Host header or a foreign Origin is refused with HTTP 403.
+    If require_origin is True (default for dispatch send), missing Origin is also refused with HTTP 403.
     Exact match of Host (including port and [::1]) and full Origin (scheme + host + port).
     """
+    if cfg is None:
+        cfg = get_config()
     allowed_hosts = set(cfg.dispatch.allowed_hosts)
     allowed_origins = set(o.rstrip("/") for o in cfg.dispatch.allowed_origins)
 
@@ -35,10 +38,12 @@ def verify_loopback_headers(request: Request, host: Optional[str], origin: Optio
     # 2. Origin check (Required on POST; exact match of full origin against allowed_origins)
     origin_val = origin or request.headers.get("origin", "")
     if not origin_val:
-        raise HTTPException(
-            status_code=403,
-            detail="Dispatch refused: Missing Origin header on dispatch POST request"
-        )
+        if require_origin:
+            raise HTTPException(
+                status_code=403,
+                detail="Dispatch refused: Missing Origin header on dispatch POST request"
+            )
+        return
 
     clean_origin = origin_val.rstrip("/")
     if clean_origin not in allowed_origins:
@@ -78,6 +83,22 @@ async def send_endpoint(
     res = await service.confirm_and_send(job_id=req.job_id, csrf_token=csrf)
     if not res.get("success"):
         raise HTTPException(status_code=400, detail=res.get("error"))
+
+    # Update in-memory session state so subsequent chat messages know the campaign was dispatched
+    job = service.storage.get_send_job(req.job_id)
+    if job and job.get("session_id"):
+        from app.api.chat_routes import get_or_create_state
+        state = get_or_create_state(job["session_id"])
+        state["dispatched"] = True
+        state["last_dispatched_campaign"] = {
+            "business_name": state.get("organization_name") or state.get("slots", {}).get("business_name", {}).get("value") or "",
+            "business_type": state.get("business_type") or "General Business",
+            "context": state.get("context") or state.get("slots", {}).get("campaign_goal", {}).get("value") or "",
+            "link_or_contact": state.get("link_or_contact") or state.get("slots", {}).get("link_or_contact", {}).get("value") or "",
+            "channel_format": state.get("channel_format") or "sms",
+            "templates": state.get("templates", [])
+        }
+
     return res
 
 @router.get("/jobs/{job_id}")

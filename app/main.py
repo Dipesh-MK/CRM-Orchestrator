@@ -5,7 +5,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.core.config import get_config
+from app.core.config import get_config, load_env_defaults
+load_env_defaults()
 from app.core.storage import get_storage
 from app.core.llm_client import get_llm_client
 from app.api.chat_routes import router as chat_router
@@ -13,6 +14,7 @@ from app.api.logs_routes import router as logs_router
 from app.api.dispatch_routes import router as dispatch_router
 from app.api.phone_routes import router as phone_router
 from app.api.webhook_routes import router as webhook_router
+from app.api.tool_webhook_routes import router as tool_webhook_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -51,6 +53,7 @@ app.include_router(logs_router)
 app.include_router(dispatch_router)
 app.include_router(phone_router)
 app.include_router(webhook_router)
+app.include_router(tool_webhook_router)
 
 # Health endpoint
 @app.get("/api/health")

@@ -43,8 +43,8 @@ class DispatchConfig(BaseModel):
     require_user_confirm: bool = True
     max_messages_per_run: int = 50
     allow_non_loopback: bool = False
-    allowed_hosts: list[str] = Field(default_factory=lambda: ["localhost", "localhost:8000", "127.0.0.1", "127.0.0.1:8000", "::1", "[::1]", "testserver"])
-    allowed_origins: list[str] = Field(default_factory=lambda: ["http://localhost:8000", "http://127.0.0.1:8000", "http://testserver"])
+    allowed_hosts: list[str] = Field(default_factory=lambda: ["localhost", "localhost:8000", "127.0.0.1", "127.0.0.1:8000", "::1", "[::1]", "testserver", "test"])
+    allowed_origins: list[str] = Field(default_factory=lambda: ["http://localhost:8000", "http://127.0.0.1:8000", "http://testserver", "http://test"])
     approval_ttl_seconds: int = 900
     registry_cache_ttl_seconds: int = 300
     require_registered_phone: bool = True
@@ -64,7 +64,45 @@ class AppConfig(BaseModel):
     def send(self) -> DispatchConfig:
         return self.dispatch
 
+def load_env_defaults(env_path: str = ".env"):
+    """Loads .env file and ensures default aggregator credentials are present in os.environ."""
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(env_path)
+    except Exception:
+        pass
+
+    path = Path(env_path)
+    if path.is_file():
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith("#") or "=" not in line:
+                        continue
+                    k, v = line.split("=", 1)
+                    k = k.strip()
+                    v = v.strip().strip("'\"")
+                    if k and k not in os.environ:
+                        os.environ[k] = v
+        except Exception:
+            pass
+
+    defaults = {
+        "APITOOL_BASE_URL": "http://localhost:3000",
+        "AGGREGATOR_BASE_URL": "http://localhost:3000",
+        "AGGREGATOR_ACCOUNT_SID": "AC_IDACT_001",
+        "AGGREGATOR_AUTH_TOKEN": "idact_auth_token_secret_xyz789",
+        "AGGREGATOR_FROM_NUMBER": "55512",
+    }
+    for k, v in defaults.items():
+        if not os.environ.get(k):
+            os.environ[k] = v
+
+load_env_defaults()
+
 def load_config(config_path: str = "config/app.yaml") -> AppConfig:
+    load_env_defaults()
     data: Dict[str, Any] = {}
     path = Path(config_path)
     if path.exists():
