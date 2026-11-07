@@ -1,0 +1,41 @@
+# models.yaml - Multi-Agent Model Configuration for CRM Orchestrator v2
+# Priority: Accuracy first, latency second. No Gemini 2.5 models.
+# Local Ollama fallback allowed for Agents 1 & 2 only, NEVER for Guardrail.
+
+agents:
+  agent1_drafter:
+    provider: "google"
+    model: "gemini-3.6-flash"
+    temperature: 0.3
+    max_tokens: 1024
+    timeout_seconds: 30
+    fallback:
+      provider: "ollama"
+      model: "qwen2.5:1.5b"
+      base_url: "http://localhost:11434/v1"
+
+  agent2_checker:
+    provider: "google"
+    model: "gemini-3.5-flash"
+    temperature: 0.1
+    max_tokens: 1024
+    timeout_seconds: 30
+    fallback:
+      provider: "ollama"
+      model: "qwen2.5:1.5b"
+      base_url: "http://localhost:11434/v1"
+
+  guardrail_agent:
+    primary:
+      provider: "anthropic"
+      model: "claude-sonnet-5-5"
+      temperature: 0.0
+      max_tokens: 2048
+      timeout_seconds: 45
+    secondary:
+      provider: "google"
+      model: "gemini-3.1-pro"
+      temperature: 0.0
+      max_tokens: 2048
+      timeout_seconds: 45
+    # Strict fail-closed policy: No weaker or local fallback permitted.

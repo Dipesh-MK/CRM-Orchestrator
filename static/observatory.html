@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agent Observatory - CRM Orchestrator v2</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body { background-color: #0B0F19; color: #E2E8F0; font-family: ui-sans-serif, system-ui, sans-serif; }
+    .swimlane-agent1 { border-left-color: #2563EB; }
+    .swimlane-agent2 { border-left-color: #7C3AED; }
+    .swimlane-guardrail { border-left-color: #D97706; }
+    .swimlane-supervisor { border-left-color: #64748B; }
+    .swimlane-compliance { border-left-color: #0D9488; }
+    .swimlane-audience { border-left-color: #65A30D; }
+    .swimlane-dispatcher { border-left-color: #DB2777; }
+    .swimlane-inbound { border-left-color: #EA580C; }
+    .badge-agent1 { background-color: rgba(37, 99, 235, 0.2); color: #60A5FA; border: 1px solid rgba(37, 99, 235, 0.4); }
+    .badge-agent2 { background-color: rgba(124, 58, 237, 0.2); color: #A78BFA; border: 1px solid rgba(124, 58, 237, 0.4); }
+    .badge-guardrail { background-color: rgba(217, 119, 6, 0.2); color: #FBBF24; border: 1px solid rgba(217, 119, 6, 0.4); }
+    .badge-supervisor { background-color: rgba(100, 116, 139, 0.2); color: #94A3B8; border: 1px solid rgba(100, 116, 139, 0.4); }
+    .badge-compliance { background-color: rgba(13, 148, 136, 0.2); color: #2DD4BF; border: 1px solid rgba(13, 148, 136, 0.4); }
+    .badge-audience { background-color: rgba(101, 163, 13, 0.2); color: #A3E635; border: 1px solid rgba(101, 163, 13, 0.4); }
+    .badge-dispatcher { background-color: rgba(219, 39, 119, 0.2); color: #F472B6; border: 1px solid rgba(219, 39, 119, 0.4); }
+    .badge-inbound { background-color: rgba(234, 88, 12, 0.2); color: #FB923C; border: 1px solid rgba(234, 88, 12, 0.4); }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #111827; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
+  </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+  <!-- Top Navigation Header -->
+  <header class="bg-gray-900 border-b border-gray-800 px-6 py-3.5 flex items-center justify-between shrink-0">
+    <div class="flex items-center space-x-3">
+      <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/30">
+        <i class="fa-solid fa-radar text-sm"></i>
+      </div>
+      <div>
+        <h1 class="text-base font-bold text-white tracking-wide flex items-center gap-2">
+          Agent Observatory
+          <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-medium">v2 Active</span>
+        </h1>
+        <p class="text-xs text-gray-400">Three-Agent CRM Bus • Observability & Governance Telemetry</p>
+      </div>
+    </div>
+
+    <!-- Quick Stats & Connection Badge -->
+    <div class="flex items-center space-x-4">
+      <div class="flex items-center space-x-2 text-xs bg-gray-800/80 px-3 py-1.5 rounded-lg border border-gray-700/60">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" id="conn-dot"></span>
+        <span class="text-gray-300 font-medium" id="conn-status">Streaming Traces</span>
+      </div>
+      <a href="/" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700 transition flex items-center gap-1.5">
+        <i class="fa-solid fa-comments"></i> Return to Chat UI
+      </a>
+    </div>
+  </header>
+
+  <!-- Main Multi-Panel Layout -->
+  <div class="flex-1 flex overflow-hidden">
+    <!-- Left Sidebar: Component Roster & Navigation Tabs -->
+    <aside class="w-80 bg-gray-900/60 border-r border-gray-800 flex flex-col shrink-0 custom-scrollbar overflow-y-auto">
+      <div class="p-4 border-b border-gray-800">
+        <h2 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3 flex items-center justify-between">
+          <span>Component Roster</span>
+          <span class="text-[10px] text-gray-500 font-mono">8 Modules</span>
+        </h2>
+        <div class="space-y-2" id="roster-list">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <!-- Observatory Views Navigation -->
+      <div class="p-4 flex-1">
+        <h2 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Observatory Views</h2>
+        <nav class="space-y-1">
+          <button onclick="switchTab('traces')" id="tab-btn-traces" class="w-full text-left px-3 py-2 rounded-lg text-sm font-medium bg-gray-800 text-white flex items-center justify-between transition">
+            <span class="flex items-center gap-2"><i class="fa-solid fa-stream text-indigo-400"></i> Live Trace Stream</span>
+            <span id="trace-counter" class="text-xs bg-gray-700 px-1.5 py-0.5 rounded text-gray-300 font-mono">0</span>
+          </button>
+          <button onclick="switchTab('banned')" id="tab-btn-banned" class="w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-800/50 flex items-center justify-between transition">
+            <span class="flex items-center gap-2"><i class="fa-solid fa-ban text-rose-400"></i> Banned URL Manager</span>
+            <span id="banned-counter" class="text-xs bg-gray-800 px-1.5 py-0.5 rounded text-gray-400 font-mono">3</span>
+          </button>
+          <button onclick="switchTab('orgs')" id="tab-btn-orgs" class="w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-800/50 flex items-center justify-between transition">
+            <span class="flex items-center gap-2"><i class="fa-solid fa-building-shield text-emerald-400"></i> Organization Registry</span>
+            <span id="org-counter" class="text-xs bg-gray-800 px-1.5 py-0.5 rounded text-gray-400 font-mono">3</span>
+          </button>
+          <button onclick="switchTab('quarantine')" id="tab-btn-quarantine" class="w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-800/50 flex items-center justify-between transition">
+            <span class="flex items-center gap-2"><i class="fa-solid fa-shield-halved text-amber-400"></i> Quarantine & Refusals</span>
+            <span id="quarantine-counter" class="text-xs bg-gray-800 px-1.5 py-0.5 rounded text-gray-400 font-mono">0</span>
+          </button>
+        </nav>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col overflow-hidden bg-gray-950">
+      
+      <!-- VIEW 1: Live Trace Stream -->
+      <section id="view-traces" class="flex-1 flex flex-col overflow-hidden">
+        <!-- Filter Bar -->
+        <div class="px-6 py-3 border-b border-gray-800 flex items-center justify-between bg-gray-900/40">
+          <div class="flex items-center space-x-3">
+            <div class="relative">
+              <i class="fa-solid fa-search absolute left-3 top-2.5 text-xs text-gray-500"></i>
+              <input type="text" id="trace-filter-input" placeholder="Filter traces..." onkeyup="filterTraces()"
+                class="bg-gray-800/80 text-xs text-white pl-8 pr-3 py-1.5 rounded-lg border border-gray-700/80 focus:outline-none focus:border-indigo-500 w-64">
+            </div>
+            <select id="component-filter" onchange="filterTraces()" class="bg-gray-800 text-xs text-gray-300 px-3 py-1.5 rounded-lg border border-gray-700 focus:outline-none">
+              <option value="">All Components</option>
+              <option value="agent1">Agent 1: Drafter</option>
+              <option value="agent2">Agent 2: Checker</option>
+              <option value="guardrail">Agent 3: Guardrail</option>
+              <option value="supervisor">Supervisor</option>
+              <option value="compliance">Compliance</option>
+              <option value="audience">Audience</option>
+              <option value="dispatcher">Dispatcher</option>
+              <option value="inbound">Inbound</option>
+            </select>
+            <select id="status-filter" onchange="filterTraces()" class="bg-gray-800 text-xs text-gray-300 px-3 py-1.5 rounded-lg border border-gray-700 focus:outline-none">
+              <option value="">All Statuses</option>
+              <option value="ok">OK / Pass</option>
+              <option value="fail">Fail</option>
+              <option value="refused">Refused</option>
+              <option value="quarantined">Quarantined</option>
+            </select>
+          </div>
+          <div class="flex items-center space-x-2">
+            <button onclick="clearTracesView()" class="text-xs px-2.5 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white rounded-lg transition border border-gray-700">
+              Clear View
+            </button>
+            <button onclick="reloadTracesFromDB()" class="text-xs px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition flex items-center gap-1.5">
+              <i class="fa-solid fa-arrows-rotate"></i> Reload DB
+            </button>
+          </div>
+        </div>
+
+        <!-- Traces List (Swimlanes) -->
+        <div class="flex-1 overflow-y-auto p-6 space-y-2.5 custom-scrollbar" id="traces-container">
+          <!-- Dynamic trace event cards render here -->
+        </div>
+      </section>
+
+      <!-- VIEW 2: Banned URL Manager -->
+      <section id="view-banned" class="hidden flex-1 flex flex-col p-6 overflow-y-auto custom-scrollbar">
+        <div class="max-w-4xl mx-auto w-full">
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                <i class="fa-solid fa-ban text-rose-400"></i> Banned URL Domains Registry
+              </h2>
+              <p class="text-xs text-gray-400">Shorteners and domains strictly prohibited by CTIA and carrier aggregators</p>
+            </div>
+            <button onclick="openAddBannedModal()" class="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold rounded-lg shadow transition flex items-center gap-2">
+              <i class="fa-solid fa-plus"></i> Add Banned Domain
+            </button>
+          </div>
+
+          <div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden shadow-xl">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-gray-800/60 text-gray-400 uppercase tracking-wider border-b border-gray-800 font-mono">
+                <tr>
+                  <th class="px-4 py-3">Domain</th>
+                  <th class="px-4 py-3">Match Type</th>
+                  <th class="px-4 py-3">Reason</th>
+                  <th class="px-4 py-3">Source</th>
+                  <th class="px-4 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="banned-table-body" class="divide-y divide-gray-800">
+                <!-- Populated dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 3: Organization Registry -->
+      <section id="view-orgs" class="hidden flex-1 flex flex-col p-6 overflow-y-auto custom-scrollbar">
+        <div class="max-w-5xl mx-auto w-full">
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                <i class="fa-solid fa-building-shield text-emerald-400"></i> Organization Registry (`org_registry`)
+              </h2>
+              <p class="text-xs text-gray-400">Verified Non-Profit and Political entities, domains, and Campaign Verify tokens</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="orgs-grid">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 4: Quarantine & Refusals -->
+      <section id="view-quarantine" class="hidden flex-1 flex flex-col p-6 overflow-y-auto custom-scrollbar">
+        <div class="max-w-4xl mx-auto w-full">
+          <div class="mb-6">
+            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-shield-halved text-amber-400"></i> Quarantine & Refusals Queue
+            </h2>
+            <p class="text-xs text-gray-400">Messages blocked by Compliance Rule Tools, Classifier, or Section 4.4 Guardrail Rubric</p>
+          </div>
+
+          <div class="space-y-3" id="quarantine-list">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Tool Inspector Modal -->
+  <div id="inspector-modal" class="fixed inset-0 bg-black/75 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-gray-900 border border-gray-700 rounded-2xl max-w-4xl w-full p-6 shadow-2xl flex flex-col max-h-[88vh]">
+      <div class="flex items-center justify-between border-b border-gray-800 pb-3 mb-4">
+        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-microscope text-indigo-400"></i> Tool Execution Inspector
+        </h3>
+        <button onclick="closeInspectorModal()" class="text-gray-400 hover:text-white text-sm">
+          <i class="fa-solid fa-times"></i>
+        </button>
+      </div>
+      <div class="overflow-y-auto flex-1 custom-scrollbar space-y-4 text-xs font-mono" id="inspector-content">
+        <!-- Dynamic JSON dump -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Banned Domain Modal -->
+  <div id="banned-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-gray-900 border border-gray-800 rounded-xl max-w-md w-full p-6 shadow-2xl">
+      <h3 class="text-sm font-bold text-white mb-3">Add Prohibited URL Domain</h3>
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block text-gray-400 mb-1">Domain Name (e.g. tiny.cc)</label>
+          <input type="text" id="new-banned-domain" placeholder="example.com" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 focus:outline-none focus:border-rose-500">
+        </div>
+        <div>
+          <label class="block text-gray-400 mb-1">Reason</label>
+          <input type="text" id="new-banned-reason" placeholder="Prohibited public shortener" class="w-full bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 focus:outline-none focus:border-rose-500">
+        </div>
+        <div class="flex justify-end space-x-2 pt-2">
+          <button onclick="closeAddBannedModal()" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg">Cancel</button>
+          <button onclick="submitNewBannedDomain()" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg font-semibold">Add Domain</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let allTraces = [];
+    let roster = [];
+
+    // Component Badge Helper
+    function getComponentBadge(comp) {
+      const map = {
+        agent1: { label: "Agent 1: Drafter", class: "badge-agent1", border: "swimlane-agent1" },
+        agent2: { label: "Agent 2: Checker", class: "badge-agent2", border: "swimlane-agent2" },
+        guardrail: { label: "Agent 3: Guardrail", class: "badge-guardrail", border: "swimlane-guardrail" },
+        supervisor: { label: "Supervisor", class: "badge-supervisor", border: "swimlane-supervisor" },
+        compliance: { label: "Compliance", class: "badge-compliance", border: "swimlane-compliance" },
+        audience: { label: "Audience", class: "badge-audience", border: "swimlane-audience" },
+        dispatcher: { label: "Dispatcher", class: "badge-dispatcher", border: "swimlane-dispatcher" },
+        inbound: { label: "Inbound", class: "badge-inbound", border: "swimlane-inbound" },
+      };
+      return map[comp] || { label: comp, class: "bg-gray-800 text-gray-300", border: "border-l-gray-600" };
+    }
+
+    // Connect SSE Stream
+    function initTraceStream() {
+      const source = new EventSource("/api/observatory/stream");
+      source.onopen = () => {
+        document.getElementById("conn-dot").className = "w-2 h-2 rounded-full bg-emerald-400 animate-pulse";
+        document.getElementById("conn-status").textContent = "Streaming Traces";
+      };
+      source.onerror = () => {
+        document.getElementById("conn-dot").className = "w-2 h-2 rounded-full bg-rose-400";
+        document.getElementById("conn-status").textContent = "Reconnecting...";
+      };
+      source.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          if (data.type === "trace_event") {
+            handleNewTraceEvent(data.event);
+          }
+        } catch (err) {
+          console.warn("SSE parse error", err);
+        }
+      };
+    }
+
+    function handleNewTraceEvent(evt) {
+      allTraces.unshift(evt);
+      if (allTraces.length > 500) allTraces.pop();
+      document.getElementById("trace-counter").textContent = allTraces.length;
+      renderTraces();
+      updateQuarantineCount();
+    }
+
+    function renderTraces() {
+      const container = document.getElementById("traces-container");
+      const search = document.getElementById("trace-filter-input").value.toLowerCase();
+      const compFilter = document.getElementById("component-filter").value;
+      const statusFilter = document.getElementById("status-filter").value;
+
+      const filtered = allTraces.filter(t => {
+        if (search && !JSON.stringify(t).toLowerCase().includes(search)) return false;
+        if (compFilter && t.component_id !== compFilter) return false;
+        if (statusFilter && t.status !== statusFilter) return false;
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-12 text-gray-500 text-xs">
+            <i class="fa-solid fa-inbox text-3xl mb-2 text-gray-600 block"></i>
+            No trace events match the current filter.
+          </div>`;
+        return;
+      }
+
+      container.innerHTML = filtered.map((t, idx) => {
+        const badge = getComponentBadge(t.component_id);
+        const statusColors = {
+          ok: "text-emerald-400 bg-emerald-500/10 border-emerald-500/30",
+          fail: "text-rose-400 bg-rose-500/10 border-rose-500/30",
+          refused: "text-amber-400 bg-amber-500/10 border-amber-500/30",
+          quarantined: "text-red-400 bg-red-500/10 border-red-500/30",
+          retry: "text-blue-400 bg-blue-500/10 border-blue-500/30"
+        };
+        const stClass = statusColors[t.status] || "text-gray-400 bg-gray-800 border-gray-700";
+        const hasTools = Boolean(t.tool_id || t.tool_result || t.tool_args);
+
+        return `
+          <div onclick="inspectTrace('${t.span_id || idx}')" class="bg-gray-900/90 border border-gray-800/80 rounded-lg p-3 border-l-4 ${badge.border} hover:bg-gray-800/60 hover:border-indigo-500/50 cursor-pointer transition flex items-center justify-between text-xs group shadow-sm">
+            <div class="flex items-center space-x-3 flex-1 min-w-0">
+              <span class="px-2 py-0.5 rounded text-[11px] font-semibold ${badge.class} shrink-0">
+                ${badge.label}
+              </span>
+              <span class="font-mono text-gray-400 shrink-0 text-[11px]">
+                ${t.type}
+              </span>
+              <span class="text-gray-200 font-medium truncate group-hover:text-white">
+                ${escapeHtml(t.summary)}
+              </span>
+            </div>
+            <div class="flex items-center space-x-3 shrink-0 ml-4 font-mono text-[11px]">
+              ${t.latency_ms ? `<span class="text-gray-400">${t.latency_ms}ms</span>` : ''}
+              <span class="px-2 py-0.5 rounded border uppercase text-[10px] font-semibold ${stClass}">
+                ${t.status}
+              </span>
+              <button onclick="event.stopPropagation(); inspectTrace('${t.span_id || idx}')" class="px-2 py-1 rounded bg-gray-800 hover:bg-indigo-600 text-indigo-400 hover:text-white transition" title="Inspect Deep Details">
+                <i class="fa-solid fa-code"></i>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function escapeHtml(text) {
+      if (!text) return "";
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function filterTraces() {
+      renderTraces();
+    }
+
+    function clearTracesView() {
+      allTraces = [];
+      renderTraces();
+      document.getElementById("trace-counter").textContent = "0";
+    }
+
+    async function reloadTracesFromDB() {
+      try {
+        const res = await fetch("/api/observatory/traces?limit=100");
+        const data = await res.json();
+        allTraces = data.traces || [];
+        document.getElementById("trace-counter").textContent = allTraces.length;
+        renderTraces();
+        updateQuarantineCount();
+      } catch (e) {
+        console.error("Failed to load traces", e);
+      }
+    }
+
+    function filterByComponent(compId) {
+      const select = document.getElementById("component-filter");
+      if (select) {
+        select.value = select.value === compId ? "" : compId;
+        filterTraces();
+      }
+      roster.forEach(r => {
+        const el = document.getElementById(`roster-item-${r.id}`);
+        if (el) {
+          if (select.value === r.id) {
+            el.classList.add("ring-2", "ring-indigo-500", "bg-gray-800");
+          } else {
+            el.classList.remove("ring-2", "ring-indigo-500", "bg-gray-800");
+          }
+        }
+      });
+      switchTab('traces');
+    }
+
+    async function loadRoster() {
+      try {
+        const res = await fetch("/api/observatory/roster");
+        const data = await res.json();
+        roster = data.roster || [];
+        const container = document.getElementById("roster-list");
+        container.innerHTML = roster.map(r => `
+          <div onclick="filterByComponent('${r.id}')" id="roster-item-${r.id}" class="p-2.5 rounded-lg bg-gray-800/40 border border-gray-800 hover:bg-gray-800 hover:border-indigo-500/50 cursor-pointer transition text-xs shadow-xs" title="Click to filter traces for ${r.name}">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-bold text-gray-200" style="color: ${r.color}">
+                ${r.name}
+              </span>
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            </div>
+            <div class="text-[10px] text-gray-400 font-mono truncate" title="${r.model}">
+              ${r.model}
+            </div>
+          </div>
+        `).join('');
+      } catch (e) {
+        console.error("Failed to load roster", e);
+      }
+    }
+
+    async function loadBannedUrls() {
+      try {
+        const res = await fetch("/api/observatory/banned_urls");
+        const data = await res.json();
+        const domains = data.banned_domains || [];
+        document.getElementById("banned-counter").textContent = domains.length;
+        const tbody = document.getElementById("banned-table-body");
+        tbody.innerHTML = domains.map(d => `
+          <tr class="hover:bg-gray-800/40">
+            <td class="px-4 py-3 font-semibold text-rose-300 font-mono">${escapeHtml(d.domain)}</td>
+            <td class="px-4 py-3 text-gray-400">${escapeHtml(d.match_type)}</td>
+            <td class="px-4 py-3 text-gray-300">${escapeHtml(d.reason)}</td>
+            <td class="px-4 py-3 text-gray-500">${escapeHtml(d.source)}</td>
+            <td class="px-4 py-3 text-right">
+              <button onclick="deleteBannedUrl('${d.domain}')" class="text-rose-400 hover:text-rose-300 transition" title="Delete">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </td>
+          </tr>
+        `).join('');
+      } catch (e) {
+        console.error("Failed to load banned urls", e);
+      }
+    }
+
+    async function deleteBannedUrl(domain) {
+      if (!confirm(`Remove '${domain}' from banned list?`)) return;
+      await fetch(`/api/observatory/banned_urls/${encodeURIComponent(domain)}`, { method: "DELETE" });
+      loadBannedUrls();
+    }
+
+    function openAddBannedModal() {
+      document.getElementById("banned-modal").classList.remove("hidden");
+    }
+    function closeAddBannedModal() {
+      document.getElementById("banned-modal").classList.add("hidden");
+    }
+    async function submitNewBannedDomain() {
+      const domain = document.getElementById("new-banned-domain").value.trim();
+      const reason = document.getElementById("new-banned-reason").value.trim() || "Manual addition via Observatory";
+      if (!domain) return;
+      await fetch("/api/observatory/banned_urls", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domain, reason })
+      });
+      closeAddBannedModal();
+      document.getElementById("new-banned-domain").value = "";
+      loadBannedUrls();
+    }
+
+    async function loadOrgs() {
+      try {
+        const res = await fetch("/api/observatory/orgs");
+        const data = await res.json();
+        const orgs = data.organizations || [];
+        document.getElementById("org-counter").textContent = orgs.length;
+        const grid = document.getElementById("orgs-grid");
+        grid.innerHTML = orgs.map(o => `
+          <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 space-y-2 text-xs shadow-lg">
+            <div class="flex items-center justify-between border-b border-gray-800 pb-2">
+              <span class="font-bold text-white text-sm">${escapeHtml(o.display_name)}</span>
+              <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">
+                ${escapeHtml(o.org_type)}
+              </span>
+            </div>
+            <div class="text-gray-400"><strong>Legal Name:</strong> ${escapeHtml(o.legal_name)}</div>
+            ${o.committee_name ? `<div class="text-gray-400"><strong>Committee:</strong> ${escapeHtml(o.committee_name)}</div>` : ''}
+            <div class="text-gray-400 font-mono"><strong>Domains:</strong> ${(o.registered_domains || []).join(', ') || 'None'}</div>
+            <div class="text-gray-400 font-mono"><strong>Numbers:</strong> ${(o.sending_numbers || []).join(', ') || 'None'}</div>
+            ${o.campaign_verify_token ? `<div class="text-emerald-400 font-mono"><strong>Campaign Verify:</strong> Verified Token Active</div>` : ''}
+          </div>
+        `).join('');
+      } catch (e) {
+        console.error("Failed to load orgs", e);
+      }
+    }
+
+    async function updateQuarantineCount() {
+      try {
+        const res = await fetch("/api/observatory/quarantine");
+        const data = await res.json();
+        const qList = data.quarantined || [];
+        document.getElementById("quarantine-counter").textContent = qList.length;
+        const container = document.getElementById("quarantine-list");
+        if (qList.length === 0) {
+          container.innerHTML = `<div class="text-center py-12 text-gray-500 text-xs">No quarantined items. All drafts compliant.</div>`;
+          return;
+        }
+        container.innerHTML = qList.map(item => `
+          <div class="bg-gray-900 border border-red-900/40 rounded-xl p-4 text-xs space-y-2 shadow-lg">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-red-400 uppercase font-mono">${item.status}</span>
+              <span class="text-gray-500 font-mono text-[10px]">${item.ts}</span>
+            </div>
+            <div class="text-gray-200 font-medium">${escapeHtml(item.summary)}</div>
+            ${item.tool_result ? `
+              <pre class="bg-gray-950 p-2 rounded text-[11px] text-gray-400 overflow-x-auto">${escapeHtml(JSON.stringify(item.tool_result, null, 2))}</pre>
+            ` : ''}
+          </div>
+        `).join('');
+      } catch (e) {
+        console.error("Failed to load quarantine", e);
+      }
+    }
+
+    function switchTab(viewId) {
+      ['traces', 'banned', 'orgs', 'quarantine'].forEach(v => {
+        document.getElementById(`view-${v}`).classList.add("hidden");
+        document.getElementById(`tab-btn-${v}`).classList.remove("bg-gray-800", "text-white");
+        document.getElementById(`tab-btn-${v}`).classList.add("text-gray-400");
+      });
+      document.getElementById(`view-${viewId}`).classList.remove("hidden");
+      document.getElementById(`tab-btn-${viewId}`).classList.add("bg-gray-800", "text-white");
+      document.getElementById(`tab-btn-${viewId}`).classList.remove("text-gray-400");
+    }
+
+    let currentInspectedTrace = null;
+
+    function inspectTrace(id) {
+      const trace = allTraces.find(t => (t.span_id === id) || (allTraces.indexOf(t) == id) || (t.id === id));
+      if (!trace) return;
+      currentInspectedTrace = trace;
+
+      const badge = getComponentBadge(trace.component_id);
+      const content = document.getElementById("inspector-content");
+      
+      content.innerHTML = `
+        <div class="space-y-4">
+          <!-- Summary Banner -->
+          <div class="p-3 bg-gray-950/80 rounded-xl border border-gray-800 flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2.5">
+              <span class="px-2.5 py-1 rounded text-xs font-bold ${badge.class}">${badge.label}</span>
+              <span class="font-mono text-gray-400 text-xs">Event: <strong class="text-white">${trace.type || 'action'}</strong></span>
+              ${trace.latency_ms ? `<span class="px-2 py-0.5 rounded bg-indigo-950/60 text-indigo-400 border border-indigo-800 text-[11px] font-mono">⚡ ${trace.latency_ms}ms</span>` : ''}
+            </div>
+            <div class="text-[11px] text-gray-400 font-mono">${trace.ts || 'Live event'}</div>
+          </div>
+
+          <!-- Description -->
+          <div class="p-3 bg-gray-900 rounded-lg border border-gray-800">
+            <span class="text-gray-400 block text-[10px] uppercase tracking-wider mb-1">Summary</span>
+            <div class="text-gray-100 font-medium">${escapeHtml(trace.summary)}</div>
+          </div>
+
+          ${trace.tool_id ? `
+            <div class="p-3 bg-gray-900 rounded-lg border border-gray-800">
+              <span class="text-indigo-400 font-bold block text-[10px] uppercase tracking-wider mb-1">Executed Tool</span>
+              <div class="font-mono text-indigo-300">${trace.tool_id}</div>
+            </div>
+          ` : ''}
+
+          <!-- Deep-dive Payload / Arguments -->
+          ${trace.tool_args ? `
+            <div>
+              <div class="flex items-center justify-between text-[11px] text-gray-400 mb-1">
+                <span class="font-bold text-emerald-400 uppercase">Input Payload & Arguments</span>
+                <span class="text-[10px] text-gray-500 font-mono">${typeof trace.tool_args === 'object' ? Object.keys(trace.tool_args).length + ' fields' : ''}</span>
+              </div>
+              <pre class="bg-gray-950 p-3 rounded-lg border border-gray-800 overflow-x-auto text-emerald-400 leading-relaxed">${escapeHtml(JSON.stringify(trace.tool_args, null, 2))}</pre>
+            </div>
+          ` : ''}
+
+          <!-- Execution Verdict / Output -->
+          ${trace.tool_result ? `
+            <div>
+              <div class="flex items-center justify-between text-[11px] text-gray-400 mb-1">
+                <span class="font-bold text-amber-400 uppercase">Execution Output & Verdict</span>
+                <span class="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded ${trace.status === 'ok' ? 'bg-emerald-900/60 text-emerald-300' : 'bg-rose-900/60 text-rose-300'}">${trace.status}</span>
+              </div>
+              <pre class="bg-gray-950 p-3 rounded-lg border border-gray-800 overflow-x-auto text-amber-300 leading-relaxed">${escapeHtml(JSON.stringify(trace.tool_result, null, 2))}</pre>
+            </div>
+          ` : ''}
+
+          <!-- Complete Trace JSON -->
+          <div>
+            <div class="flex items-center justify-between text-[11px] text-gray-400 mb-1">
+              <span class="font-bold text-gray-400 uppercase">Complete Trace Metadata</span>
+              <button onclick="copyInspectorJSON()" class="text-indigo-400 hover:text-indigo-300 text-[11px] flex items-center gap-1 cursor-pointer">
+                <i class="fa-regular fa-copy"></i> Copy Raw JSON
+              </button>
+            </div>
+            <pre class="bg-gray-950 p-3 rounded-lg border border-gray-800 overflow-x-auto text-gray-300 text-[11px] max-h-56">${escapeHtml(JSON.stringify(trace, null, 2))}</pre>
+          </div>
+        </div>
+      `;
+      document.getElementById("inspector-modal").classList.remove("hidden");
+    }
+
+    function copyInspectorJSON() {
+      if (!currentInspectedTrace) return;
+      navigator.clipboard.writeText(JSON.stringify(currentInspectedTrace, null, 2));
+      alert("Trace JSON copied to clipboard!");
+    }
+
+    function closeInspectorModal() {
+      document.getElementById("inspector-modal").classList.add("hidden");
+    }
+
+    // Initialize on page load
+    window.addEventListener("DOMContentLoaded", async () => {
+      initTraceStream();
+      await reloadTracesFromDB();
+      loadRoster();
+      loadBannedUrls();
+      loadOrgs();
+      updateQuarantineCount();
+
+      const hash = window.location.hash.replace('#', '');
+      if (['banned', 'orgs', 'quarantine'].includes(hash)) {
+        switchTab(hash);
+      } else if (hash === 'inspect') {
+        setTimeout(() => {
+          if (allTraces && allTraces.length > 0) {
+            // Find a trace with tool_result
+            const t = allTraces.find(x => x.tool_result || x.tool_id) || allTraces[0];
+            inspectTrace(t.span_id || 0);
+          }
+        }, 300);
+      }
+    });
+  </script>
+</body>
+</html>

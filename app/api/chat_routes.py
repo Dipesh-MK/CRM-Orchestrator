@@ -857,6 +857,7 @@ async def chat_send(req: ChatMessageRequest):
             addr_val = state.get("address_or_location") or state["slots"].get("location", {}).get("value") or ""
             date_val = state.get("event_date") or state["slots"].get("date", {}).get("value") or ""
 
+            skipped_fields = state.get("skipped_fields", [])
             gen_res = await engine.generate_message_from_form(
                 session_id=session_id,
                 business_type=b_type,
@@ -869,7 +870,7 @@ async def chat_send(req: ChatMessageRequest):
                 tone=tone_val,
                 template_request=user_msg,
                 additional_info=state.get("additional_info", []),
-                skipped_fields=skipped
+                skipped_fields=skipped_fields
             )
             state["templates"] = gen_res["templates"]
             state["selected_tone"] = tone_val
@@ -988,8 +989,8 @@ async def chat_send(req: ChatMessageRequest):
             has_essentials = bool(org_val and (link_val or "link_or_contact" in state.get("skipped_fields", [])))
 
             # Transition to Editable Confirmation Card!
-            # Only transition if user explicitly signals completion, or core details are filled, or maximum turns reached
-            if is_concluding or (analysis.get("action") == "show_card" and (has_essentials or turn_count >= 3)) or turn_count >= 5:
+            # Only transition if user explicitly signals completion, or core details are filled after at least 3 turns, or maximum turns reached
+            if is_concluding or (analysis.get("action") == "show_card" and (has_essentials and turn_count >= 3)) or turn_count >= 5:
                 state["conversation_stage"] = "card_review"
                 org_val = clean_organization_name(org_val, domain)
 
@@ -1073,15 +1074,16 @@ async def chat_send(req: ChatMessageRequest):
                 options = followup.get("options")
 
                 domain_questions = cfg.get("questions", [])
-                if (not q_text or "provide more information" in q_text.lower()) and turn_count < len(domain_questions):
-                    next_cfg_q = domain_questions[turn_count]
+                q_idx = max(0, turn_count - 1)
+                if domain_questions and q_idx < len(domain_questions):
+                    next_cfg_q = domain_questions[q_idx]
                     q_text = next_cfg_q["question"]
                     options = next_cfg_q["options"]
                 elif not q_text:
                     q_text = "What is the primary goal or details for this campaign?"
                     options = ["Other (Type custom answer)"]
 
-                full_reply = f"{ack}\n\n👉 **Question {turn_count + 1}:** {q_text}"
+                full_reply = f"{ack}\n\n👉 **Question {turn_count}:** {q_text}"
 
                 record_assistant_message(session_id, state, full_reply, question_options=options)
                 yield f"data: {json.dumps({'type': 'text_chunk', 'text': full_reply, 'question_options': options})}\n\n"
@@ -1135,7 +1137,7 @@ async def chat_send(req: ChatMessageRequest):
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
             return
 
-        # 4. Initial Campaign Context Received -> Initiate Back-and-forth Q&A
+        # 4. Initial Campaign Context Received -> Initiate Back-and-forth Q&A or show card if already complete
         if not state.get("templates"):
             domain = detect_campaign_domain(user_msg)
             cfg = DOMAIN_CONFIGS.get(domain, DOMAIN_CONFIGS["General Business"])
@@ -1145,7 +1147,7 @@ async def chat_send(req: ChatMessageRequest):
             state["conversation_stage"] = "collecting_info"
             state["initial_context"] = user_msg
             state["collected_details"] = {}
-            state["info_turns"] = 0
+            state["info_turns"] = 1
             if "email" in user_msg.lower():
                 state["channel_format"] = "email"
 
@@ -1155,14 +1157,143 @@ async def chat_send(req: ChatMessageRequest):
                 state["slots"]["link_or_contact"] = {"value": m_url.group(0), "source": "user"}
                 state["collected_details"]["link_or_contact"] = m_url.group(0)
 
-            first_q = cfg["questions"][0]
+            # Analyze the rich initial context dynamically using orchestrator engine
+            analysis = await engine.analyze_campaign_interaction(
+                session_id=session_id,
+                user_msg=user_msg,
+                domain=domain,
+                current_slots=state.get("slots", {}),
+                collected_details=state.get("collected_details", {}),
+                conversation_history=state.get("conversation_history", [])
+            )
+
+            ext = analysis.get("extracted", {})
+            for k, v in ext.items():
+                if v:
+                    state["collected_details"][k] = v
+
+            if ext.get("organization_name"):
+                clean_org = clean_organization_name(ext["organization_name"], domain)
+                state["slots"]["business_name"] = {"value": clean_org, "source": "user"}
+                state["collected_details"]["organization_name"] = clean_org
+
+            if ext.get("link_or_contact"):
+                state["slots"]["link_or_contact"] = {"value": ext["link_or_contact"], "source": "user"}
+                state["collected_details"]["link_or_contact"] = ext["link_or_contact"]
+
+            if ext.get("campaign_goal"):
+                state["slots"]["campaign_goal"] = {"value": ext["campaign_goal"], "source": "user"}
+                state["collected_details"]["campaign_goal"] = ext["campaign_goal"]
+
+            if ext.get("channel_format"):
+                state["channel_format"] = ext["channel_format"]
+
+            org_val = state["collected_details"].get("organization_name") or state["slots"].get("business_name", {}).get("value") or ""
+            link_val = state["collected_details"].get("link_or_contact") or state["slots"].get("link_or_contact", {}).get("value") or ""
+            goal_val = state["collected_details"].get("campaign_goal") or state.get("initial_context") or "Campaign Notice"
+
+            has_essentials = bool(org_val and (link_val or "link_or_contact" in state.get("skipped_fields", [])))
+            is_concluding = any(w in user_msg.lower() for w in [
+                "that's all", "thats all", "ready", "generate", "confirm", "show card",
+                "generate card", "done", "no more", "proceed", "looks good", "enough",
+                "just make", "generate template"
+            ])
+
+            # If user already gave rich details (organization name, goal, and contact/location), transition straight to confirmation card!
+            if (is_concluding and (has_essentials or org_val)) or (analysis.get("action") == "show_card" and has_essentials and len(user_msg.split()) >= 10):
+                state["conversation_stage"] = "card_review"
+                org_val = clean_organization_name(org_val, domain)
+
+                channel_fmt = state.get("channel_format", "sms")
+                tone_val = ext.get("suggested_tone") or cfg["default_tone"]
+
+                dynamic_fields = {}
+                for q in cfg.get("questions", []):
+                    if q["key"] not in ["organization_name", "link_or_contact"]:
+                        val = state["collected_details"].get(q["key"], "")
+                        if val:
+                            dynamic_fields[q["key"]] = {"label": q["label"], "value": val}
+
+                if ext.get("address_or_location"):
+                    dynamic_fields["location"] = {"label": "📍 Location / Address", "value": ext["address_or_location"]}
+                if ext.get("call_to_action"):
+                    dynamic_fields["call_to_action"] = {"label": "🎯 Call to Action", "value": ext["call_to_action"]}
+                if ext.get("dynamic_fields"):
+                    for dk, dv in ext["dynamic_fields"].items():
+                        if dv and dk not in dynamic_fields:
+                            dynamic_fields[dk] = {"label": dk.replace("_", " ").title(), "value": dv}
+
+                addr_val = ext.get("address_or_location") or state["collected_details"].get("address_or_location") or state["slots"].get("location", {}).get("value") or ""
+                date_val = ext.get("event_date") or state["collected_details"].get("event_date") or state["slots"].get("date", {}).get("value") or ""
+
+                ev_tones = emit_event(
+                    state, "tone_exploration", "Tone Exploration", "🎨", "active",
+                    "Generating candidate message templates",
+                    f"Crafting {len(cfg.get('recommended_tones', []))} tone variations...", "processing"
+                )
+                yield f"data: {json.dumps({'type': 'pipeline_event', 'event': ev_tones, 'tag': format_pipeline_event_tag(ev_tones)})}\n\n"
+
+                tone_candidates = await engine.generate_tone_candidate_previews(
+                    session_id=session_id,
+                    business_type=cfg["domain_name"],
+                    context=goal_val,
+                    organization_name=org_val,
+                    link_or_contact=link_val,
+                    address_or_location=addr_val,
+                    event_date=date_val,
+                    channel_format=channel_fmt,
+                    candidate_tones=cfg.get("recommended_tones", []),
+                    dynamic_fields=dynamic_fields
+                )
+
+                chosen_tone = tone_candidates[0]["name"] if tone_candidates else tone_val
+
+                card_data = {
+                    "context": goal_val,
+                    "business_type": cfg["domain_name"],
+                    "organization_name": org_val,
+                    "link_or_contact": link_val,
+                    "address_or_location": addr_val,
+                    "event_date": date_val,
+                    "channel_format": channel_fmt,
+                    "tone": chosen_tone,
+                    "recommended_tones": cfg["recommended_tones"],
+                    "tone_candidates": tone_candidates,
+                    "dynamic_fields": dynamic_fields,
+                    "template_request": state.get("template_request", ""),
+                    "additional_info": []
+                }
+                state["current_form_context"] = card_data
+                state["pending_form_data"] = card_data
+
+                prompt_text = (
+                    f"### 📋 Campaign Details Confirmed\n\n"
+                    f"I have gathered the key details for your **{cfg['domain_name']}** campaign.\n\n"
+                    f"Review the collapsible message templates across tones below, customize if desired, and click **✨ Confirm & Generate Message**:"
+                )
+                record_assistant_message(session_id, state, prompt_text, form_data=card_data)
+                yield f"data: {json.dumps({'type': 'text_chunk', 'text': prompt_text, 'form_data': card_data})}\n\n"
+                yield f"data: {json.dumps({'type': 'campaign_form', 'text': prompt_text, 'form_data': card_data})}\n\n"
+                yield f"data: {json.dumps({'type': 'done'})}\n\n"
+                return
+
+            domain_questions = cfg.get("questions", [])
+            first_q = domain_questions[0] if domain_questions else {}
+            if first_q:
+                q_text = first_q.get("question")
+                options = first_q.get("options", [])
+            else:
+                followup = analysis.get("followup", {})
+                q_text = followup.get("question") or "What is the primary action or update you want recipients to take?"
+                options = followup.get("options") or []
+
             intro_text = (
                 f"🎯 **Great, let's build your {cfg['domain_name']} campaign!**\n\n"
                 f"To make sure we craft the highest-converting, compliant message, I'll ask you a few quick questions to gather the key details.\n\n"
-                f"👉 **Question 1:** {first_q['question']}"
+                f"👉 **Question 1:** {q_text}"
             )
-            record_assistant_message(session_id, state, intro_text, question_options=first_q['options'])
-            yield f"data: {json.dumps({'type': 'text_chunk', 'text': intro_text, 'question_options': first_q['options']})}\n\n"
+            record_assistant_message(session_id, state, intro_text, question_options=options)
+            yield f"data: {json.dumps({'type': 'text_chunk', 'text': intro_text, 'question_options': options})}\n\n"
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
             return
 
@@ -2307,6 +2438,11 @@ Please regenerate the message incorporating all requested modifications while pr
             d = json.loads(clean)
             if d.get("body"):
                 new_body = d["body"]
+                clean_optout = config.orchestrator.optout_text.strip()
+                if "reply stop to unsubscribe" in new_body.lower():
+                    new_body = re.sub(r"(?i)reply\s+stop\s+to\s+unsubscribe\s+and\s+", f"{clean_optout} And ", new_body)
+                if clean_optout not in new_body:
+                    new_body = f"{new_body.rstrip()} {clean_optout}"
         except Exception:
             pass
 

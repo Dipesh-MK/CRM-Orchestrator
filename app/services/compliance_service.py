@@ -62,11 +62,19 @@ def check_template_compliance(
     if "???" in body:
         violations.append("Contains excessive punctuation: '???'")
 
-    # 6. Includes link/contact if provided
-    if link_or_contact and link_or_contact.strip():
-        # Tag {{link}} or raw link or mention
         if "{{link}}" not in body and link_or_contact.lower() not in body.lower():
             violations.append(f"Missing link or contact placeholder: '{link_or_contact}'")
+
+    # 7. Check banned public URL shorteners (bit.ly, tinyurl.com, etc.)
+    try:
+        from app.services.compliance_rules_v2 import check_banned_urls
+        b_res = check_banned_urls(body)
+        if not b_res.passed:
+            violations.append(b_res.reason)
+    except Exception:
+        # Fallback regex if storage not initialized
+        if re.search(r"(?i)\b(bit\.ly|tinyurl\.com|tiny\.url|is\.gd|rb\.gy)\b", body):
+            violations.append("Prohibited public short URL domain detected. Carriers strictly ban public shorteners under 10DLC policy.")
 
     return {
         "compliant": len(violations) == 0,

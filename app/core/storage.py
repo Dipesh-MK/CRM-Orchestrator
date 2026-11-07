@@ -291,6 +291,134 @@ class Storage:
             )
             """)
 
+            # Banned URL Domains Table (Priority Rule B)
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS banned_url_domains (
+                id TEXT PRIMARY KEY,
+                domain TEXT UNIQUE NOT NULL,
+                match_type TEXT NOT NULL DEFAULT 'suffix',
+                reason TEXT,
+                source TEXT,
+                active INTEGER DEFAULT 1,
+                created_at TEXT,
+                created_by TEXT
+            )
+            """)
+
+            # Seed initial banned URLs if table is empty
+            cursor.execute("SELECT COUNT(*) FROM banned_url_domains")
+            if cursor.fetchone()[0] == 0:
+                now_str = utc_now_iso()
+                seeds = [
+                    ("seed_bitly", "bit.ly", "suffix", "Public URL shortener prohibited under carrier 10DLC policy", "CTIA / Carrier Guidelines", 1, now_str, "system_seed"),
+                    ("seed_tinyurl", "tinyurl.com", "suffix", "Public URL shortener prohibited under carrier 10DLC policy", "CTIA / Carrier Guidelines", 1, now_str, "system_seed"),
+                    ("seed_tiny_dot_url", "tiny.url", "suffix", "Public URL shortener alias prohibited under carrier 10DLC policy", "CTIA / Carrier Guidelines", 1, now_str, "system_seed"),
+                ]
+                cursor.executemany("""
+                INSERT INTO banned_url_domains (id, domain, match_type, reason, source, active, created_at, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, seeds)
+
+            # Organization Registry (org_registry)
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS org_registry (
+                org_id TEXT PRIMARY KEY,
+                display_name TEXT NOT NULL,
+                legal_name TEXT NOT NULL,
+                committee_name TEXT,
+                org_type TEXT NOT NULL,
+                registered_domains_json TEXT NOT NULL,
+                customer_care_contact TEXT NOT NULL,
+                sending_numbers_json TEXT NOT NULL,
+                campaign_verify_token TEXT,
+                registered_use_cases_json TEXT NOT NULL,
+                approved INTEGER DEFAULT 1,
+                created_at TEXT,
+                updated_at TEXT
+            )
+            """)
+
+            # Seed standard non-profit & political test organizations if empty
+            cursor.execute("SELECT COUNT(*) FROM org_registry")
+            if cursor.fetchone()[0] == 0:
+                now_str = utc_now_iso()
+                sample_orgs = [
+                    (
+                        "org_hope_wildlife",
+                        "Hope Wildlife Foundation",
+                        "Hope Wildlife Foundation Inc.",
+                        None,
+                        "501c3",
+                        json.dumps(["hopewildlife.org", "donate.hopewildlife.org"]),
+                        "1-800-555-0199",
+                        json.dumps(["55512", "+15551234560", "+15551234561"]),
+                        None,
+                        json.dumps(["charity_appeal", "event_invitation", "donor_thanks"]),
+                        1, now_str, now_str
+                    ),
+                    (
+                        "org_community_action",
+                        "Community Action Fund",
+                        "Community Action Advocacy Network",
+                        None,
+                        "501c4",
+                        json.dumps(["communityactionfund.org", "action.org"]),
+                        "1-800-555-0188",
+                        json.dumps(["55512", "+15551234562"]),
+                        None,
+                        json.dumps(["advocacy", "event_invitation", "outreach"]),
+                        1, now_str, now_str
+                    ),
+                    (
+                        "org_civic_liberty_pac",
+                        "Civic Liberty Campaign",
+                        "Committee for Civic Liberty",
+                        "Committee for Civic Liberty",
+                        "527_political",
+                        json.dumps(["civicliberty.org", "vote.civicliberty.org"]),
+                        "1-800-555-0177",
+                        json.dumps(["55512", "+15551234563"]),
+                        "CV-POL-2026-XYZ9876",
+                        json.dumps(["political_outreach", "political_fundraising"]),
+                        1, now_str, now_str
+                    )
+                ]
+                cursor.executemany("""
+                INSERT INTO org_registry (
+                    org_id, display_name, legal_name, committee_name, org_type,
+                    registered_domains_json, customer_care_contact, sending_numbers_json,
+                    campaign_verify_token, registered_use_cases_json, approved, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, sample_orgs)
+
+            # Trace Events Table (Agent Observatory Bus)
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS trace_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ts TEXT NOT NULL,
+                run_id TEXT NOT NULL,
+                campaign_id TEXT NOT NULL,
+                span_id TEXT NOT NULL,
+                parent_span_id TEXT,
+                component_id TEXT NOT NULL,
+                component_kind TEXT NOT NULL,
+                type TEXT NOT NULL,
+                to_component TEXT,
+                tool_id TEXT,
+                tool_args_json TEXT,
+                tool_result_json TEXT,
+                model TEXT,
+                latency_ms REAL,
+                tokens_in INTEGER,
+                tokens_out INTEGER,
+                status TEXT NOT NULL,
+                summary TEXT NOT NULL
+            )
+            """)
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_trace_campaign ON trace_events(campaign_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_trace_run ON trace_events(run_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_trace_component ON trace_events(component_id)")
+
             # Ensure columns exist if table was already created
             cursor.execute("PRAGMA table_info(channel_calls)")
             existing_cols = [col[1] for col in cursor.fetchall()]
@@ -1105,6 +1233,155 @@ class Storage:
             """, (status, status_code, now, now, webhook_id))
             conn.commit()
             return cursor.rowcount > 0
+
+    # -------------------------------------------------------------
+    # Banned URL Domains Management (Priority Rule B)
+    # -------------------------------------------------------------
+    def list_banned_url_domains(self) -> List[Dict[str, Any]]:
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            rows = cursor.execute("SELECT * FROM banned_url_domains ORDER BY domain ASC").fetchall()
+            return [dict(r) for r in rows]
+
+    def add_banned_url_domain(self, domain: str, match_type: str = "suffix", reason: str = "", source: str = "observatory", created_by: str = "admin") -> Dict[str, Any]:
+        import uuid
+        now = utc_now_iso()
+        b_id = f"ban_{uuid.uuid4().hex[:8]}"
+        clean_d = domain.lower().strip().rstrip("/")
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+            INSERT INTO banned_url_domains (id, domain, match_type, reason, source, active, created_at, created_by)
+            VALUES (?, ?, ?, ?, ?, 1, ?, ?)
+            ON CONFLICT(domain) DO UPDATE SET active=1, reason=?, source=?
+            """, (b_id, clean_d, match_type, reason, source, now, created_by, reason, source))
+            conn.commit()
+        return {"id": b_id, "domain": clean_d, "match_type": match_type, "reason": reason}
+
+    def delete_banned_url_domain(self, domain_or_id: str) -> bool:
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM banned_url_domains WHERE id = ? OR domain = ?", (domain_or_id, domain_or_id))
+            conn.commit()
+            return cursor.rowcount > 0
+
+    # -------------------------------------------------------------
+    # Organization Registry Management (org_registry)
+    # -------------------------------------------------------------
+    def get_org_record(self, org_id: str) -> Optional[Dict[str, Any]]:
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            row = cursor.execute("SELECT * FROM org_registry WHERE org_id = ? OR display_name = ?", (org_id, org_id)).fetchone()
+            if not row:
+                return None
+            d = dict(row)
+            d["registered_domains"] = json.loads(d.get("registered_domains_json") or "[]")
+            d["sending_numbers"] = json.loads(d.get("sending_numbers_json") or "[]")
+            d["registered_use_cases"] = json.loads(d.get("registered_use_cases_json") or "[]")
+            d["approved"] = bool(d.get("approved", 1))
+            return d
+
+    def list_org_records(self) -> List[Dict[str, Any]]:
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            rows = cursor.execute("SELECT * FROM org_registry ORDER BY display_name ASC").fetchall()
+            res = []
+            for r in rows:
+                d = dict(r)
+                d["registered_domains"] = json.loads(d.get("registered_domains_json") or "[]")
+                d["sending_numbers"] = json.loads(d.get("sending_numbers_json") or "[]")
+                d["registered_use_cases"] = json.loads(d.get("registered_use_cases_json") or "[]")
+                d["approved"] = bool(d.get("approved", 1))
+                res.append(d)
+            return res
+
+    def save_org_record(self, record: Dict[str, Any]) -> Dict[str, Any]:
+        now = utc_now_iso()
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+            INSERT INTO org_registry (
+                org_id, display_name, legal_name, committee_name, org_type,
+                registered_domains_json, customer_care_contact, sending_numbers_json,
+                campaign_verify_token, registered_use_cases_json, approved, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(org_id) DO UPDATE SET
+                display_name=?, legal_name=?, committee_name=?, org_type=?,
+                registered_domains_json=?, customer_care_contact=?, sending_numbers_json=?,
+                campaign_verify_token=?, registered_use_cases_json=?, approved=?, updated_at=?
+            """, (
+                record["org_id"], record["display_name"], record["legal_name"], record.get("committee_name"), record["org_type"],
+                json.dumps(record.get("registered_domains", [])), record["customer_care_contact"], json.dumps(record.get("sending_numbers", [])),
+                record.get("campaign_verify_token"), json.dumps(record.get("registered_use_cases", [])), 1 if record.get("approved", True) else 0,
+                now, now,
+                record["display_name"], record["legal_name"], record.get("committee_name"), record["org_type"],
+                json.dumps(record.get("registered_domains", [])), record["customer_care_contact"], json.dumps(record.get("sending_numbers", [])),
+                record.get("campaign_verify_token"), json.dumps(record.get("registered_use_cases", [])), 1 if record.get("approved", True) else 0,
+                now
+            ))
+            conn.commit()
+        return self.get_org_record(record["org_id"]) or {}
+
+    # -------------------------------------------------------------
+    # Trace Events Management (Observatory Bus)
+    # -------------------------------------------------------------
+    def save_trace_event(self, event: Dict[str, Any]) -> int:
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+            INSERT INTO trace_events (
+                ts, run_id, campaign_id, span_id, parent_span_id,
+                component_id, component_kind, type, to_component,
+                tool_id, tool_args_json, tool_result_json, model,
+                latency_ms, tokens_in, tokens_out, status, summary
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                event.get("ts") or utc_now_iso(),
+                event.get("run_id") or "run_default",
+                event.get("campaign_id") or "camp_default",
+                event.get("span_id") or "span_1",
+                event.get("parent_span_id"),
+                event.get("component_id"),
+                event.get("component_kind", "system"),
+                event.get("type", "decision"),
+                event.get("to_component"),
+                event.get("tool_id"),
+                json.dumps(event.get("tool_args") or {}),
+                json.dumps(event.get("tool_result") or {}),
+                event.get("model"),
+                event.get("latency_ms"),
+                event.get("tokens_in"),
+                event.get("tokens_out"),
+                event.get("status", "ok"),
+                event.get("summary", "")
+            ))
+            conn.commit()
+            return cursor.lastrowid
+
+    def list_trace_events(self, campaign_id: Optional[str] = None, run_id: Optional[str] = None, limit: int = 200) -> List[Dict[str, Any]]:
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            query = "SELECT * FROM trace_events"
+            params = []
+            conditions = []
+            if campaign_id:
+                conditions.append("campaign_id = ?")
+                params.append(campaign_id)
+            if run_id:
+                conditions.append("run_id = ?")
+                params.append(run_id)
+            if conditions:
+                query += " WHERE " + " AND ".join(conditions)
+            query += " ORDER BY id DESC LIMIT ?"
+            params.append(limit)
+            rows = cursor.execute(query, tuple(params)).fetchall()
+            res = []
+            for r in rows:
+                d = dict(r)
+                d["tool_args"] = json.loads(d.get("tool_args_json") or "{}")
+                d["tool_result"] = json.loads(d.get("tool_result_json") or "{}")
+                res.append(d)
+            return res[::-1] # chronological
 
 # Singleton storage getter
 _storage: Optional[Storage] = None

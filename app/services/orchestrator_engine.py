@@ -1735,12 +1735,11 @@ OUTPUT FORMAT (Strict JSON):
                 "Warm & Engaging 🌟"
             ]
         elif candidate_tones and len(candidate_tones) >= 2:
-            target_tones = candidate_tones[:4]
+            target_tones = candidate_tones[:2]
         else:
             target_tones = [
                 "Direct & Authoritative 📜",
-                "Professional & Polite 💼",
-                "Urgent & Action-Oriented 🚨"
+                "Friendly & Casual 🌟"
             ]
 
         def get_tone_description(t_name: str) -> str:
@@ -1848,7 +1847,18 @@ OUTPUT FORMAT (Strict JSON):
             "slots": {k: v.get("value") for k, v in current_slots.items() if isinstance(v, dict)}
         }
 
+        # Build readable conversation history summary
+        hist_summary = []
+        for h in (conversation_history or [])[-6:]:
+            role = "User" if h.get("role") == "user" else "Assistant"
+            content = (h.get("content") or "")[:200]
+            hist_summary.append(f"{role}: {content}")
+        hist_text = "\n".join(hist_summary) if hist_summary else "None"
+
         user_prompt = f"""Conversation Domain: {domain}
+Conversation History:
+{hist_text}
+
 Current Gathered Slots: {json.dumps(slots_summary)}
 Latest User Message: "{user_msg}"
 
@@ -1905,7 +1915,9 @@ Output JSON matching this exact structure:
 
         followup = parsed.get("followup", {})
         if followup and followup.get("question"):
-            q_lower = followup["question"].lower()
+            if isinstance(followup["question"], list):
+                followup["question"] = " ".join(str(q) for q in followup["question"]) if followup["question"] else ""
+            q_lower = str(followup["question"]).lower()
             if any(k in q_lower for k in [
                 "organization", "business name", "company name", "clinic name", "store name",
                 "address", "location", "where", "date", "when", "timing", "time",

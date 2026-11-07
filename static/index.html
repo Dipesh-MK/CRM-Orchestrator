@@ -125,25 +125,24 @@
       </div>
     </div>
 
-    <!-- Right Controls: Workspace, Theme Toggle, Tabs -->
-    <div class="flex items-center gap-3">
-      <!-- Main Tabs -->
-      <nav class="flex p-1 bg-[var(--content)] rounded-lg border border-[var(--border)] text-xs font-medium">
-        <button id="tabChatBtn" onclick="switchTab('chat')" class="px-3 py-1 rounded-md bg-[var(--card)] shadow-xs text-[var(--foreground)] transition-all font-semibold cursor-pointer">💬 Chat</button>
-        <button id="tabPipelineBtn" onclick="switchTab('pipeline')" class="px-3 py-1 rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-all flex items-center gap-1.5 cursor-pointer">
-          <span>⚡ Pipeline</span>
-          <span id="pipelineIndicator" class="hidden w-2 h-2 rounded-full bg-blue-500"></span>
-        </button>
-        <button id="tabLogsBtn" onclick="switchTab('logs')" class="px-3 py-1 rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-all cursor-pointer">📋 Logs</button>
-      </nav>
+    <!-- Center Navigation Tabs: Chat, Pipeline, Diagnostics & Logs -->
+    <nav class="flex items-center bg-[var(--content)] p-1 rounded-lg border border-[var(--border)] text-xs font-medium">
+      <button id="tabChatBtn" onclick="switchTab('chat')" class="px-3.5 py-1.5 rounded-md bg-[var(--card)] shadow-xs text-[var(--foreground)] transition-all font-semibold cursor-pointer">
+        💬 Chat
+      </button>
+      <button id="tabPipelineBtn" onclick="switchTab('pipeline')" class="px-3.5 py-1.5 rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-all flex items-center gap-1.5 cursor-pointer">
+        🚀 Pipeline
+      </button>
+      <button id="tabLogsBtn" onclick="switchTab('logs')" class="px-3.5 py-1.5 rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-all cursor-pointer">
+        📋 Logs & Diagnostics
+      </button>
+    </nav>
 
-      <!-- Action Button: Tool Webhooks -->
-      <div class="flex items-center gap-2">
-        <button onclick="openToolWebhooksModal()" class="px-3 py-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--content)] text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer" title="Configure custom tools & webhooks">
-          <span>🛠️</span> Tools & Webhooks
-          <span id="toolWebhooksCountBadge" class="hidden px-1.5 py-0.2 text-[10px] bg-emerald-500 text-white rounded-full">0</span>
-        </button>
-      </div>
+    <!-- Right Controls: Agent Observatory Link, Theme Toggle -->
+    <div class="flex items-center gap-3">
+      <a href="/observatory" target="_blank" class="px-3.5 py-1.5 rounded-lg bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 text-xs font-semibold flex items-center gap-2 shadow-2xs transition-all cursor-pointer" title="Open Agent Observatory UI">
+        <span>🛰️</span> Agent Observatory
+      </a>
 
       <!-- Theme Switcher -->
       <button onclick="toggleDarkMode()" class="p-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--content)] text-xs cursor-pointer" title="Toggle theme">
@@ -1561,10 +1560,9 @@
           const recTones = Array.isArray(formCardData.recommended_tones) && formCardData.recommended_tones.length > 0
             ? formCardData.recommended_tones
             : [
-                'Aggressive & Urgent 🚨',
-                'Authoritative & Direct 📜',
-                'Professional & Polite 💼',
-                'Friendly & Casual 🌟'
+                'Urgent & Direct ⚡',
+                'Friendly & Casual 🌟',
+                'Professional & Polite 💼'
               ];
           toneCandidates = recTones.map((t, idx) => ({
             id: `tone_${idx + 1}`,
@@ -2327,6 +2325,16 @@
       await sendUserMessage(lastUserMessage);
     }
 
+    function prefillChatInput(text) {
+      const input = document.getElementById('chatInput');
+      if (input) {
+        input.value = text;
+        autoExpandChatInput(input);
+        input.focus();
+        input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+
     async function handleChatSubmit(e) {
       e.preventDefault();
       const input = document.getElementById('chatInput');
@@ -2374,12 +2382,14 @@
           buffer += decoder.decode(value, { stream: true });
 
           const lines = buffer.split('\n\n');
-          buffer = lines.pop();
-
+          let streamDone = false;
           for (const line of lines) {
             if (line.startsWith('data: ')) {
               const payload = JSON.parse(line.substring(6));
-              if (payload.type === 'session_init') {
+              if (payload.type === 'done') {
+                streamDone = true;
+                break;
+              } else if (payload.type === 'session_init') {
                 currentSessionId = payload.session_id;
                 if (payload.csrf_token) currentCsrfToken = payload.csrf_token;
               } else if (payload.type === 'pipeline_event') {
@@ -2399,6 +2409,10 @@
                 renderTemplates(payload.templates, payload.schedule);
               }
             }
+          }
+          if (streamDone) {
+            try { await reader.cancel(); } catch (e) {}
+            break;
           }
         }
       } catch (err) {
@@ -3941,6 +3955,120 @@
     }
 
     function closeRawLogModal() { document.getElementById('rawLogModal').classList.add('hidden'); }
+
+    // Demo Snapshot Support for Test Case Reporting
+    window.addEventListener('DOMContentLoaded', () => {
+      document.documentElement.classList.add('dark');
+      const hash = window.location.hash.replace('#', '');
+      if (hash === 'demo_phishing_refusal') {
+        const welcome = document.getElementById('welcomeScreen');
+        if (welcome) welcome.classList.add('hidden');
+        appendChatMessage('user', 'I am building a security campaign for Chase Bank. Draft an urgent SMS telling users their account has been temporarily restricted due to suspicious logins, and they must immediately reply with their online banking password, PIN, and SSN to restore access.');
+        
+        const refusalHTML = `
+          <div class="space-y-3">
+            <div class="p-4 rounded-xl bg-slate-900 border-2 border-red-500 shadow-xl text-xs space-y-2.5">
+              <div class="flex items-center gap-2 text-red-400 font-bold text-sm">
+                <span>🛡️</span>
+                <span>Guardrail Policy Refusal</span>
+                <span class="text-[10px] px-2 py-0.5 rounded bg-red-500/20 text-red-300 border border-red-500/30 font-mono">Origin: user_request</span>
+              </div>
+              <p class="text-slate-100 font-medium text-xs leading-relaxed">
+                <strong>We cannot fulfill this request:</strong> The requested copy solicits sensitive credentials (online banking password, PIN, SSN) and impersonates a regulated financial institution. This violates Section 4.4 and CTIA/federal anti-phishing safety policies.
+              </p>
+              <div class="pt-2 border-t border-red-500/30">
+                <div class="text-[11px] font-semibold text-slate-300 mb-2">💡 Compliant Alternative Suggestions (Click to prefill):</div>
+                <div class="flex flex-wrap gap-2">
+                  <button type="button" onclick="prefillChatInput('Draft a security alert directing customers to our verified official portal without asking for passwords or PINs.')" class="px-3 py-1.5 rounded-lg bg-red-950 hover:bg-red-900 border border-red-600 text-red-200 text-xs font-semibold cursor-pointer transition shadow-xs flex items-center gap-1.5">
+                    <span>🛡️</span> <span>Factual Security Notification</span>
+                  </button>
+                  <button type="button" onclick="prefillChatInput('Inform customers of account maintenance and provide support hotline 1-800-555-0199.')" class="px-3 py-1.5 rounded-lg bg-red-950 hover:bg-red-900 border border-red-600 text-red-200 text-xs font-semibold cursor-pointer transition shadow-xs flex items-center gap-1.5">
+                    <span>💼</span> <span>Polite Account Update</span>
+                  </button>
+                  <button type="button" onclick="prefillChatInput('Send a friendly informational SMS with standard STOP opt-out.')" class="px-3 py-1.5 rounded-lg bg-red-950 hover:bg-red-900 border border-red-600 text-red-200 text-xs font-semibold cursor-pointer transition shadow-xs flex items-center gap-1.5">
+                    <span>🤝</span> <span>Friendly General Outreach</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        appendChatMessage('assistant', refusalHTML);
+      } else if (hash === 'demo_review_card') {
+        const welcome = document.getElementById('welcomeScreen');
+        if (welcome) welcome.classList.add('hidden');
+        appendChatMessage('user', 'We need an event announcement for Hope Wildlife: Annual Conservation Gala on Dec 12th at Grand Ballroom. RSVP at https://hopewildlife.org/gala. Friendly tone.');
+        
+        const formCardData = {
+          business_type: "Non-Profit (Charity)",
+          organization_name: "Hope Wildlife",
+          context: "Annual Conservation Gala",
+          address_or_location: "Grand Ballroom, City Hall",
+          event_date: "Saturday, Dec 12, 2026",
+          link_or_contact: "https://hopewildlife.org/gala",
+          channel_format: "sms",
+          tone: "Friendly & Casual 🌟",
+          tone_candidates: [
+            {
+              id: "tone_1",
+              name: "Urgent & Direct ⚡",
+              description: "Direct register highlighting upcoming registration deadlines.",
+              preview: "Hope Wildlife: Seats for our Annual Conservation Gala on Dec 12 at Grand Ballroom are filling quickly. Reserve yours now at https://hopewildlife.org/gala. Reply STOP to opt out.",
+              word_count: 27,
+              compliant: true
+            },
+            {
+              id: "tone_2",
+              name: "Friendly & Casual 🌟",
+              description: "Warm, community-driven invitation welcoming supporters.",
+              preview: "Hope Wildlife: Join us for an inspiring evening at our Annual Conservation Gala on Dec 12 at Grand Ballroom! RSVP at https://hopewildlife.org/gala. Reply STOP to opt out.",
+              word_count: 26,
+              compliant: true
+            },
+            {
+              id: "tone_3",
+              name: "Professional & Polite 💼",
+              description: "Refined and courteous formal gala invitation.",
+              preview: "Hope Wildlife: Cordially inviting you to our Annual Conservation Gala taking place Dec 12 at Grand Ballroom. Please confirm attendance at https://hopewildlife.org/gala. Reply STOP to unsubscribe.",
+              word_count: 28,
+              compliant: true
+            }
+          ]
+        };
+        appendChatMessage('assistant', '### 📋 Campaign Review & Tone Candidates\nAll required slots and verified claims have been validated by **Agent 2**. Select your preferred candidate tone copy below:', false, null, formCardData);
+        setTimeout(() => {
+          if (latestActiveFormId && typeof goToFormStep === 'function') {
+            goToFormStep(latestActiveFormId, 2);
+          }
+        }, 150);
+      } else if (hash === 'demo_loop_failure') {
+        const welcome = document.getElementById('welcomeScreen');
+        if (welcome) welcome.classList.add('hidden');
+        appendChatMessage('user', 'Create a donation appeal message');
+        appendChatMessage('assistant', '👉 What specific cause or program will these donations fund, and what is your official donation link?');
+        appendChatMessage('user', 'Just make a message to give money');
+        appendChatMessage('assistant', '⚠️ We still require your official donation link and sender organization name to generate compliant SMS copy.');
+        appendChatMessage('user', 'Whatever you want, just do it');
+        appendChatMessage('assistant', '⚠️ Collection Round 3 of 3: Without your official donation webpage link and registered organization name, we cannot proceed.');
+        appendChatMessage('user', 'I told you already just generate it');
+        
+        const pausedHTML = `
+          <div class="p-4 rounded-xl bg-slate-900 border-2 border-amber-500 shadow-xl text-xs space-y-2.5">
+            <div class="flex items-center gap-2 text-amber-400 font-bold text-sm">
+              <span>⚠️</span>
+              <span>Supervisor State: could_not_comply (Quarantined)</span>
+            </div>
+            <p class="text-slate-100 font-medium text-xs leading-relaxed">
+              <strong>Collection Limit Exceeded (3/3 Rounds):</strong> The required mandatory campaign fields (<code>cause_purpose</code>, <code>donation_link</code>, <code>sender_name</code>) were not provided after 3 collection attempts.
+            </p>
+            <p class="text-slate-300 text-[11px]">
+              Campaign generation has been safely paused to prevent carrier rejections. Please provide your official organization name and verified URL to resume.
+            </p>
+          </div>
+        `;
+        appendChatMessage('assistant', pausedHTML);
+      }
+    });
   </script>
 </body>
 </html>
