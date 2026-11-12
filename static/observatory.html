@@ -20,6 +20,7 @@
     .n8n-node {
       transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
       cursor: pointer;
+      box-sizing: border-box;
     }
     .n8n-node:hover {
       transform: translateY(-2px);
@@ -36,7 +37,6 @@
       background: #1e2438;
       border: 2px solid #64748b;
       position: absolute;
-      top: 50%;
       transform: translateY(-50%);
       z-index: 20;
       transition: all 0.2s;
@@ -44,7 +44,7 @@
     .port:hover {
       background: #ea580c;
       border-color: #ffffff;
-      transform: translateY(-50%) scale(1.3);
+      transform: translateY(-50%) scale(1.35);
     }
     .port-in { left: -6px; }
     .port-out { right: -6px; }
@@ -87,6 +87,18 @@
       box-shadow: 0 0 0 2px #f43f5e, 0 0 20px rgba(244, 63, 94, 0.5) !important;
     }
 
+    /* Column Stage Divider Labels */
+    .stage-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #64748b;
+      position: absolute;
+      top: 15px;
+      user-select: none;
+    }
+
     /* Swimlanes for Traces view */
     .swimlane-agent1 { border-left-color: #2563EB; }
     .swimlane-agent2 { border-left-color: #7C3AED; }
@@ -124,7 +136,7 @@
           <span class="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold font-mono">v2.4 Active</span>
           <span class="text-[11px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 font-semibold font-mono">Zero-Bypass Guardrail</span>
         </h1>
-        <p class="text-[11px] text-slate-400">Step-by-Step Multi-Agent Execution Telemetry &bull; Supervisor &bull; Completeness &bull; Copy Drafter &bull; Rubric 4.4</p>
+        <p class="text-[11px] text-slate-400">Sequential Multi-Agent Execution Telemetry &bull; Supervisor &bull; Completeness &bull; Copy Drafter &bull; Rubric 4.4</p>
       </div>
     </div>
 
@@ -214,8 +226,16 @@
             </div>
           </div>
 
-          <!-- Simulator & Canvas Controls -->
+          <!-- Canvas Controls: Zoom, Simulation, Drawer Toggle -->
           <div class="flex items-center space-x-2 shrink-0">
+            <!-- Zoom Controls -->
+            <div class="flex items-center bg-[#181d2e] rounded-lg border border-[#2b354f] overflow-hidden text-xs">
+              <button onclick="applyCanvasZoom(-0.1)" class="px-2 py-1 text-slate-300 hover:bg-[#252f4c] hover:text-white transition" title="Zoom Out">-</button>
+              <span id="zoomLevelText" onclick="applyCanvasZoom(0)" class="px-2 py-1 text-[11px] font-mono text-slate-400 cursor-pointer hover:text-white" title="Reset Zoom">88%</span>
+              <button onclick="applyCanvasZoom(0.1)" class="px-2 py-1 text-slate-300 hover:bg-[#252f4c] hover:text-white transition" title="Zoom In">+</button>
+            </div>
+
+            <!-- Simulators -->
             <button onclick="simulateWorkflow(true)" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow transition">
               <span>▶</span> Sim Compliant
             </button>
@@ -224,6 +244,9 @@
             </button>
             <button onclick="resetWorkflowView()" class="px-2.5 py-1.5 rounded-lg bg-[#1a2135] hover:bg-[#252f4c] text-slate-300 text-xs font-medium border border-[#2b354f] transition" title="Clear Status & Highlights">
               <i class="fa-solid fa-arrows-rotate"></i> Reset
+            </button>
+            <button id="drawerToggleBtn" onclick="toggleInspectorDrawer()" class="px-2.5 py-1.5 rounded-lg bg-[#1e273f] hover:bg-indigo-600 text-indigo-300 hover:text-white text-xs font-medium border border-indigo-900/60 transition flex items-center gap-1">
+              <i class="fa-solid fa-chevron-right"></i> Hide
             </button>
           </div>
         </div>
@@ -234,15 +257,23 @@
           <!-- n8n Canvas Viewport -->
           <div id="workflowCanvasViewport" class="flex-1 canvas-grid relative overflow-auto p-8 custom-scrollbar">
             <!-- Connecting SVG Wires Layer -->
-            <svg id="workflowWiresSvg" class="absolute inset-0 pointer-events-none w-[2000px] h-[1100px]" style="z-index: 5;">
+            <svg id="workflowWiresSvg" class="absolute inset-0 pointer-events-none w-[2100px] h-[900px]" style="z-index: 5;">
               <!-- Dynamically populated bezier curves -->
             </svg>
 
             <!-- n8n Nodes Layer -->
-            <div id="workflowNodesContainer" class="relative w-[1900px] h-[900px] z-10">
+            <div id="workflowNodesContainer" class="relative w-[1950px] h-[750px] z-10 transition-transform duration-200 origin-top-left" style="transform: scale(0.88);">
 
-              <!-- 1. Inbound Webhook Node -->
-              <div id="node_inbound" class="n8n-node absolute w-64 rounded-xl bg-[#161a29] border border-[#2b354f] shadow-xl overflow-hidden" style="left: 40px; top: 180px;" onclick="selectWorkflowNode('inbound')">
+              <!-- Column Stage Headers -->
+              <span class="stage-label" style="left: 40px;">1. Inbound Trigger</span>
+              <span class="stage-label" style="left: 350px;">2. Orchestrator</span>
+              <span class="stage-label" style="left: 680px;">3. Reasoning & Drafting</span>
+              <span class="stage-label" style="left: 1010px;">4. Policy & Safety Gates</span>
+              <span class="stage-label" style="left: 1360px;">5. Decision Switch</span>
+              <span class="stage-label" style="left: 1630px;">6. Outbound State</span>
+
+              <!-- 1. Inbound Webhook Node (Col 1) -->
+              <div id="node_inbound" class="n8n-node absolute rounded-xl bg-[#161a29] border border-[#2b354f] shadow-xl overflow-hidden" style="left: 40px; top: 220px; width: 250px;" onclick="selectWorkflowNode('inbound')">
                 <div class="px-3 py-2 bg-gradient-to-r from-[#ea580c] to-[#f97316] flex items-center justify-between text-white">
                   <div class="flex items-center gap-2">
                     <span class="text-sm">⚡</span>
@@ -260,12 +291,12 @@
                     /api/chat/send
                   </div>
                 </div>
-                <div class="port port-out" data-port="out"></div>
+                <div class="port port-out" data-port="out" style="top: 50%;"></div>
               </div>
 
-              <!-- 2. Supervisor Orchestrator Node -->
-              <div id="node_supervisor" class="n8n-node absolute w-72 rounded-xl bg-[#161a29] border border-[#2b354f] shadow-xl overflow-hidden" style="left: 360px; top: 160px;" onclick="selectWorkflowNode('supervisor')">
-                <div class="port port-in" data-port="in"></div>
+              <!-- 2. Supervisor Orchestrator Node (Col 2) -->
+              <div id="node_supervisor" class="n8n-node absolute rounded-xl bg-[#161a29] border border-[#2b354f] shadow-xl overflow-hidden" style="left: 350px; top: 220px; width: 260px;" onclick="selectWorkflowNode('supervisor')">
+                <div class="port port-in" data-port="in" style="top: 50%;"></div>
                 <div class="px-3 py-2 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] flex items-center justify-between text-white">
                   <div class="flex items-center gap-2">
                     <span class="text-sm">🧠</span>
@@ -275,7 +306,7 @@
                 </div>
                 <div class="p-3">
                   <div class="flex items-center justify-between mb-1">
-                    <h4 class="text-xs font-bold text-white">State Machine & Multi-Turn</h4>
+                    <h4 class="text-xs font-bold text-white">State Machine & Turns</h4>
                     <span id="badge_supervisor" class="text-[10px] px-1.5 py-0.5 rounded font-mono bg-slate-800 text-slate-400">READY</span>
                   </div>
                   <p class="text-[11px] text-slate-400 leading-snug">Coordinates multi-turn state, Claims Ledger, and intercepts assurance bypass attempts.</p>
@@ -283,12 +314,13 @@
                     evaluate_and_update_card_state
                   </div>
                 </div>
-                <div class="port port-out" data-port="out"></div>
+                <div class="port port-out" data-port="out-top" style="top: 30%;"></div>
+                <div class="port port-out" data-port="out-bottom" style="top: 70%;"></div>
               </div>
 
-              <!-- 3. Agent 2: Completeness Checker Node -->
-              <div id="node_agent2" class="n8n-node absolute w-68 rounded-xl bg-[#161a29] border border-[#2b354f] shadow-xl overflow-hidden" style="left: 720px; top: 40px;" onclick="selectWorkflowNode('agent2')">
-                <div class="port port-in" data-port="in"></div>
+              <!-- 3. Agent 2: Completeness Checker Node (Col 3 Top) -->
+              <div id="node_agent2" class="n8n-node absolute rounded-xl bg-[#161a29] border border-[#2b354f] shadow-xl overflow-hidden" style="left: 680px; top: 70px; width: 260px;" onclick="selectWorkflowNode('agent2')">
+                <div class="port port-in" data-port="in" style="top: 50%;"></div>
                 <div class="px-3 py-2 bg-gradient-to-r from-[#0284c7] to-[#38bdf8] flex items-center justify-between text-white">
                   <div class="flex items-center gap-2">
                     <span class="text-sm">📋</span>
@@ -306,12 +338,12 @@
                     Claims ledger: 0 items
                   </div>
                 </div>
-                <div class="port port-out" data-port="out"></div>
+                <div class="port port-out" data-port="out" style="top: 50%;"></div>
               </div>
 
-              <!-- 4. Agent 1: Copy Drafter Node -->
-              <div id="node_agent1" class="n8n-node absolute w-68 rounded-xl bg-[#161a29] border border-[#2b354f] shadow-xl overflow-hidden" style="left: 720px; top: 310px;" onclick="selectWorkflowNode('agent1')">
-                <div class="port port-in" data-port="in"></div>
+              <!-- 4. Agent 1: Copy Drafter Node (Col 3 Bottom) -->
+              <div id="node_agent1" class="n8n-node absolute rounded-xl bg-[#161a29] border border-[#2b354f] shadow-xl overflow-hidden" style="left: 680px; top: 380px; width: 260px;" onclick="selectWorkflowNode('agent1')">
+                <div class="port port-in" data-port="in" style="top: 50%;"></div>
                 <div class="px-3 py-2 bg-gradient-to-r from-[#8b5cf6] to-[#d946ef] flex items-center justify-between text-white">
                   <div class="flex items-center gap-2">
                     <span class="text-sm">✍️</span>
@@ -329,12 +361,12 @@
                     Draft candidate: Ready
                   </div>
                 </div>
-                <div class="port port-out" data-port="out"></div>
+                <div class="port port-out" data-port="out" style="top: 50%;"></div>
               </div>
 
-              <!-- 5. Compliance Rules Engine Node -->
-              <div id="node_compliance" class="n8n-node absolute w-72 rounded-xl bg-[#161a29] border border-[#2b354f] shadow-xl overflow-hidden" style="left: 1060px; top: 70px;" onclick="selectWorkflowNode('compliance')">
-                <div class="port port-in" data-port="in"></div>
+              <!-- 5. Compliance Rules Engine Node (Col 4 Top) -->
+              <div id="node_compliance" class="n8n-node absolute rounded-xl bg-[#161a29] border border-[#2b354f] shadow-xl overflow-hidden" style="left: 1010px; top: 70px; width: 270px;" onclick="selectWorkflowNode('compliance')">
+                <div class="port port-in" data-port="in" style="top: 50%;"></div>
                 <div class="px-3 py-2 bg-gradient-to-r from-[#0d9488] to-[#14b8a6] flex items-center justify-between text-white">
                   <div class="flex items-center gap-2">
                     <span class="text-sm">⚖️</span>
@@ -352,12 +384,12 @@
                     4 Rule Tools: All Active
                   </div>
                 </div>
-                <div class="port port-out" data-port="out"></div>
+                <div class="port port-out" data-port="out" style="top: 50%;"></div>
               </div>
 
-              <!-- 6. Guardrail Agent Node -->
-              <div id="node_guardrail" class="n8n-node absolute w-80 rounded-xl bg-[#161a29] border border-[#2b354f] shadow-xl overflow-hidden" style="left: 1060px; top: 340px;" onclick="selectWorkflowNode('guardrail')">
-                <div class="port port-in" data-port="in"></div>
+              <!-- 6. Guardrail Agent Node (Col 4 Bottom) -->
+              <div id="node_guardrail" class="n8n-node absolute rounded-xl bg-[#161a29] border border-[#2b354f] shadow-xl overflow-hidden" style="left: 1010px; top: 380px; width: 280px;" onclick="selectWorkflowNode('guardrail')">
+                <div class="port port-in" data-port="in" style="top: 50%;"></div>
                 <div class="px-3 py-2 bg-gradient-to-r from-[#dc2626] to-[#f43f5e] flex items-center justify-between text-white">
                   <div class="flex items-center gap-2">
                     <span class="text-sm">🛡️</span>
@@ -375,12 +407,13 @@
                     Anti-Assurance: Armed (100% Rate)
                   </div>
                 </div>
-                <div class="port port-out" data-port="out"></div>
+                <div class="port port-out" data-port="out" style="top: 50%;"></div>
               </div>
 
-              <!-- 7. Decision Switch / Router Node -->
-              <div id="node_router" class="n8n-node absolute w-56 rounded-xl bg-[#161a29] border border-[#2b354f] shadow-xl overflow-hidden" style="left: 1440px; top: 220px;" onclick="selectWorkflowNode('router')">
-                <div class="port port-in" data-port="in"></div>
+              <!-- 7. Decision Switch / Router Node (Col 5 Center) -->
+              <div id="node_router" class="n8n-node absolute rounded-xl bg-[#161a29] border border-[#2b354f] shadow-xl overflow-hidden" style="left: 1360px; top: 220px; width: 200px;" onclick="selectWorkflowNode('router')">
+                <div class="port port-in" data-port="in-top" style="top: 30%;"></div>
+                <div class="port port-in" data-port="in-bottom" style="top: 70%;"></div>
                 <div class="px-3 py-2 bg-gradient-to-r from-[#475569] to-[#64748b] flex items-center justify-between text-white">
                   <div class="flex items-center gap-1.5">
                     <span class="text-sm">🔀</span>
@@ -398,13 +431,13 @@
                     <span class="font-mono">&rarr; Refuse</span>
                   </div>
                 </div>
-                <div class="port port-out" data-port="out" style="top: 35%;"></div>
-                <div class="port port-out" data-port="out" style="top: 75%;"></div>
+                <div class="port port-out" data-port="out-top" style="top: 30%;"></div>
+                <div class="port port-out" data-port="out-bottom" style="top: 70%;"></div>
               </div>
 
-              <!-- 8. Output Ready Node (Top Branch) -->
-              <div id="node_dispatcher" class="n8n-node absolute w-64 rounded-xl bg-[#161a29] border border-[#2b354f] shadow-xl overflow-hidden" style="left: 1740px; top: 70px;" onclick="selectWorkflowNode('dispatcher')">
-                <div class="port port-in" data-port="in"></div>
+              <!-- 8. Output Ready Node (Col 6 Top) -->
+              <div id="node_dispatcher" class="n8n-node absolute rounded-xl bg-[#161a29] border border-[#2b354f] shadow-xl overflow-hidden" style="left: 1630px; top: 80px; width: 260px;" onclick="selectWorkflowNode('dispatcher')">
+                <div class="port port-in" data-port="in" style="top: 50%;"></div>
                 <div class="px-3 py-2 bg-gradient-to-r from-[#10b981] to-[#059669] flex items-center justify-between text-white">
                   <div class="flex items-center gap-2">
                     <span class="text-sm">🚀</span>
@@ -424,9 +457,9 @@
                 </div>
               </div>
 
-              <!-- 9. Output Refusal Node (Bottom Branch) -->
-              <div id="node_quarantine" class="n8n-node absolute w-68 rounded-xl bg-[#161a29] border border-[#2b354f] shadow-xl overflow-hidden" style="left: 1740px; top: 340px;" onclick="selectWorkflowNode('quarantine')">
-                <div class="port port-in" data-port="in"></div>
+              <!-- 9. Output Refusal Node (Col 6 Bottom) -->
+              <div id="node_quarantine" class="n8n-node absolute rounded-xl bg-[#161a29] border border-[#2b354f] shadow-xl overflow-hidden" style="left: 1630px; top: 370px; width: 260px;" onclick="selectWorkflowNode('quarantine')">
+                <div class="port port-in" data-port="in" style="top: 50%;"></div>
                 <div class="px-3 py-2 bg-gradient-to-r from-[#e11d48] to-[#be123c] flex items-center justify-between text-white">
                   <div class="flex items-center gap-2">
                     <span class="text-sm">🚫</span>
@@ -456,7 +489,12 @@
                 <span id="inspectorNodeType" class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Node Properties</span>
                 <h3 id="inspectorNodeTitle" class="text-sm font-bold text-white">Supervisor Orchestrator</h3>
               </div>
-              <span id="inspectorNodeBadge" class="text-[10px] px-2 py-0.5 rounded font-mono bg-indigo-950 text-indigo-300 border border-indigo-800">Active</span>
+              <div class="flex items-center gap-2">
+                <span id="inspectorNodeBadge" class="text-[10px] px-2 py-0.5 rounded font-mono bg-indigo-950 text-indigo-300 border border-indigo-800">Active</span>
+                <button onclick="toggleInspectorDrawer()" class="text-slate-400 hover:text-white text-xs px-1.5 py-0.5 rounded bg-[#181d2e] hover:bg-[#252f4c]" title="Close Drawer">
+                  <i class="fa-solid fa-times"></i>
+                </button>
+              </div>
             </div>
 
             <div id="inspectorDrawerBody" class="space-y-3.5 text-xs text-slate-300">
@@ -628,18 +666,20 @@
     let recentRuns = [];
     let currentSelectedNodeId = 'supervisor';
     let activeSessionRun = 'live';
+    let canvasZoom = 0.88;
+    let drawerCollapsed = false;
 
-    // Connections topology for SVG wires
+    // Connections topology for SVG wires (fromNode, fromPort, toNode, toPort)
     const workflowConnections = [
-      { from: 'node_inbound', to: 'node_supervisor', type: 'standard' },
-      { from: 'node_supervisor', to: 'node_agent2', type: 'standard' },
-      { from: 'node_supervisor', to: 'node_agent1', type: 'standard' },
-      { from: 'node_agent2', to: 'node_compliance', type: 'standard' },
-      { from: 'node_agent1', to: 'node_guardrail', type: 'standard' },
-      { from: 'node_compliance', to: 'node_router', type: 'standard' },
-      { from: 'node_guardrail', to: 'node_router', type: 'standard' },
-      { from: 'node_router', to: 'node_dispatcher', type: 'ok', outIndex: 0 },
-      { from: 'node_router', to: 'node_quarantine', type: 'fail', outIndex: 1 }
+      { from: 'node_inbound', fromPort: '[data-port="out"]', to: 'node_supervisor', toPort: '[data-port="in"]' },
+      { from: 'node_supervisor', fromPort: '[data-port="out-top"]', to: 'node_agent2', toPort: '[data-port="in"]' },
+      { from: 'node_supervisor', fromPort: '[data-port="out-bottom"]', to: 'node_agent1', toPort: '[data-port="in"]' },
+      { from: 'node_agent2', fromPort: '[data-port="out"]', to: 'node_compliance', toPort: '[data-port="in"]' },
+      { from: 'node_agent1', fromPort: '[data-port="out"]', to: 'node_guardrail', toPort: '[data-port="in"]' },
+      { from: 'node_compliance', fromPort: '[data-port="out"]', to: 'node_router', toPort: '[data-port="in-top"]' },
+      { from: 'node_guardrail', fromPort: '[data-port="out"]', to: 'node_router', toPort: '[data-port="in-bottom"]' },
+      { from: 'node_router', fromPort: '[data-port="out-top"]', to: 'node_dispatcher', toPort: '[data-port="in"]' },
+      { from: 'node_router', fromPort: '[data-port="out-bottom"]', to: 'node_quarantine', toPort: '[data-port="in"]' }
     ];
 
     // Static Node Metadata Definitions
@@ -745,35 +785,66 @@
       }
     };
 
-    // Draw SVG Connecting Wires
+    // Zoom Controls
+    function applyCanvasZoom(delta) {
+      if (delta === 0) {
+        canvasZoom = 0.88;
+      } else {
+        canvasZoom = Math.min(1.3, Math.max(0.6, Math.round((canvasZoom + delta) * 100) / 100));
+      }
+      const container = document.getElementById("workflowNodesContainer");
+      if (container) {
+        container.style.transform = `scale(${canvasZoom})`;
+        container.style.transformOrigin = "0 0";
+      }
+      const textEl = document.getElementById("zoomLevelText");
+      if (textEl) textEl.textContent = `${Math.round(canvasZoom * 100)}%`;
+      setTimeout(drawWorkflowWires, 60);
+    }
+
+    // Toggle Inspector Drawer
+    function toggleInspectorDrawer() {
+      const drawer = document.getElementById("workflowInspectorDrawer");
+      const toggleBtn = document.getElementById("drawerToggleBtn");
+      drawerCollapsed = !drawerCollapsed;
+      if (drawerCollapsed) {
+        drawer.classList.add("hidden");
+        if (toggleBtn) toggleBtn.innerHTML = '<i class="fa-solid fa-chevron-left"></i> Inspect';
+      } else {
+        drawer.classList.remove("hidden");
+        if (toggleBtn) toggleBtn.innerHTML = '<i class="fa-solid fa-chevron-right"></i> Hide';
+      }
+      setTimeout(drawWorkflowWires, 60);
+    }
+
+    // Draw SVG Connecting Wires with Exact Port Centers
     function drawWorkflowWires() {
       const svg = document.getElementById('workflowWiresSvg');
-      if (!svg) return;
+      const container = document.getElementById('workflowNodesContainer');
+      if (!svg || !container) return;
       svg.innerHTML = '';
 
+      const cRect = container.getBoundingClientRect();
+      const scale = canvasZoom || 1.0;
+
       workflowConnections.forEach(conn => {
-        const fromEl = document.getElementById(conn.from);
-        const toEl = document.getElementById(conn.to);
-        if (!fromEl || !toEl) return;
+        const fromNode = document.getElementById(conn.from);
+        const toNode = document.getElementById(conn.to);
+        if (!fromNode || !toNode) return;
 
-        const fromLeft = parseInt(fromEl.style.left) || fromEl.offsetLeft;
-        const fromTop = parseInt(fromEl.style.top) || fromEl.offsetTop;
-        const fromW = fromEl.offsetWidth;
-        const fromH = fromEl.offsetHeight;
+        const fromPort = fromNode.querySelector(conn.fromPort);
+        const toPort = toNode.querySelector(conn.toPort);
+        if (!fromPort || !toPort) return;
 
-        const toLeft = parseInt(toEl.style.left) || toEl.offsetLeft;
-        const toTop = parseInt(toEl.style.top) || toEl.offsetTop;
-        const toH = toEl.offsetHeight;
+        const p1 = fromPort.getBoundingClientRect();
+        const p2 = toPort.getBoundingClientRect();
 
-        const startX = fromLeft + fromW;
-        let startY = fromTop + fromH / 2;
-        if (conn.outIndex === 0) startY = fromTop + fromH * 0.35;
-        if (conn.outIndex === 1) startY = fromTop + fromH * 0.75;
+        const startX = (p1.left - cRect.left + p1.width / 2) / scale;
+        const startY = (p1.top - cRect.top + p1.height / 2) / scale;
+        const endX = (p2.left - cRect.left + p2.width / 2) / scale;
+        const endY = (p2.top - cRect.top + p2.height / 2) / scale;
 
-        const endX = toLeft;
-        const endY = toTop + toH / 2;
-
-        const deltaX = Math.max(40, (endX - startX) * 0.5);
+        const deltaX = Math.max(50, (endX - startX) * 0.45);
         const pathData = `M ${startX} ${startY} C ${startX + deltaX} ${startY}, ${endX - deltaX} ${endY}, ${endX} ${endY}`;
 
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -790,6 +861,11 @@
       document.querySelectorAll('.n8n-node').forEach(n => n.classList.remove('selected'));
       const el = document.getElementById(`node_${nodeId}`);
       if (el) el.classList.add('selected');
+
+      // Expand drawer if collapsed
+      if (drawerCollapsed) {
+        toggleInspectorDrawer();
+      }
 
       const meta = workflowNodeMeta[nodeId];
       if (!meta) return;
@@ -1397,7 +1473,7 @@
       }
 
       if (viewId === 'workflow') {
-        setTimeout(drawWorkflowWires, 50);
+        setTimeout(drawWorkflowWires, 60);
       }
     }
 
@@ -1495,7 +1571,9 @@
       }
     });
 
-    window.addEventListener("resize", drawWorkflowWires);
+    window.addEventListener("resize", () => {
+      drawWorkflowWires();
+    });
   </script>
 </body>
 </html>
