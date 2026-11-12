@@ -1383,6 +1383,26 @@ class Storage:
                 res.append(d)
             return res[::-1] # chronological
 
+    def list_trace_runs(self, limit: int = 50) -> List[Dict[str, Any]]:
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            query = """
+            SELECT 
+                campaign_id,
+                run_id,
+                COUNT(*) as event_count,
+                MIN(ts) as started_at,
+                MAX(ts) as finished_at,
+                MAX(CASE WHEN status IN ('refused', 'fail', 'blocked') THEN 1 ELSE 0 END) as has_error,
+                MAX(summary) as last_summary
+            FROM trace_events
+            GROUP BY campaign_id, run_id
+            ORDER BY MAX(id) DESC
+            LIMIT ?
+            """
+            rows = cursor.execute(query, (limit,)).fetchall()
+            return [dict(r) for r in rows]
+
 # Singleton storage getter
 _storage: Optional[Storage] = None
 

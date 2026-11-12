@@ -102,6 +102,13 @@ def get_traces(
     return {"traces": traces, "count": len(traces)}
 
 
+@router.get("/runs")
+def get_trace_runs(limit: int = Query(default=30, ge=1, le=100)):
+    """Query recent execution runs/sessions from SQLite for n8n workflow playback."""
+    runs = storage.list_trace_runs(limit=limit)
+    return {"runs": runs, "count": len(runs)}
+
+
 @router.get("/roster")
 def get_component_roster():
     """
