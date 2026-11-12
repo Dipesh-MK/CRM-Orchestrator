@@ -52,21 +52,39 @@
     /* Wires / Connectors */
     .wire {
       fill: none;
-      stroke: #2e3852;
+      stroke: #334155;
       stroke-width: 2.5;
       stroke-linecap: round;
-      transition: stroke 0.3s;
+      transition: stroke 0.3s, stroke-width 0.3s;
+    }
+    .wire-branch-ok {
+      stroke: #059669;
+      stroke-dasharray: 4 3;
+    }
+    .wire-branch-fail {
+      stroke: #e11d48;
+      stroke-dasharray: 4 3;
+    }
+    .wire-dot {
+      fill: #38bdf8;
+      opacity: 0.85;
     }
     .wire.active-ok {
-      stroke: #10b981;
-      stroke-width: 3.5;
-      stroke-dasharray: 6 6;
+      stroke: #10b981 !important;
+      stroke-width: 3.5 !important;
+      stroke-dasharray: 6 6 !important;
       animation: dashMove 1s linear infinite;
     }
     .wire.active-fail {
-      stroke: #f43f5e;
-      stroke-width: 3.5;
-      stroke-dasharray: 6 6;
+      stroke: #f43f5e !important;
+      stroke-width: 3.5 !important;
+      stroke-dasharray: 6 6 !important;
+      animation: dashMove 1s linear infinite;
+    }
+    .wire.active-flow {
+      stroke: #6366f1 !important;
+      stroke-width: 3 !important;
+      stroke-dasharray: 6 6 !important;
       animation: dashMove 1s linear infinite;
     }
     @keyframes dashMove {
@@ -228,10 +246,12 @@
 
           <!-- Canvas Controls: Zoom, Simulation, Drawer Toggle -->
           <div class="flex items-center space-x-2 shrink-0">
-            <!-- Zoom Controls -->
+            <!-- Zoom & View Controls -->
             <div class="flex items-center bg-[#181d2e] rounded-lg border border-[#2b354f] overflow-hidden text-xs">
               <button onclick="applyCanvasZoom(-0.1)" class="px-2 py-1 text-slate-300 hover:bg-[#252f4c] hover:text-white transition" title="Zoom Out">-</button>
-              <span id="zoomLevelText" onclick="applyCanvasZoom(0)" class="px-2 py-1 text-[11px] font-mono text-slate-400 cursor-pointer hover:text-white" title="Reset Zoom">88%</span>
+              <button onclick="fitWorkflowToScreen()" class="px-2 py-1 text-[11px] font-mono text-slate-300 hover:bg-[#252f4c] hover:text-white border-x border-[#2b354f] transition" title="Fit to Screen">
+                <i class="fa-solid fa-expand text-[10px] mr-1 text-orange-400"></i><span id="zoomLevelText">Fit</span>
+              </button>
               <button onclick="applyCanvasZoom(0.1)" class="px-2 py-1 text-slate-300 hover:bg-[#252f4c] hover:text-white transition" title="Zoom In">+</button>
             </div>
 
@@ -256,13 +276,13 @@
           
           <!-- n8n Canvas Viewport -->
           <div id="workflowCanvasViewport" class="flex-1 canvas-grid relative overflow-auto p-8 custom-scrollbar">
-            <!-- Connecting SVG Wires Layer -->
-            <svg id="workflowWiresSvg" class="absolute inset-0 pointer-events-none w-[2100px] h-[900px]" style="z-index: 5;">
-              <!-- Dynamically populated bezier curves -->
-            </svg>
 
-            <!-- n8n Nodes Layer -->
-            <div id="workflowNodesContainer" class="relative w-[1950px] h-[750px] z-10 transition-transform duration-200 origin-top-left" style="transform: scale(0.88);">
+            <!-- n8n Nodes Layer (Holds both SVG wires and nodes in identical coordinate space) -->
+            <div id="workflowNodesContainer" class="relative w-[1950px] h-[750px] z-10 origin-top-left" style="transform: scale(0.88);">
+              <!-- Connecting SVG Wires Layer (Scales & moves 1:1 with nodes) -->
+              <svg id="workflowWiresSvg" class="absolute inset-0 pointer-events-none w-full h-full" style="z-index: 1;">
+                <!-- Dynamically populated bezier curves and connection dots -->
+              </svg>
 
               <!-- Column Stage Headers -->
               <span class="stage-label" style="left: 40px;">1. Inbound Trigger</span>
@@ -785,12 +805,37 @@
       }
     };
 
+    // Compute accurate port center point relative to workflowNodesContainer
+    function getPortPoint(node, portSelector) {
+      const port = node.querySelector(portSelector);
+      if (!port) return null;
+      const isOut = port.classList.contains('port-out');
+      
+      // Node position inside container
+      const nodeLeft = node.offsetLeft;
+      const nodeTop = node.offsetTop;
+      const nodeW = node.offsetWidth;
+      const nodeH = node.offsetHeight;
+      
+      // Horizontal port center (port-out is on right edge, port-in is on left edge)
+      const x = isOut ? (nodeLeft + nodeW) : nodeLeft;
+      
+      // Vertical port center based on port top percentage
+      let topPercent = 0.5;
+      if (port.style.top) {
+        topPercent = parseFloat(port.style.top) / 100;
+      }
+      const y = nodeTop + (nodeH * topPercent);
+      return { x, y };
+    }
+
     // Zoom Controls
     function applyCanvasZoom(delta) {
       if (delta === 0) {
-        canvasZoom = 0.88;
+        fitWorkflowToScreen();
+        return;
       } else {
-        canvasZoom = Math.min(1.3, Math.max(0.6, Math.round((canvasZoom + delta) * 100) / 100));
+        canvasZoom = Math.min(1.4, Math.max(0.45, Math.round((canvasZoom + delta) * 100) / 100));
       }
       const container = document.getElementById("workflowNodesContainer");
       if (container) {
@@ -799,7 +844,23 @@
       }
       const textEl = document.getElementById("zoomLevelText");
       if (textEl) textEl.textContent = `${Math.round(canvasZoom * 100)}%`;
-      setTimeout(drawWorkflowWires, 60);
+      drawWorkflowWires();
+    }
+
+    // Auto-fit workflow to available canvas viewport
+    function fitWorkflowToScreen() {
+      const vp = document.getElementById('workflowCanvasViewport');
+      const container = document.getElementById('workflowNodesContainer');
+      if (!vp || !container) return;
+      const availableW = vp.clientWidth - 40;
+      const containerW = 1950;
+      const autoScale = Math.min(1.0, Math.max(0.48, Math.round((availableW / containerW) * 100) / 100));
+      canvasZoom = autoScale;
+      container.style.transform = `scale(${canvasZoom})`;
+      container.style.transformOrigin = '0 0';
+      const textEl = document.getElementById("zoomLevelText");
+      if (textEl) textEl.textContent = `${Math.round(canvasZoom * 100)}%`;
+      drawWorkflowWires();
     }
 
     // Toggle Inspector Drawer
@@ -814,44 +875,62 @@
         drawer.classList.remove("hidden");
         if (toggleBtn) toggleBtn.innerHTML = '<i class="fa-solid fa-chevron-right"></i> Hide';
       }
-      setTimeout(drawWorkflowWires, 60);
+      setTimeout(fitWorkflowToScreen, 40);
     }
 
     // Draw SVG Connecting Wires with Exact Port Centers
     function drawWorkflowWires() {
       const svg = document.getElementById('workflowWiresSvg');
-      const container = document.getElementById('workflowNodesContainer');
-      if (!svg || !container) return;
-      svg.innerHTML = '';
-
-      const cRect = container.getBoundingClientRect();
-      const scale = canvasZoom || 1.0;
+      if (!svg) return;
+      svg.innerHTML = `
+        <defs>
+          <filter id="wire-glow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="2.5" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+          </filter>
+        </defs>
+      `;
 
       workflowConnections.forEach(conn => {
         const fromNode = document.getElementById(conn.from);
         const toNode = document.getElementById(conn.to);
         if (!fromNode || !toNode) return;
 
-        const fromPort = fromNode.querySelector(conn.fromPort);
-        const toPort = toNode.querySelector(conn.toPort);
-        if (!fromPort || !toPort) return;
+        const p1 = getPortPoint(fromNode, conn.fromPort);
+        const p2 = getPortPoint(toNode, conn.toPort);
+        if (!p1 || !p2) return;
 
-        const p1 = fromPort.getBoundingClientRect();
-        const p2 = toPort.getBoundingClientRect();
-
-        const startX = (p1.left - cRect.left + p1.width / 2) / scale;
-        const startY = (p1.top - cRect.top + p1.height / 2) / scale;
-        const endX = (p2.left - cRect.left + p2.width / 2) / scale;
-        const endY = (p2.top - cRect.top + p2.height / 2) / scale;
-
-        const deltaX = Math.max(50, (endX - startX) * 0.45);
-        const pathData = `M ${startX} ${startY} C ${startX + deltaX} ${startY}, ${endX - deltaX} ${endY}, ${endX} ${endY}`;
+        // Smooth S-curve bezier control points
+        const deltaX = Math.max(50, (p2.x - p1.x) * 0.45);
+        const pathData = `M ${p1.x} ${p1.y} C ${p1.x + deltaX} ${p1.y}, ${p2.x - deltaX} ${p2.y}, ${p2.x} ${p2.y}`;
 
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         path.setAttribute('d', pathData);
         path.setAttribute('id', `wire_${conn.from}_${conn.to}`);
-        path.setAttribute('class', 'wire');
+        
+        let wireClass = 'wire';
+        if (conn.to === 'node_dispatcher') {
+          wireClass += ' wire-branch-ok';
+        } else if (conn.to === 'node_quarantine') {
+          wireClass += ' wire-branch-fail';
+        }
+        path.setAttribute('class', wireClass);
         svg.appendChild(path);
+
+        // Connection endpoint dots
+        const startCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        startCircle.setAttribute('cx', p1.x);
+        startCircle.setAttribute('cy', p1.y);
+        startCircle.setAttribute('r', 3);
+        startCircle.setAttribute('class', 'wire-dot');
+        svg.appendChild(startCircle);
+
+        const endCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        endCircle.setAttribute('cx', p2.x);
+        endCircle.setAttribute('cy', p2.y);
+        endCircle.setAttribute('r', 3);
+        endCircle.setAttribute('class', 'wire-dot');
+        svg.appendChild(endCircle);
       });
     }
 
@@ -1473,7 +1552,7 @@
       }
 
       if (viewId === 'workflow') {
-        setTimeout(drawWorkflowWires, 60);
+        setTimeout(fitWorkflowToScreen, 50);
       }
     }
 
@@ -1555,7 +1634,7 @@
 
     // Initialize on page load
     window.addEventListener("DOMContentLoaded", async () => {
-      drawWorkflowWires();
+      fitWorkflowToScreen();
       selectWorkflowNode('supervisor');
       initTraceStream();
       await reloadTracesFromDB();
@@ -1572,7 +1651,7 @@
     });
 
     window.addEventListener("resize", () => {
-      drawWorkflowWires();
+      fitWorkflowToScreen();
     });
   </script>
 </body>
