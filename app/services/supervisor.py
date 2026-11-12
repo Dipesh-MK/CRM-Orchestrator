@@ -339,79 +339,269 @@ class Supervisor:
         ]
         has_assurance = any(re.search(pat, user_lower) for pat in assurance_patterns)
 
+    def generate_remediation_details(
+        self,
+        tool_results: List[ToolResult],
+        verdict: Optional[GuardrailVerdict],
+        org_name: str,
+        draft_text: str
+    ) -> Tuple[str, str, List[str], List[RefusalSuggestion]]:
+        """
+        Generates specific explanation of why the draft cannot be accepted,
+        the exact question asking the user specifically what to fix,
+        and multiple-choice options with matching RefusalSuggestion items.
+        """
+        failed_tools = {r.tool_id: r for r in tool_results if not r.passed}
+        safe_org = org_name or "Your Organization"
+
+        # 1. Prohibited URL shortener / non-allowlisted links
+        if "check_banned_urls" in failed_tools or "check_url_allowlist" in failed_tools:
+            res = failed_tools.get("check_banned_urls") or failed_tools.get("check_url_allowlist")
+            offending = res.offending_span or "public shortener"
+            why = (
+                f"Prohibited public URL shortener detected ('{offending}'). "
+                "US Carrier 10DLC and CTIA regulations strictly ban public URL shorteners (such as tinyurl.com, bit.ly, tiny.url) "
+                "to protect consumers against SMS phishing, spoofing, and malware."
+            )
+            question = "How would you like to update the link to comply with carrier rules?"
+            clean_domain = re.sub(r'[^a-zA-Z0-9]', '', safe_org).lower() or "organization"
+            options = [
+                f"A) Replace with registered full domain link: https://{clean_domain}.org/notice",
+                "B) Replace link with an official support phone number: (800) 555-0199",
+                "C) Remove the short link and instruct recipients to visit the official portal",
+                "D) Other (Provide a verified full domain URL)"
+            ]
+            suggestions = [
+                RefusalSuggestion(label="A) Registered Full Domain", prefill_instruction=f"Use full registered domain https://{clean_domain}.org/notice"),
+                RefusalSuggestion(label="B) Support Phone Number", prefill_instruction="Call customer support at (800) 555-0199"),
+                RefusalSuggestion(label="C) Remove Short Link", prefill_instruction="Remove the short link from the message"),
+                RefusalSuggestion(label="D) Specify Custom Domain", prefill_instruction="I will provide a verified full domain URL: ")
+            ]
+            return why, question, options, suggestions
+
+        # 2. Missing sender brand / identity in first 80 chars
+        if "check_sender_identified" in failed_tools or "validate_sender_entity" in failed_tools:
+            why = (
+                "Missing sender brand identity in the first 80 characters. "
+                "Carrier 10DLC compliance mandates that the recipient immediately recognize who is messaging them "
+                "within the first 80 characters of the SMS text."
+            )
+            question = "Which sender brand name should we place at the beginning of your message?"
+            options = [
+                f"A) Prefix with registered name: '{safe_org}: '",
+                f"B) Add official organization notice: 'Important update from {safe_org} - '",
+                "C) Format as formal customer notification: 'Customer Notice: '",
+                "D) Other (Specify custom sender brand name)"
+            ]
+            suggestions = [
+                RefusalSuggestion(label="A) Prefix Brand Name", prefill_instruction=f"Start message with '{safe_org}: '"),
+                RefusalSuggestion(label="B) Official Notice", prefill_instruction=f"Important update from {safe_org} - "),
+                RefusalSuggestion(label="C) Customer Notice", prefill_instruction="Customer Notice: "),
+                RefusalSuggestion(label="D) Custom Brand", prefill_instruction="Use sender name: ")
+            ]
+            return why, question, options, suggestions
+
+        # 3. Missing mandatory opt-out instructions
+        if "check_opt_out" in failed_tools:
+            why = (
+                "Missing mandatory opt-out instructions. Federal TCPA and CTIA carrier standards require "
+                "a clear opt-out keyword (such as 'Reply STOP to cancel') on all business SMS communications."
+            )
+            question = "Which compliant opt-out disclosure would you like to append?"
+            options = [
+                "A) Standard: 'Reply STOP to cancel'",
+                "B) Concise: 'STOP2End'",
+                "C) Comprehensive: 'Reply STOP to unsubscribe, HELP for help. Msg&data rates may apply.'",
+                "D) Other (Specify custom opt-out phrasing)"
+            ]
+            suggestions = [
+                RefusalSuggestion(label="A) Standard 'Reply STOP'", prefill_instruction="Append 'Reply STOP to cancel'"),
+                RefusalSuggestion(label="B) Concise 'STOP2End'", prefill_instruction="Append 'STOP2End'"),
+                RefusalSuggestion(label="C) Comprehensive Disclosure", prefill_instruction="Append 'Reply STOP to unsubscribe, HELP for help. Msg&data rates may apply.'"),
+                RefusalSuggestion(label="D) Custom Opt-Out", prefill_instruction="Add opt-out: ")
+            ]
+            return why, question, options, suggestions
+
+        # 4. Harmful Intent / Controlled Substances (Section 4.4 Rubric)
+        if verdict and verdict.harmful_intent.flag:
+            why = (
+                f"Prohibited content detected ({verdict.harmful_intent.reason}). "
+                "Cellular carrier Section 4.4 explicitly prohibits SHAFT categories (Sex, Hate, Alcohol, Firearms, Tobacco, Cannabis/CBD, and Controlled Substances)."
+            )
+            question = "This category cannot be transmitted over carrier SMS. How would you like to adjust your campaign?"
+            options = [
+                "A) Remove all promotional substance/restricted claims and re-synthesize compliant copy",
+                "B) Pivot to an informational customer service or operating hours update",
+                "C) Re-draft as an educational community announcement",
+                "D) Cancel this campaign"
+            ]
+            suggestions = [
+                RefusalSuggestion(label="A) Remove Prohibited Claims", prefill_instruction="Remove restricted claims and re-draft compliant copy"),
+                RefusalSuggestion(label="B) Operating Hours Update", prefill_instruction="Pivot message to general operating hours and contact info"),
+                RefusalSuggestion(label="C) Educational Notice", prefill_instruction="Re-draft as neutral educational announcement"),
+                RefusalSuggestion(label="D) Cancel Campaign", prefill_instruction="Cancel this campaign")
+            ]
+            return why, question, options, suggestions
+
+        # 5. Deceptive Urgency or Aggressive Guilt
+        if verdict and (verdict.deceptive_urgency_or_guilt.flag or verdict.aggressive_tone.flag):
+            reason_detail = verdict.deceptive_urgency_or_guilt.reason if verdict.deceptive_urgency_or_guilt.flag else verdict.aggressive_tone.reason
+            why = (
+                f"Prohibited coercive tone detected ({reason_detail}). "
+                "Draft violates safety standards by using deceptive artificial urgency or guilt-inducing pressure."
+            )
+            question = "How would you like to adjust the campaign tone to meet compliance standards?"
+            options = [
+                "A) Informational & calm: Factual reminder with deadline stated without pressure",
+                "B) Polite & professional: Courteous update highlighting upcoming schedule",
+                "C) Direct announcement: Neutral summary with clear action items",
+                "D) Other (Specify desired tone adjustments)"
+            ]
+            suggestions = [
+                RefusalSuggestion(label="A) Informational & Calm", prefill_instruction="Make tone calm and informational, stating dates without pressure"),
+                RefusalSuggestion(label="B) Polite & Professional", prefill_instruction="Use polite and courteous tone"),
+                RefusalSuggestion(label="C) Direct Announcement", prefill_instruction="Use direct and neutral announcement format"),
+                RefusalSuggestion(label="D) Custom Tone", prefill_instruction="Adjust tone to: ")
+            ]
+            return why, question, options, suggestions
+
+        # 6. Unsupported Claims
+        if verdict and verdict.unsupported_claims.flag:
+            why = (
+                f"Unverified claims detected ({verdict.unsupported_claims.reason}). "
+                "Draft contains factual, statistical, or numerical claims not recorded in your verified Claims Ledger."
+            )
+            question = "How should we align these claims with your verified records?"
+            options = [
+                "A) Verify claim in ledger: Provide source proof/URL for the numbers",
+                "B) Remove specific statistics and speak in general qualitative terms",
+                "C) Replace with verified baseline data from ledger",
+                "D) Other (Specify updated claim)"
+            ]
+            suggestions = [
+                RefusalSuggestion(label="A) Verify in Ledger", prefill_instruction="Add verified source proof for this claim"),
+                RefusalSuggestion(label="B) Remove Statistics", prefill_instruction="Remove specific numerical claims and generalize copy"),
+                RefusalSuggestion(label="C) Baseline Data", prefill_instruction="Use verified baseline data"),
+                RefusalSuggestion(label="D) Update Claim", prefill_instruction="Update claim to: ")
+            ]
+            return why, question, options, suggestions
+
+        # Default fallback
+        failed_rule_names = [r.tool_id for r in tool_results if not r.passed]
+        why = f"Message does not comply with carrier 10DLC or safety rules: {', '.join(failed_rule_names) if failed_rule_names else 'Policy violation'}"
+        question = "What specific fix would you like to apply to bring this message into compliance?"
+        options = [
+            f"A) Auto-format with verified {safe_org} sender ID and opt-out disclaimer",
+            "B) Re-draft in neutral, purely informational tone",
+            "C) Manually revise message copy",
+            "D) Other (Type instructions to re-draft)"
+        ]
+        suggestions = [
+            RefusalSuggestion(label="A) Auto-Format Compliant", prefill_instruction=f"Auto-format with {safe_org} sender ID and opt-out"),
+            RefusalSuggestion(label="B) Neutral Tone", prefill_instruction="Re-draft in neutral informational tone"),
+            RefusalSuggestion(label="C) Manual Revision", prefill_instruction="I will edit the message manually"),
+            RefusalSuggestion(label="D) Custom Instructions", prefill_instruction="Re-draft with instructions: ")
+        ]
+        return why, question, options, suggestions
+
+    async def evaluate_and_update_card_state(
+        self,
+        session_id: str,
+        run_id: str,
+        user_message: str,
+        draft_text: str,
+        campaign_type: str,
+        requested_tone: str,
+        claims_ledger: List[ClaimEntry],
+        instruction_ledger: List[InstructionEntry],
+        org_name: str,
+        committee_name: Optional[str] = None,
+        current_card: Optional[CardState] = None,
+    ) -> CardState:
+        """
+        Multi-turn card state evaluator:
+        - Runs Rule Tools and Guardrail Agent against draft and user message.
+        - Enforces that user assurance (e.g., 'I assure you it is safe', 'proceed anyway')
+          CANNOT override an active compliance failure.
+        - Emits traces, persists quarantine records if refused/failed.
+        - Returns updated CardState ('ready', 'refused', 'could_not_comply') with loopback remediation.
+        """
+        passed, tool_results, verdict = await self.run_compliance_pipeline(
+            draft_text=draft_text,
+            campaign_type=campaign_type,
+            org_name=org_name,
+            user_prompt=user_message,
+            requested_tone=requested_tone,
+            claims_ledger=claims_ledger,
+            instruction_ledger=instruction_ledger,
+            run_id=run_id,
+            campaign_id=session_id,
+            committee_name=committee_name,
+        )
+
+        badges = self.compute_card_badges(tool_results, verdict)
+
+        # Detect user attempting to force proceed or reassure the system without resolving the violation
+        user_lower = user_message.lower()
+        proceed_requests = ["proceed", "go ahead", "approve", "generate card", "make card", "force", "continue"]
+        is_asking_to_proceed = any(w in user_lower for w in proceed_requests)
+
+        assurance_patterns = [
+            r"i assure you", r"i guarantee", r"it is legal", r"it's legal", r"its legal",
+            r"it is safe", r"it's safe", r"its safe", r"trust me", r"100% legal", r"100% safe",
+            r"completely safe", r"completely legal", r"override safety", r"override guardrail",
+            r"override", r"permission granted", r"licensed provider",
+            r"authorized\s+(?:user|official|agent|representative|personnel)",
+            r"i am\s+(?:an?\s+)?authorized", r"fully authorized",
+            r"don't worry it's safe", r"dont worry its safe", r"i promise it's safe", r"i promise it is safe",
+            r"i am a doctor", r"i am a lawyer", r"we have legal approval", r"lawfully permitted",
+            r"test environment override", r"it is valid", r"it's valid", r"its valid",
+            r"verified safe", r"safe to send", r"force proceed", r"force", r"proceed anyway"
+        ]
+        has_assurance = any(re.search(pat, user_lower) for pat in assurance_patterns)
+
         if not passed:
-            refusal = None
-            if verdict and verdict.user_refusal:
-                refusal = verdict.user_refusal
-            elif not all(r.passed for r in tool_results):
-                failed_rules = [r.tool_id for r in tool_results if not r.passed]
-                rule_reasons = "; ".join([r.reason for r in tool_results if not r.passed])
-                refusal = CardRefusal(
-                    headline_variant="message",
-                    reason=f"Card refused by compliance rules ({', '.join(failed_rules)}): {rule_reasons}",
-                    suggestions=[
-                        RefusalSuggestion(
-                            label="✏️ Fix Compliance Requirements",
-                            prefill_instruction="Update draft to include required sender identity, valid opt-out notice, and compliant URLs."
-                        )
-                    ]
-                )
-            elif verdict and not verdict.overall_pass:
-                flagged = []
-                if verdict.harmful_intent.flag:
-                    flagged.append(verdict.harmful_intent.reason)
-                if verdict.deceptive_urgency_or_guilt.flag:
-                    flagged.append(verdict.deceptive_urgency_or_guilt.reason)
-                if verdict.aggressive_tone.flag:
-                    flagged.append(verdict.aggressive_tone.reason)
-                if verdict.hidden_ask_thank_you.flag:
-                    flagged.append(verdict.hidden_ask_thank_you.reason)
-                if verdict.unsupported_claims.flag:
-                    flagged.append(verdict.unsupported_claims.reason)
-                if verdict.impersonates_official.flag:
-                    flagged.append(verdict.impersonates_official.reason)
-                if verdict.voting_logistics_conflict.flag:
-                    flagged.append(verdict.voting_logistics_conflict.reason)
-                if verdict.instruction_adherence.flag:
-                    flagged.append(verdict.instruction_adherence.reason)
+            why, question, options, suggestions = self.generate_remediation_details(
+                tool_results=tool_results,
+                verdict=verdict,
+                org_name=org_name or "Your Organization",
+                draft_text=draft_text
+            )
 
-                refusal = CardRefusal(
-                    headline_variant="message",
-                    reason=f"Card refused by guardrail agent: {'; '.join(flagged) if flagged else 'Policy violation detected.'}",
-                    suggestions=[
-                        RefusalSuggestion(
-                            label="✏️ Align with Compliance Guidelines",
-                            prefill_instruction="Revise message to remove unverified claims, aggressive tone, or prohibited content."
-                        )
-                    ]
-                )
-            else:
-                refusal = CardRefusal(
-                    headline_variant="message",
-                    reason="Card refused: Message does not meet safety or compliance requirements.",
-                    suggestions=[
-                        RefusalSuggestion(
-                            label="✏️ Revise Message",
-                            prefill_instruction="Revise message content to comply with carrier 10DLC and Section 4.4 requirements."
-                        )
-                    ]
-                )
-
-            # If user explicitly asked to proceed or offered assurance on a non-compliant draft
+            reason_text = f"Card refused: {why}"
             if is_asking_to_proceed or has_assurance:
-                specific_reason = refusal.reason
-                refusal.reason = (
+                reason_text = (
                     f"Refusal maintained: Cannot proceed with non-compliant draft. "
                     f"User assurance detected, but carrier and safety guidelines cannot be overridden. "
-                    f"Reason: {specific_reason}"
+                    f"Reason: {why}"
                 )
+
+            formatted_prompt = f"⚠️ **Why it cannot be accepted:**\n{why}\n\n❓ **What specifically to fix:**\n{question}"
+
+            refusal = CardRefusal(
+                headline_variant="message",
+                reason=reason_text,
+                suggestions=suggestions
+            )
 
             card_state = CardState(
                 card_type="tone",
                 state="refused",
+                highlights=[f"Fix Required: {question}"],
+                questions=[formatted_prompt],
                 badges=badges,
                 refusal=refusal,
-                metadata={"session_id": session_id, "run_id": run_id}
+                metadata={
+                    "session_id": session_id,
+                    "run_id": run_id,
+                    "remediation": {
+                        "why": why,
+                        "question": question,
+                        "options": options
+                    },
+                    "question_options": options,
+                    "loopback_active": True
+                }
             )
 
             await self.emit_trace(
@@ -420,7 +610,7 @@ class Supervisor:
                 component_id="supervisor",
                 component_kind="system",
                 event_type="card.update",
-                summary=f"Tone Card Refused: {refusal.reason if refusal else 'Compliance failure'}",
+                summary=f"Tone Card Refused (Loopback Prompt): {reason_text}",
                 tool_result=card_state.model_dump(),
                 status="refused",
             )

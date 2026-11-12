@@ -897,9 +897,20 @@ async def chat_send(req: ChatMessageRequest):
         s_eval = await safety_service.evaluate_safety(session_id, user_msg, "chat_message")
         if not s_eval.get("allowed", True):
             reason = s_eval.get("reason", "Violates safety policy.")
-            refusal = f"⚠️ **Request Declined**\n\nI cannot assist with this campaign: {reason}."
-            record_assistant_message(session_id, state, refusal)
-            yield f"data: {json.dumps({'type': 'text_chunk', 'text': refusal})}\n\n"
+            fix_question = "How would you like to revise your request to comply with safety guidelines?"
+            fix_options = [
+                "A) Pivot to an informational, non-promotional customer service notice",
+                "B) Remove prohibited topics and re-craft standard business update",
+                "C) Use registered official website link and brand credentials",
+                "D) Other (Provide compliant prompt instructions)"
+            ]
+            refusal = (
+                f"⚠️ **Request Declined: Safety & Compliance Policy Violation**\n\n"
+                f"**Why it cannot be accepted:**\n{reason}\n\n"
+                f"**What specifically to fix:**\n{fix_question}"
+            )
+            record_assistant_message(session_id, state, refusal, question_options=fix_options)
+            yield f"data: {json.dumps({'type': 'text_chunk', 'text': refusal, 'question_options': fix_options})}\n\n"
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
             return
 
@@ -948,9 +959,20 @@ async def chat_send(req: ChatMessageRequest):
 
             if analysis.get("blocked"):
                 reason = analysis.get("reason", "Prohibited content detected.")
-                refusal = f"⚠️ **Request Declined**\n\nI cannot assist with this campaign: {reason}."
-                record_assistant_message(session_id, state, refusal)
-                yield f"data: {json.dumps({'type': 'text_chunk', 'text': refusal, 'is_rate_limit': analysis.get('is_rate_limit', False)})}\n\n"
+                fix_question = "What changes would you like to make to ensure compliance with carrier rules?"
+                fix_options = [
+                    "A) Remove restricted promotional claims and re-synthesize compliant copy",
+                    "B) Provide official registered organization name and domain",
+                    "C) Switch to a neutral informational reminder format",
+                    "D) Other (Specify custom message requirements)"
+                ]
+                refusal = (
+                    f"⚠️ **Request Declined: Carrier & Safety Policy Violation**\n\n"
+                    f"**Why it cannot be accepted:**\n{reason}\n\n"
+                    f"**What specifically to fix:**\n{fix_question}"
+                )
+                record_assistant_message(session_id, state, refusal, question_options=fix_options)
+                yield f"data: {json.dumps({'type': 'text_chunk', 'text': refusal, 'question_options': fix_options, 'is_rate_limit': analysis.get('is_rate_limit', False)})}\n\n"
                 yield f"data: {json.dumps({'type': 'done'})}\n\n"
                 return
 

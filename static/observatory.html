@@ -65,6 +65,13 @@
       stroke: #e11d48;
       stroke-dasharray: 4 3;
     }
+    .wire-loopback {
+      stroke: #f43f5e;
+      stroke-width: 2.5;
+      stroke-dasharray: 6 5;
+      opacity: 0.85;
+      transition: all 0.3s;
+    }
     .wire-dot {
       fill: #38bdf8;
       opacity: 0.85;
@@ -80,6 +87,13 @@
       stroke-width: 3.5 !important;
       stroke-dasharray: 6 6 !important;
       animation: dashMove 1s linear infinite;
+    }
+    .wire.active-loop {
+      stroke: #fb7185 !important;
+      stroke-width: 4 !important;
+      stroke-dasharray: 8 6 !important;
+      animation: dashMove 0.8s linear infinite;
+      filter: drop-shadow(0 0 10px rgba(244, 63, 94, 0.85));
     }
     .wire.active-flow {
       stroke: #6366f1 !important;
@@ -256,10 +270,10 @@
             </div>
 
             <!-- Simulators -->
-            <button onclick="simulateWorkflow(true)" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow transition">
+            <button id="simCompliantBtn" onclick="simulateWorkflow(true)" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow transition">
               <span>▶</span> Sim Compliant
             </button>
-            <button onclick="simulateWorkflow(false)" class="px-3 py-1.5 rounded-lg bg-rose-700 hover:bg-rose-600 text-white text-xs font-semibold flex items-center gap-1.5 shadow transition">
+            <button id="simAssuranceBtn" onclick="simulateWorkflow(false)" class="px-3 py-1.5 rounded-lg bg-rose-700 hover:bg-rose-600 text-white text-xs font-semibold flex items-center gap-1.5 shadow transition">
               <span>🛡️</span> Sim Assurance Bypass
             </button>
             <button onclick="resetWorkflowView()" class="px-2.5 py-1.5 rounded-lg bg-[#1a2135] hover:bg-[#252f4c] text-slate-300 text-xs font-medium border border-[#2b354f] transition" title="Clear Status & Highlights">
@@ -317,6 +331,7 @@
               <!-- 2. Supervisor Orchestrator Node (Col 2) -->
               <div id="node_supervisor" class="n8n-node absolute rounded-xl bg-[#161a29] border border-[#2b354f] shadow-xl overflow-hidden" style="left: 350px; top: 220px; width: 260px;" onclick="selectWorkflowNode('supervisor')">
                 <div class="port port-in" data-port="in" style="top: 50%;"></div>
+                <div class="port port-in" data-port="loop-in" style="top: 85%; border-color: #f43f5e;" title="Loop-Back Remediation Input"></div>
                 <div class="px-3 py-2 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] flex items-center justify-between text-white">
                   <div class="flex items-center gap-2">
                     <span class="text-sm">🧠</span>
@@ -480,6 +495,7 @@
               <!-- 9. Output Refusal Node (Col 6 Bottom) -->
               <div id="node_quarantine" class="n8n-node absolute rounded-xl bg-[#161a29] border border-[#2b354f] shadow-xl overflow-hidden" style="left: 1630px; top: 370px; width: 260px;" onclick="selectWorkflowNode('quarantine')">
                 <div class="port port-in" data-port="in" style="top: 50%;"></div>
+                <div class="port port-out" data-port="loop-out" style="top: 75%; border-color: #f43f5e;" title="Loop-Back Remediation Output"></div>
                 <div class="px-3 py-2 bg-gradient-to-r from-[#e11d48] to-[#be123c] flex items-center justify-between text-white">
                   <div class="flex items-center gap-2">
                     <span class="text-sm">🚫</span>
@@ -699,7 +715,8 @@
       { from: 'node_compliance', fromPort: '[data-port="out"]', to: 'node_router', toPort: '[data-port="in-top"]' },
       { from: 'node_guardrail', fromPort: '[data-port="out"]', to: 'node_router', toPort: '[data-port="in-bottom"]' },
       { from: 'node_router', fromPort: '[data-port="out-top"]', to: 'node_dispatcher', toPort: '[data-port="in"]' },
-      { from: 'node_router', fromPort: '[data-port="out-bottom"]', to: 'node_quarantine', toPort: '[data-port="in"]' }
+      { from: 'node_router', fromPort: '[data-port="out-bottom"]', to: 'node_quarantine', toPort: '[data-port="in"]' },
+      { from: 'node_quarantine', fromPort: '[data-port="loop-out"]', to: 'node_supervisor', toPort: '[data-port="loop-in"]', isLoopback: true }
     ];
 
     // Static Node Metadata Definitions
@@ -900,16 +917,25 @@
         const p2 = getPortPoint(toNode, conn.toPort);
         if (!p1 || !p2) return;
 
-        // Smooth S-curve bezier control points
-        const deltaX = Math.max(50, (p2.x - p1.x) * 0.45);
-        const pathData = `M ${p1.x} ${p1.y} C ${p1.x + deltaX} ${p1.y}, ${p2.x - deltaX} ${p2.y}, ${p2.x} ${p2.y}`;
+        let pathData = '';
+        if (conn.isLoopback) {
+          // Backward remediation loop: from Col 6 (quarantine) under the canvas back to Col 2 (supervisor)
+          const bottomY = 590;
+          pathData = `M ${p1.x} ${p1.y} C ${p1.x + 90} ${p1.y + 60}, ${p1.x - 30} ${bottomY}, ${(p1.x + p2.x) / 2} ${bottomY} C ${p2.x + 90} ${bottomY}, ${p2.x - 80} ${bottomY - 40}, ${p2.x} ${p2.y}`;
+        } else {
+          // Smooth forward S-curve bezier control points
+          const deltaX = Math.max(50, (p2.x - p1.x) * 0.45);
+          pathData = `M ${p1.x} ${p1.y} C ${p1.x + deltaX} ${p1.y}, ${p2.x - deltaX} ${p2.y}, ${p2.x} ${p2.y}`;
+        }
 
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         path.setAttribute('d', pathData);
         path.setAttribute('id', `wire_${conn.from}_${conn.to}`);
         
         let wireClass = 'wire';
-        if (conn.to === 'node_dispatcher') {
+        if (conn.isLoopback) {
+          wireClass += ' wire-loopback';
+        } else if (conn.to === 'node_dispatcher') {
           wireClass += ' wire-branch-ok';
         } else if (conn.to === 'node_quarantine') {
           wireClass += ' wire-branch-fail';
@@ -917,18 +943,32 @@
         path.setAttribute('class', wireClass);
         svg.appendChild(path);
 
+        if (conn.isLoopback) {
+          // Add a loopback label badge in SVG
+          const textBadge = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          textBadge.setAttribute('x', `${(p1.x + p2.x) / 2}`);
+          textBadge.setAttribute('y', `${584}`);
+          textBadge.setAttribute('fill', '#f43f5e');
+          textBadge.setAttribute('font-size', '10.5');
+          textBadge.setAttribute('font-family', 'ui-monospace, monospace');
+          textBadge.setAttribute('font-weight', 'bold');
+          textBadge.setAttribute('text-anchor', 'middle');
+          textBadge.textContent = '🔁 REMEDIATION LOOP-BACK: WHY REJECTED & PROMPT WHAT TO FIX (A, B, C, D)';
+          svg.appendChild(textBadge);
+        }
+
         // Connection endpoint dots
         const startCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         startCircle.setAttribute('cx', p1.x);
         startCircle.setAttribute('cy', p1.y);
-        startCircle.setAttribute('r', 3);
+        startCircle.setAttribute('r', 3.5);
         startCircle.setAttribute('class', 'wire-dot');
         svg.appendChild(startCircle);
 
         const endCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         endCircle.setAttribute('cx', p2.x);
         endCircle.setAttribute('cy', p2.y);
-        endCircle.setAttribute('r', 3);
+        endCircle.setAttribute('r', 3.5);
         endCircle.setAttribute('class', 'wire-dot');
         svg.appendChild(endCircle);
       });
@@ -989,8 +1029,85 @@
         traceHistoryHtml = `<div class="text-[11px] text-slate-500 py-2">No trace events recorded for this node in selected session.</div>`;
       }
 
+      // Remediation Q&A Block for Refusal / Loopback
+      let remediationBlock = '';
+      let resObj = (latestTrace && latestTrace.tool_result) ? latestTrace.tool_result : null;
+      let remediationMeta = (resObj && resObj.metadata && resObj.metadata.remediation) ? resObj.metadata.remediation : null;
+      
+      const isLoopbackActive = (latestTrace && (latestTrace.status === 'refused' || latestTrace.status === 'fail' || latestTrace.status === 'loop')) ||
+        document.getElementById('node_quarantine')?.classList.contains('active-node-fail');
+
+      if (!remediationMeta && (nodeId === 'quarantine' || (nodeId === 'supervisor' && isLoopbackActive) || (latestTrace && (latestTrace.status === 'refused' || latestTrace.status === 'fail')))) {
+        remediationMeta = {
+          why: "Prohibited public URL shortener detected ('https://tiny.url/save50'). US Carrier 10DLC and CTIA regulations strictly ban public URL shorteners (such as tinyurl.com, bit.ly, tiny.url) to protect consumers against SMS phishing and fraud.",
+          question: "How would you like to update the link to comply with carrier rules?",
+          options: [
+            "A) Replace with registered full domain link: https://hopefoundation.org/notice",
+            "B) Replace link with an official support phone number: (800) 555-0199",
+            "C) Remove the short link and instruct recipients to visit the official website",
+            "D) Other (Specify a verified custom domain URL)"
+          ]
+        };
+      }
+
+      if (remediationMeta) {
+        const optionButtons = (remediationMeta.options || []).map((opt, i) => {
+          const letter = String.fromCharCode(65 + i);
+          const cleanText = opt.replace(/^[A-Z]\)\s*/, '');
+          return `
+            <button onclick="applyRemediationOption('${escapeHtml(opt.replace(/'/g, "\\'"))}')" class="w-full text-left p-2 rounded-lg bg-[#1a2135] hover:bg-rose-950/70 border border-slate-700/80 hover:border-rose-500 text-slate-200 text-xs transition flex items-start gap-2 shadow-xs cursor-pointer group">
+              <span class="font-bold font-mono px-1.5 py-0.5 rounded bg-rose-900/60 group-hover:bg-rose-800 text-rose-300 text-[10px] shrink-0">${letter}</span>
+              <span class="leading-snug">${escapeHtml(cleanText)}</span>
+            </button>
+          `;
+        }).join('');
+
+        remediationBlock = `
+          <!-- Remediation Loopback Card -->
+          <div class="p-3 rounded-xl bg-gradient-to-br from-rose-950/50 via-[#181d2e] to-[#121624] border border-rose-600/80 shadow-lg space-y-2.5">
+            <div class="flex items-center justify-between border-b border-rose-800/60 pb-2">
+              <span class="text-[11px] font-bold uppercase text-rose-400 flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+                🔁 Remediation Loopback
+              </span>
+              <span class="text-[9px] font-mono px-1.5 py-0.5 rounded bg-rose-900/80 text-rose-200 border border-rose-700">Non-Compliant</span>
+            </div>
+
+            <div>
+              <div class="text-[10px] uppercase font-bold text-slate-400 mb-1 flex items-center gap-1">
+                <span>⚠️</span> Why It Cannot Be Accepted:
+              </div>
+              <div class="text-[11px] text-rose-200 leading-snug p-2 rounded bg-rose-950/80 border border-rose-900/80">
+                ${escapeHtml(remediationMeta.why)}
+              </div>
+            </div>
+
+            <div>
+              <div class="text-[10px] uppercase font-bold text-amber-400 mb-1 flex items-center gap-1">
+                <span>❓</span> What Specifically to Fix (Prompting User):
+              </div>
+              <div class="text-[11px] text-amber-200 font-semibold p-2 rounded bg-amber-950/50 border border-amber-900/80">
+                ${escapeHtml(remediationMeta.question)}
+              </div>
+            </div>
+
+            <div>
+              <div class="text-[10px] uppercase font-bold text-slate-300 mb-1.5 flex items-center justify-between">
+                <span>📋 Select Fix Option (Loops back to Redraft):</span>
+                <span class="text-[9px] text-indigo-400 font-mono">Interactive Quiz</span>
+              </div>
+              <div class="space-y-1.5">
+                ${optionButtons}
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
       document.getElementById('inspectorDrawerBody').innerHTML = `
         <div class="space-y-3.5">
+          ${remediationBlock}
+
           <!-- Role & Description -->
           <div class="p-2.5 rounded bg-[#0f1322] border border-[#21293e]">
             <div class="text-[10px] uppercase font-bold text-slate-400 mb-1">Component Function</div>
@@ -1064,6 +1181,23 @@
           </div>
         </div>
       `;
+    }
+
+    // Apply Remediation Option from Question Options
+    function applyRemediationOption(opt) {
+      addTickerStep({
+        component_id: 'remediation',
+        summary: `Fix selected: ${opt.slice(0, 45)}...`,
+        status: 'ok'
+      });
+      const supervisorEl = document.getElementById('node_supervisor');
+      if (supervisorEl) {
+        supervisorEl.classList.remove('active-node-fail');
+        supervisorEl.classList.add('active-node-ok');
+      }
+      setTimeout(() => {
+        simulateWorkflow(true);
+      }, 400);
     }
 
     // Update node UI when a trace event arrives
@@ -1146,7 +1280,7 @@
 
     // Reset Workflow View & Wires
     function resetWorkflowView() {
-      document.querySelectorAll('.wire').forEach(w => w.classList.remove('active-ok', 'active-fail'));
+      document.querySelectorAll('.wire').forEach(w => w.classList.remove('active-ok', 'active-fail', 'active-loop'));
       document.querySelectorAll('.n8n-node').forEach(n => {
         n.classList.remove('active-node', 'active-node-ok', 'active-node-fail');
       });
@@ -1176,7 +1310,8 @@
             { node: 'agent1', wire: 'wire_node_agent1_node_guardrail', status: 'fail', summary: 'Draft contains controlled substance' },
             { node: 'guardrail', wire: 'wire_node_guardrail_node_router', status: 'fail', summary: 'REFUSAL MAINTAINED: User assurances cannot override carrier 10DLC' },
             { node: 'router', wire: 'wire_node_router_node_quarantine', status: 'fail', summary: 'Fail branch selected' },
-            { node: 'quarantine', wire: null, status: 'fail', summary: 'Trace saved to Quarantine Registry' }
+            { node: 'quarantine', wire: 'wire_node_quarantine_node_supervisor', status: 'fail', summary: 'Trace saved to Quarantine Registry' },
+            { node: 'supervisor', wire: 'wire_node_quarantine_node_supervisor', status: 'loop', summary: '🔁 Loop-Back: Prompting user why rejected & asking specifically what to fix (Options A, B, C, D)' }
           ];
 
       for (const step of sequence) {
@@ -1185,11 +1320,20 @@
         const summaryEl = document.getElementById(`summary_${step.node}`);
 
         if (nodeEl) {
-          nodeEl.classList.add(step.status === 'ok' ? 'active-node-ok' : 'active-node-fail');
+          if (step.status === 'loop') {
+            nodeEl.classList.remove('active-node-ok');
+            nodeEl.classList.add('active-node-fail');
+          } else {
+            nodeEl.classList.add(step.status === 'ok' ? 'active-node-ok' : 'active-node-fail');
+          }
         }
         if (badgeEl) {
           badgeEl.textContent = step.status.toUpperCase();
-          badgeEl.className = `text-[10px] px-1.5 py-0.5 rounded font-mono font-bold ${step.status === 'ok' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-rose-950 text-rose-400 border border-rose-800'}`;
+          badgeEl.className = `text-[10px] px-1.5 py-0.5 rounded font-mono font-bold ${
+            step.status === 'ok' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' :
+            step.status === 'loop' ? 'bg-rose-950 text-rose-300 border border-rose-500 animate-pulse' :
+            'bg-rose-950 text-rose-400 border border-rose-800'
+          }`;
         }
         if (summaryEl) {
           summaryEl.textContent = step.summary;
@@ -1199,7 +1343,13 @@
           const wires = Array.isArray(step.wire) ? step.wire : [step.wire];
           wires.forEach(wId => {
             const wireEl = document.getElementById(wId);
-            if (wireEl) wireEl.classList.add(step.status === 'ok' ? 'active-ok' : 'active-fail');
+            if (wireEl) {
+              if (step.status === 'loop') {
+                wireEl.classList.add('active-loop');
+              } else {
+                wireEl.classList.add(step.status === 'ok' ? 'active-ok' : 'active-fail');
+              }
+            }
           });
         }
 
