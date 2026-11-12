@@ -283,6 +283,168 @@ class Supervisor:
             compliance=compliance_status,
         )
 
+    async def evaluate_and_update_card_state(
+        self,
+        session_id: str,
+        run_id: str,
+        user_message: str,
+        draft_text: str,
+        campaign_type: str,
+        requested_tone: str,
+        claims_ledger: List[ClaimEntry],
+        instruction_ledger: List[InstructionEntry],
+        org_name: str,
+        committee_name: Optional[str] = None,
+        current_card: Optional[CardState] = None,
+    ) -> CardState:
+        """
+        Multi-turn card state evaluator:
+        - Runs Rule Tools and Guardrail Agent against draft and user message.
+        - Enforces that user assurance (e.g., 'I assure you it is safe', 'proceed anyway')
+          CANNOT override an active compliance failure.
+        - Emits traces, persists quarantine records if refused/failed.
+        - Returns updated CardState ('ready', 'refused', 'could_not_comply').
+        """
+        passed, tool_results, verdict = await self.run_compliance_pipeline(
+            draft_text=draft_text,
+            campaign_type=campaign_type,
+            org_name=org_name,
+            user_prompt=user_message,
+            requested_tone=requested_tone,
+            claims_ledger=claims_ledger,
+            instruction_ledger=instruction_ledger,
+            run_id=run_id,
+            campaign_id=session_id,
+            committee_name=committee_name,
+        )
+
+        badges = self.compute_card_badges(tool_results, verdict)
+
+        # Detect user attempting to force proceed or reassure the system without resolving the violation
+        user_lower = user_message.lower()
+        proceed_requests = ["proceed", "go ahead", "approve", "generate card", "make card", "force", "continue"]
+        is_asking_to_proceed = any(w in user_lower for w in proceed_requests)
+
+        assurance_patterns = [
+            r"i assure you", r"i guarantee", r"it is legal", r"it's legal", r"its legal",
+            r"it is safe", r"it's safe", r"its safe", r"trust me", r"100% legal", r"100% safe",
+            r"completely safe", r"completely legal", r"override safety", r"override guardrail",
+            r"override", r"permission granted", r"licensed provider",
+            r"authorized\s+(?:user|official|agent|representative|personnel)",
+            r"i am\s+(?:an?\s+)?authorized", r"fully authorized",
+            r"don't worry it's safe", r"dont worry its safe", r"i promise it's safe", r"i promise it is safe",
+            r"i am a doctor", r"i am a lawyer", r"we have legal approval", r"lawfully permitted",
+            r"test environment override", r"it is valid", r"it's valid", r"its valid",
+            r"verified safe", r"safe to send", r"force proceed", r"force", r"proceed anyway"
+        ]
+        has_assurance = any(re.search(pat, user_lower) for pat in assurance_patterns)
+
+        if not passed:
+            refusal = None
+            if verdict and verdict.user_refusal:
+                refusal = verdict.user_refusal
+            elif not all(r.passed for r in tool_results):
+                failed_rules = [r.tool_id for r in tool_results if not r.passed]
+                rule_reasons = "; ".join([r.reason for r in tool_results if not r.passed])
+                refusal = CardRefusal(
+                    headline_variant="message",
+                    reason=f"Card refused by compliance rules ({', '.join(failed_rules)}): {rule_reasons}",
+                    suggestions=[
+                        RefusalSuggestion(
+                            label="✏️ Fix Compliance Requirements",
+                            prefill_instruction="Update draft to include required sender identity, valid opt-out notice, and compliant URLs."
+                        )
+                    ]
+                )
+            elif verdict and not verdict.overall_pass:
+                flagged = []
+                if verdict.harmful_intent.flag:
+                    flagged.append(verdict.harmful_intent.reason)
+                if verdict.deceptive_urgency_or_guilt.flag:
+                    flagged.append(verdict.deceptive_urgency_or_guilt.reason)
+                if verdict.aggressive_tone.flag:
+                    flagged.append(verdict.aggressive_tone.reason)
+                if verdict.hidden_ask_thank_you.flag:
+                    flagged.append(verdict.hidden_ask_thank_you.reason)
+                if verdict.unsupported_claims.flag:
+                    flagged.append(verdict.unsupported_claims.reason)
+                if verdict.impersonates_official.flag:
+                    flagged.append(verdict.impersonates_official.reason)
+                if verdict.voting_logistics_conflict.flag:
+                    flagged.append(verdict.voting_logistics_conflict.reason)
+                if verdict.instruction_adherence.flag:
+                    flagged.append(verdict.instruction_adherence.reason)
+
+                refusal = CardRefusal(
+                    headline_variant="message",
+                    reason=f"Card refused by guardrail agent: {'; '.join(flagged) if flagged else 'Policy violation detected.'}",
+                    suggestions=[
+                        RefusalSuggestion(
+                            label="✏️ Align with Compliance Guidelines",
+                            prefill_instruction="Revise message to remove unverified claims, aggressive tone, or prohibited content."
+                        )
+                    ]
+                )
+            else:
+                refusal = CardRefusal(
+                    headline_variant="message",
+                    reason="Card refused: Message does not meet safety or compliance requirements.",
+                    suggestions=[
+                        RefusalSuggestion(
+                            label="✏️ Revise Message",
+                            prefill_instruction="Revise message content to comply with carrier 10DLC and Section 4.4 requirements."
+                        )
+                    ]
+                )
+
+            # If user explicitly asked to proceed or offered assurance on a non-compliant draft
+            if is_asking_to_proceed or has_assurance:
+                specific_reason = refusal.reason
+                refusal.reason = (
+                    f"Refusal maintained: Cannot proceed with non-compliant draft. "
+                    f"User assurance detected, but carrier and safety guidelines cannot be overridden. "
+                    f"Reason: {specific_reason}"
+                )
+
+            card_state = CardState(
+                card_type="tone",
+                state="refused",
+                badges=badges,
+                refusal=refusal,
+                metadata={"session_id": session_id, "run_id": run_id}
+            )
+
+            await self.emit_trace(
+                run_id=run_id,
+                campaign_id=session_id,
+                component_id="supervisor",
+                component_kind="system",
+                event_type="card.update",
+                summary=f"Tone Card Refused: {refusal.reason if refusal else 'Compliance failure'}",
+                tool_result=card_state.model_dump(),
+                status="refused",
+            )
+            return card_state
+
+        # If fully passed and compliant
+        card_state = CardState(
+            card_type="tone",
+            state="ready",
+            badges=badges,
+            metadata={"session_id": session_id, "run_id": run_id}
+        )
+        await self.emit_trace(
+            run_id=run_id,
+            campaign_id=session_id,
+            component_id="supervisor",
+            component_kind="system",
+            event_type="card.update",
+            summary="Tone Card Ready: All compliance rules and Guardrail Agent Section 4.4 rubric PASSED.",
+            tool_result=card_state.model_dump(),
+            status="ok",
+        )
+        return card_state
+
 
 _supervisor_instance: Optional[Supervisor] = None
 

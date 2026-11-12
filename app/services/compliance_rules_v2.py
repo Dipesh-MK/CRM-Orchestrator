@@ -116,12 +116,12 @@ def check_age_gate_flag(message: str, age_gated: bool = False) -> ToolResult:
         )
     return ToolResult(tool_id="check_age_gate_flag", category="policy_gate", passed=True, reason="Age gating rules compliant.")
 
-def check_ai_disclosure(message: str, campaign_type: str, state_code: str = "US") -> ToolResult:
+def check_ai_disclosure(message: str, campaign_type: str = "political_outreach", state_code: str = "US", ai_assisted: bool = True) -> ToolResult:
     """Policy Gate: Political messages must carry state-mandated AI disclosure if required."""
     # By default, political messages from Agent 1 are AI assisted.
     # States like WA, CA, TX, WI have strict political AI disclosures.
     # If state requires it, exact string must be present.
-    if campaign_type.startswith("political_") and state_code in ("CA", "WA", "WI"):
+    if ai_assisted and campaign_type.startswith("political_") and state_code in ("CA", "WA", "WI"):
         if not re.search(r"(?i)(generated\s+with\s+ai|ai[- ]assisted|created\s+using\s+artificial\s+intelligence)", message):
             return ToolResult(
                 tool_id="check_ai_disclosure",
@@ -417,7 +417,7 @@ def check_opt_out(text: str, moment: str) -> ToolResult:
         )
     return ToolResult(tool_id="check_opt_out", category="format", passed=True, reason="Opt-out instruction verified.")
 
-def check_rates_disclosure(text: str, moment: str) -> ToolResult:
+def check_rates_disclosure(text: str, moment: str = "outbound") -> ToolResult:
     """Format: Checks for 'Msg & data rates may apply' on CTA/opt-in moments."""
     if moment in ("opt_in_confirmation", "call_to_action"):
         if not re.search(r"(?i)(msg\s*&?\s*data\s*rates\s*may\s*apply|message\s*and\s*data\s*rates)", text):
@@ -429,10 +429,15 @@ def check_rates_disclosure(text: str, moment: str) -> ToolResult:
             )
     return ToolResult(tool_id="check_rates_disclosure", category="format", passed=True, reason="Rates disclosure verified or not required.")
 
-def check_paid_for_by(text: str, org: OrgRecord, campaign_type: str) -> ToolResult:
+def check_paid_for_by(text: str, org: Any, campaign_type: str = "political_outreach") -> ToolResult:
     """Format: Political messages must contain 'Paid for by {committee}'."""
-    if campaign_type.startswith("political_"):
-        expected_comm = (org.committee_name or org.legal_name or "").lower()
+    if campaign_type.startswith("political_") or "political" in campaign_type:
+        if hasattr(org, "committee_name"):
+            expected_comm = (org.committee_name or org.legal_name or "").lower()
+            expected_display = org.committee_name or org.legal_name
+        else:
+            expected_comm = str(org or "").lower()
+            expected_display = str(org or "")
         m = re.search(r"(?i)paid\s+for\s+by\s+([^.\n]+)", text)
         if not m:
             return ToolResult(
@@ -447,7 +452,7 @@ def check_paid_for_by(text: str, org: OrgRecord, campaign_type: str) -> ToolResu
                 tool_id="check_paid_for_by",
                 category="format",
                 passed=False,
-                reason=f"'Paid for by {m.group(1)}' does not match registered committee name '{org.committee_name or org.legal_name}'.",
+                reason=f"'Paid for by {m.group(1)}' does not match registered committee name '{expected_display}'.",
                 offending_span=m.group(0)
             )
     return ToolResult(tool_id="check_paid_for_by", category="format", passed=True, reason="Political disclaimer verified or not required.")

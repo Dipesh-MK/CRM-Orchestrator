@@ -153,30 +153,97 @@ class GuardrailAgent:
         user_lower = user_prompt.lower()
         redraft_instructions: List[str] = []
 
-        # 1. Harmful Intent / Scams / Credentials / Phishing
+        # 1. Harmful Intent / Scams / Credentials / Phishing / SHAFT / Weapons / Fraud
         harmful_flag = False
         harmful_cat = None
         harmful_reason = "No harmful intent detected."
 
-        phishing_terms = [
-            "password", "pin", "ssn", "social security", "bank account number",
-            "online banking password", "verify your login", "confirm your credentials",
-            "reply with your code", "account suspended reply with"
-        ]
-        for term in phishing_terms:
-            if re.search(rf"\b{re.escape(term)}\b", draft_lower):
-                harmful_flag = True
-                harmful_cat = "phishing"
-                harmful_reason = f"Draft solicits sensitive credentials: '{term}'."
-                redraft_instructions.append(f"Remove sensitive credential request for '{term}'.")
+        prohibited_categories = {
+            "phishing_credentials": [
+                "password", "pin", "ssn", "social security", "bank account number",
+                "online banking password", "verify your login", "confirm your credentials",
+                "reply with your code", "account suspended reply with", "cvv", "credit card number",
+                "routing number", "crypto seed phrase", "private key"
+            ],
+            "controlled_substances_shaft": [
+                "cannabis", "marijuana", "thc", "cbd vape", "pre-rolls", "edibles", "dispensary",
+                "oxycodone", "xanax", "adderall", "hydrocodone", "narcotic", "narcotics",
+                "cocaine", "heroin", "meth", "fentanyl", "illicit drugs", "unprescribed pills"
+            ],
+            "weapons_explosives": [
+                "ghost gun", "untraceable firearm", "unregistered rifle", "silencer",
+                "buy ammo without check", "explosives", "bomb making", "automatic weapon conversion",
+                "unlicensed weapons", "smuggle weapons"
+            ],
+            "financial_fraud_scams": [
+                "wire money to claim prize", "lottery winner pay fee", "crypto investment guarantee 100x",
+                "payday loan guaranteed", "payday loans", "underground poker", "cash stakes poker",
+                "we have recorded your webcam pay ransom", "ransomware", "verify your wire transfer to unfreeze"
+            ],
+            "hate_harassment": [
+                "kill all", "exterminate", "subhuman", "die all", "hate all", "racial cleansing",
+                "violent mob"
+            ],
+            "malware_cyberattack": [
+                "malware download", "trojan", "keylogger", "ddos attack", "exploit kit", "credential stealer"
+            ],
+            "adult_exploitation": [
+                "escort service", "erotic massage", "pornography", "explicit adult", "onlyfans promo",
+                "brothel"
+            ]
+        }
+
+        matched_cat = None
+        matched_term = None
+        for cat_name, terms in prohibited_categories.items():
+            for term in terms:
+                if re.search(rf"\b{re.escape(term)}\b", draft_lower):
+                    harmful_flag = True
+                    matched_cat = cat_name
+                    matched_term = term
+                    harmful_cat = cat_name
+                    harmful_reason = f"Draft contains prohibited {cat_name.replace('_', ' ')} content: '{term}'."
+                    redraft_instructions.append(f"Remove prohibited {cat_name.replace('_', ' ')} reference '{term}'.")
+                    break
+            if harmful_flag:
                 break
 
         # Check user request origin for harmful intent
         user_harmful_request = False
-        for term in phishing_terms:
-            if re.search(rf"\b{re.escape(term)}\b", user_lower):
-                user_harmful_request = True
+        user_matched_cat = None
+        user_matched_term = None
+        for cat_name, terms in prohibited_categories.items():
+            for term in terms:
+                if re.search(rf"\b{re.escape(term)}\b", user_lower):
+                    user_harmful_request = True
+                    user_matched_cat = cat_name
+                    user_matched_term = term
+                    break
+            if user_harmful_request:
                 break
+
+        # Check for user assurance patterns attempting to bypass safety or guardrails
+        assurance_patterns = [
+            r"i assure you", r"i guarantee", r"it is legal", r"it's legal", r"its legal",
+            r"it is safe", r"it's safe", r"its safe", r"trust me", r"100% legal", r"100% safe",
+            r"completely safe", r"completely legal", r"override safety", r"override guardrail",
+            r"override", r"permission granted", r"licensed provider",
+            r"authorized\s+(?:user|official|agent|representative|personnel)",
+            r"i am\s+(?:an?\s+)?authorized", r"fully authorized",
+            r"don't worry it's safe", r"dont worry its safe", r"i promise it's safe", r"i promise it is safe",
+            r"i am a doctor", r"i am a lawyer", r"we have legal approval", r"lawfully permitted",
+            r"test environment override", r"it is valid", r"it's valid", r"its valid",
+            r"verified safe", r"safe to send", r"force proceed", r"force", r"proceed anyway"
+        ]
+        user_assurance_detected = any(re.search(pat, user_lower) for pat in assurance_patterns)
+
+        if user_harmful_request or (user_assurance_detected and harmful_flag):
+            harmful_flag = True
+            if not harmful_cat:
+                harmful_cat = user_matched_cat or "user_prohibited_request"
+            harmful_reason = f"Prohibited request detected: {harmful_cat.replace('_', ' ')} ({user_matched_term or matched_term})."
+            if user_assurance_detected:
+                harmful_reason += " User assurances cannot override carrier 10DLC or safety policies."
 
         harmful_eval = HarmfulIntentEvaluation(
             flag=harmful_flag,
@@ -383,26 +450,114 @@ class GuardrailAgent:
         user_refusal: Optional[CardRefusal] = None
 
         if not overall_pass:
-            if user_harmful_request or any(w in user_lower for w in ["guilt-trip", "shame them", "scam", "password", "pin"]):
+            is_user_origin = (
+                user_harmful_request
+                or user_assurance_detected
+                or any(w in user_lower for w in [
+                    "guilt-trip", "shame them", "scam", "password", "pin", "ssn", "credentials",
+                    "give us money now", "pay up", "urgent", "deadline", "irs", "fbi", "police",
+                    "cannabis", "marijuana", "weed", "edibles", "pre-rolls", "narcotic", "firearm",
+                    "ghost gun", "silencer", "ammo", "wire money", "lottery", "crypto guarantee",
+                    "vote", "voting", "polling", "ballot", "election"
+                ])
+                or (impersonates_official.flag and any(e in user_lower for e in ["irs", "fbi", "police", "bank", "wells fargo", "chase"]))
+                or (aggressive_tone.flag and any(p in user_lower for p in ["pay up", "coward", "traitor", "pathetic", "owe us", "give us money"]))
+                or (deceptive_urgency.flag and any(p in user_lower for p in ["suspended", "terminated tonight", "last chance", "shame"]))
+                or (voting_conflict.flag and any(w in user_lower for w in ["vote", "polling", "church", "ballot", "election"]))
+                or unsupported_claim.flag
+                or hidden_ask.flag
+            )
+
+            if is_user_origin:
                 failure_origin = "user_request"
-                # Build refusal with suggestions
-                suggestions = [
-                    RefusalSuggestion(
-                        label="🛡️ Factual Security Notification",
-                        prefill_instruction="Draft a security alert directing customers to our verified official portal without asking for passwords or PINs."
-                    ),
-                    RefusalSuggestion(
-                        label="💼 Polite Account Update",
-                        prefill_instruction="Inform customers of account maintenance and provide support hotline 1-800-555-0199."
-                    ),
-                    RefusalSuggestion(
-                        label="🤝 Friendly General Outreach",
-                        prefill_instruction="Send a friendly informational SMS with standard STOP opt-out."
-                    ),
-                ]
+
+                # Construct dynamic context-relevant refusal and suggestion chips
+                if user_matched_cat == "controlled_substances_shaft" or any(w in user_lower for w in ["cannabis", "marijuana", "thc", "pre-rolls", "edibles", "dispensary", "narcotic", "oxycodone", "fentanyl"]):
+                    refusal_reason = "Carrier policies (10DLC / SHAFT) strictly forbid SMS messaging for cannabis, CBD, prescription opioids, and controlled substances nationwide regardless of state licenses or user assurances."
+                    suggestions = [
+                        RefusalSuggestion(
+                            label="🌿 Health & Wellness Info",
+                            prefill_instruction="Draft an educational health and wellness update without mentioning cannabis, dispensaries, or controlled substances."
+                        ),
+                        RefusalSuggestion(
+                            label="🏥 Community Clinic Notice",
+                            prefill_instruction="Send a general clinic appointment reminder with standard STOP opt-out instructions."
+                        ),
+                        RefusalSuggestion(
+                            label="🤝 General Outreach",
+                            prefill_instruction="Draft a friendly community outreach message complying with carrier policies."
+                        ),
+                    ]
+                elif user_matched_cat == "weapons_explosives" or any(w in user_lower for w in ["firearm", "ghost gun", "silencer", "ammo", "weapons", "explosives", "rifle"]):
+                    refusal_reason = "Carrier policies strictly prohibit SMS campaigns promoting firearms, untraceable weapons, ammunition, or explosives."
+                    suggestions = [
+                        RefusalSuggestion(
+                            label="🕊️ Civic Peace Outreach",
+                            prefill_instruction="Draft a peaceful community civic awareness SMS with standard STOP opt-out."
+                        ),
+                        RefusalSuggestion(
+                            label="📢 Community Safety Forum",
+                            prefill_instruction="Invite residents to our public safety informational session at the local town hall."
+                        ),
+                    ]
+                elif user_matched_cat == "financial_fraud_scams" or any(w in user_lower for w in ["lottery winner", "payday loan", "wire money", "crypto guarantee", "ransom", "underground poker"]):
+                    refusal_reason = "Carrier policies and consumer protection regulations strictly prohibit unsolicited financial offers, wire fee requests, or payday loan solicitations."
+                    suggestions = [
+                        RefusalSuggestion(
+                            label="🎗️ Verified Charity Gala",
+                            prefill_instruction="Invite supporters to our annual charity fundraising banquet with secure donation portal."
+                        ),
+                        RefusalSuggestion(
+                            label="📊 Transparent Annual Report",
+                            prefill_instruction="Share our non-profit's annual community impact report with verified statistics."
+                        ),
+                    ]
+                elif impersonates_official.flag:
+                    refusal_reason = f"Draft cannot impersonate government agencies, law enforcement, or financial institutions ('{impersonates_official.evidence_span}')."
+                    suggestions = [
+                        RefusalSuggestion(
+                            label="🏛️ Verified Non-Profit Identity",
+                            prefill_instruction=f"Draft outreach sent transparently from our verified organization name ({org_name or 'Our Non-Profit'})."
+                        ),
+                        RefusalSuggestion(
+                            label="🔗 Official .gov Information Link",
+                            prefill_instruction="Provide a link to the official state government election website for voter services."
+                        ),
+                    ]
+                elif voting_conflict.flag:
+                    refusal_reason = "Voting dates, deadlines, and polling location announcements must be verified against an official .gov election portal URL."
+                    suggestions = [
+                        RefusalSuggestion(
+                            label="🗳️ Official .gov Voting Link",
+                            prefill_instruction="Draft a non-partisan get-out-the-vote SMS citing our state's official elections.gov portal."
+                        ),
+                        RefusalSuggestion(
+                            label="📅 General Volunteer Appeal",
+                            prefill_instruction="Encourage supporters to volunteer as non-partisan election workers."
+                        ),
+                    ]
+                else:
+                    refusal_reason = "We cannot draft messages requesting passwords, PINs, or sensitive credentials, or using coercive guilt tactics."
+                    if user_assurance_detected:
+                        refusal_reason += " User assurances cannot override carrier 10DLC policies or Section 4.4 compliance requirements."
+                    suggestions = [
+                        RefusalSuggestion(
+                            label="🛡️ Factual Security Notification",
+                            prefill_instruction="Draft a security alert directing customers to our verified official portal without asking for passwords or PINs."
+                        ),
+                        RefusalSuggestion(
+                            label="💼 Polite Account Update",
+                            prefill_instruction="Inform customers of account maintenance and provide support hotline 1-800-555-0199."
+                        ),
+                        RefusalSuggestion(
+                            label="🤝 Friendly General Outreach",
+                            prefill_instruction="Send a friendly informational SMS with standard STOP opt-out."
+                        ),
+                    ]
+
                 user_refusal = CardRefusal(
                     headline_variant="message",
-                    reason="We cannot draft messages requesting passwords, PINs, or sensitive credentials, or using coercive guilt tactics.",
+                    reason=refusal_reason,
                     suggestions=suggestions,
                 )
             else:
