@@ -27,13 +27,14 @@ def get_env_var_patterns() -> List[Tuple[str, re.Pattern]]:
     env_patterns = []
     # Names of potential secret env vars
     vars_to_check = [
+        "GROQ_API_KEY",
         "LLM_API_KEY",
         "AGGREGATOR_AUTH_TOKEN",
         "TWILIO_AUTH_TOKEN"
     ]
     for var in vars_to_check:
         val = os.environ.get(var)
-        if val and len(val) >= 8 and val not in ("ollama", "test", "dummy"):
+        if val and len(val) >= 8 and val not in ("test", "dummy"):
             env_patterns.append((f"env_{var}", re.compile(re.escape(val))))
     return env_patterns
 

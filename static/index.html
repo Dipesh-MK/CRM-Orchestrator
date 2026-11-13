@@ -3,28 +3,38 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CampaignForge Orchestrator</title>
+  <title>EchoCard — CRM Orchestrator Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;900&display=swap" rel="stylesheet">
   <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
   <style>
     :root {
-      --background: #f8fafc;
+      --brand-cream: #FAF7F2;
+      --brand-cream-dark: #F3EFE6;
+      --brand-orange: #D97706;
+      --brand-ink: #064E3B;
+      --background: #FAF7F2;
       --card: #ffffff;
-      --foreground: #0f172a;
-      --muted-foreground: #64748b;
-      --border: #e2e8f0;
-      --primary: #2563eb;
+      --foreground: #064E3B;
+      --muted-foreground: rgba(6, 78, 59, 0.65);
+      --border: rgba(6, 78, 59, 0.1);
+      --primary: #D97706;
       --primary-foreground: #ffffff;
-      --content: #f1f5f9;
+      --content: #F3EFE6;
     }
-    .dark {
-      --background: #0f172a;
-      --card: #1e293b;
-      --foreground: #f8fafc;
-      --muted-foreground: #94a3b8;
-      --border: #334155;
-      --primary: #3b82f6;
-      --primary-foreground: #ffffff;
-      --content: #1e293b;
+
+    body {
+      background-color: #FAF7F2 !important;
+      color: #064E3B !important;
+      font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-image: 
+        linear-gradient(to right, rgba(6, 78, 59, 0.04) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(6, 78, 59, 0.04) 1px, transparent 1px);
+      background-size: 36px 36px;
+    }
+    * {
+      font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
 
     @keyframes spin { to { transform: rotate(360deg); } }
@@ -33,13 +43,19 @@
       to { opacity: 1; transform: translateY(0); }
     }
     @keyframes pulse-ring {
-      0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5); }
-      70% { box-shadow: 0 0 0 8px rgba(59, 130, 246, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+      0% { box-shadow: 0 0 0 0 rgba(217, 119, 6, 0.45); }
+      70% { box-shadow: 0 0 0 8px rgba(217, 119, 6, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(217, 119, 6, 0); }
     }
+    @keyframes float {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-8px) rotate(0.8deg); }
+    }
+
     .spin { animation: spin 1s linear infinite; }
     .fade-in { animation: fadeInUp 0.35s ease-out forwards; }
     .pulse-active { animation: pulse-ring 1.5s ease-out infinite; }
+    .animate-float { animation: float 6s infinite ease-in-out; }
 
     .step-node { transition: all 0.3s ease; }
     .thread-line {
@@ -47,8 +63,8 @@
       background: var(--border);
       transition: background 0.4s ease;
     }
-    .thread-line.done { background: #22c55e; }
-    .thread-line.active { background: linear-gradient(to bottom, #22c55e, #3b82f6); }
+    .thread-line.done { background: #064E3B; }
+    .thread-line.active { background: linear-gradient(to bottom, #064E3B, #D97706); }
 
     .status-circle {
       width: 36px; height: 36px; min-width: 36px;
@@ -60,94 +76,92 @@
       background: var(--card);
     }
     .status-circle.pending { border-color: var(--border); color: var(--muted-foreground); opacity: 0.4; }
-    .status-circle.active { border-color: #3b82f6; color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
-    .status-circle.waiting_for_input { border-color: #f59e0b; color: #f59e0b; background: rgba(245, 158, 11, 0.1); }
-    .status-circle.done { border-color: #22c55e; color: white; background: #22c55e; }
+    .status-circle.active { border-color: #D97706; color: #D97706; background: rgba(217, 119, 6, 0.1); }
+    .status-circle.waiting_for_input { border-color: #D97706; color: #D97706; background: rgba(217, 119, 6, 0.1); }
+    .status-circle.done { border-color: #064E3B; color: white; background: #064E3B; }
     .status-circle.error { border-color: #ef4444; color: white; background: #ef4444; }
 
     .sub-step { opacity: 0; transform: translateY(6px); transition: all 0.3s ease; }
     .sub-step.visible { opacity: 1; transform: translateY(0); }
     .sub-dot { width: 8px; height: 8px; min-width: 8px; border-radius: 50%; background: var(--border); transition: background 0.3s ease; }
-    .sub-dot.done { background: #22c55e; }
-    .sub-dot.active { background: #3b82f6; }
-    .sub-dot.waiting { background: #f59e0b; }
+    .sub-dot.done { background: #064E3B; }
+    .sub-dot.active { background: #D97706; }
+    .sub-dot.waiting { background: #D97706; }
     .sub-dot.error { background: #ef4444; }
 
-    /* Custom scrollbar */
+    /* Custom warm scrollbar */
     ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-    .dark ::-webkit-scrollbar-thumb { background: #475569; }
+    ::-webkit-scrollbar-thumb { background: rgba(6, 78, 59, 0.18); border-radius: 9999px; }
+    .dark ::-webkit-scrollbar-thumb { background: rgba(253, 251, 247, 0.2); }
 
-    /* Force all form inputs & textareas to have pitch-black crisp readable text */
+    /* Force all form inputs & textareas to stay crisp and readable */
     input, textarea, select {
-      color: #0f172a !important;
+      color: #064E3B !important;
       background-color: #ffffff !important;
     }
     .dark input, .dark textarea, .dark select {
-      color: #f8fafc !important;
-      background-color: #1e293b !important;
+      color: #FDFBF7 !important;
+      background-color: #06241B !important;
     }
     input::placeholder, textarea::placeholder {
-      color: #64748b !important;
+      color: rgba(6, 78, 59, 0.45) !important;
       opacity: 1 !important;
     }
     .dark input::placeholder, .dark textarea::placeholder {
-      color: #94a3b8 !important;
+      color: rgba(253, 251, 247, 0.45) !important;
       opacity: 1 !important;
     }
   </style>
 </head>
-<body class="bg-[var(--background)] text-[var(--foreground)] antialiased h-screen flex flex-col font-sans transition-colors duration-200 overflow-hidden">
+<body class="bg-[#FAF7F2] text-[#064E3B] antialiased h-screen flex flex-col overflow-hidden relative selection:bg-[#D97706]/20 selection:text-[#D97706]">
 
-  <!-- Top Navigation Bar -->
-  <header class="border-b border-[var(--border)] bg-[var(--card)] px-4 py-2.5 flex items-center justify-between shrink-0 shadow-sm z-20">
-    <div class="flex items-center gap-3">
-      <!-- Sidebar Toggle Icon Button (like ChatGPT) -->
-      <button onclick="toggleSidebar()" class="p-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--content)] text-xs text-[var(--foreground)] transition-colors cursor-pointer" title="Toggle Previous Chats Sidebar">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
-      </button>
+  <!-- Top Floating Pill Navigation Bar (Exact Image 2 Style) -->
+  <header class="p-3 sm:px-6 sm:py-3.5 shrink-0 z-30">
+    <div class="max-w-6xl mx-auto bg-white/95 backdrop-blur-md border border-stone-200/80 shadow-[0_12px_40px_-8px_rgba(28,25,23,0.08)] rounded-full px-6 py-2.5 flex items-center justify-between gap-4">
+      <!-- Left: Sidebar toggle + Brand Monogram & Title -->
+      <div class="flex items-center gap-3">
+        <button onclick="toggleSidebar()" class="w-8 h-8 rounded-full border border-stone-200 hover:bg-stone-100 flex items-center justify-center text-[#064E3B] transition-all cursor-pointer shadow-2xs" title="Toggle Previous Chats Sidebar">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+        </button>
 
-      <span class="text-xl">🚀</span>
-      <div>
-        <h1 class="font-bold text-sm tracking-tight leading-tight">CampaignForge Orchestrator</h1>
-        <p class="text-[10px] text-[var(--muted-foreground)]">Universal CRM Messaging & Template Planning</p>
+        <div class="flex items-center gap-2">
+          <span class="w-7 h-7 rounded-full bg-[#D97706]/15 text-[#D97706] border border-[#D97706]/30 flex items-center justify-center font-black text-xs">EC</span>
+          <span class="font-black text-lg tracking-tight text-[#064E3B]">EchoCard</span>
+        </div>
+
+        <div id="healthBadge" class="hidden sm:flex ml-1 px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-700 border border-emerald-500/20 items-center gap-1.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
+          <span id="healthText">Ready</span>
+        </div>
+
+        <!-- Active Chat Title / Quick Rename -->
+        <div id="activeChatTitleContainer" class="hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full bg-stone-100 border border-stone-200 text-xs font-semibold">
+          <span class="text-stone-500">Chat:</span>
+          <span id="activeChatTitleText" class="font-bold max-w-[130px] truncate text-[#064E3B]" title="Active Campaign Chat">New Campaign</span>
+          <button onclick="editActiveChatTitle()" class="p-0.5 rounded-full hover:bg-stone-200 text-stone-500 hover:text-[#D97706] transition-colors cursor-pointer" title="Rename active chat">✏️</button>
+        </div>
       </div>
-      <div id="healthBadge" class="ml-2 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 flex items-center gap-1.5">
-        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-        <span id="healthText">Connecting...</span>
+
+      <!-- Center Nav Links (Image 2 style text links) -->
+      <nav class="hidden md:flex items-center gap-6">
+        <button id="tabChatBtn" onclick="switchTab('chat')" class="text-xs font-black text-[#064E3B] hover:text-[#D97706] transition-colors cursor-pointer py-1 border-b-2 border-[#D97706]">
+          Studio
+        </button>
+        <button id="tabPipelineBtn" onclick="switchTab('pipeline')" class="text-xs font-bold text-stone-500 hover:text-[#064E3B] transition-colors cursor-pointer py-1">
+          Pipeline
+        </button>
+        <button id="tabLogsBtn" onclick="switchTab('logs')" class="text-xs font-bold text-stone-500 hover:text-[#064E3B] transition-colors cursor-pointer py-1">
+          Diagnostics
+        </button>
+      </nav>
+
+      <!-- Right Action (Deep green "Get Started" style button from Image 2) -->
+      <div class="flex items-center gap-2">
+        <a href="/observatory" target="_blank" class="rounded-full bg-[#064E3B] hover:bg-[#043327] text-white text-xs font-black px-6 py-2.5 shadow-sm transition-transform hover:-translate-y-0.5 flex items-center gap-2 cursor-pointer" title="Open Agent Observatory UI">
+          <span>Observatory</span>
+          <span class="text-stone-300">↗</span>
+        </a>
       </div>
-
-      <!-- Active Chat Title / Quick Rename -->
-      <div id="activeChatTitleContainer" class="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--content)] border border-[var(--border)] text-xs">
-        <span class="text-[var(--muted-foreground)]">Chat:</span>
-        <span id="activeChatTitleText" class="font-bold max-w-[160px] truncate text-[var(--foreground)]" title="Active Campaign Chat">New Campaign</span>
-        <button onclick="editActiveChatTitle()" class="p-0.5 rounded hover:bg-[var(--border)] text-[var(--muted-foreground)] hover:text-blue-600 transition-colors cursor-pointer" title="Rename active chat">✏️</button>
-      </div>
-    </div>
-
-    <!-- Center Navigation Tabs: Chat, Pipeline, Diagnostics & Logs -->
-    <nav class="flex items-center bg-[var(--content)] p-1 rounded-lg border border-[var(--border)] text-xs font-medium">
-      <button id="tabChatBtn" onclick="switchTab('chat')" class="px-3.5 py-1.5 rounded-md bg-[var(--card)] shadow-xs text-[var(--foreground)] transition-all font-semibold cursor-pointer">
-        💬 Chat
-      </button>
-      <button id="tabPipelineBtn" onclick="switchTab('pipeline')" class="px-3.5 py-1.5 rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-all flex items-center gap-1.5 cursor-pointer">
-        🚀 Pipeline
-      </button>
-      <button id="tabLogsBtn" onclick="switchTab('logs')" class="px-3.5 py-1.5 rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-all cursor-pointer">
-        📋 Logs & Diagnostics
-      </button>
-    </nav>
-
-    <!-- Right Controls: Agent Observatory Link, Theme Toggle -->
-    <div class="flex items-center gap-3">
-      <a href="/observatory" target="_blank" class="px-3.5 py-1.5 rounded-lg bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 text-xs font-semibold flex items-center gap-2 shadow-2xs transition-all cursor-pointer" title="Open Agent Observatory UI">
-        <span>🛰️</span> Agent Observatory
-      </a>
-
-      <!-- Theme Switcher -->
-      <button onclick="toggleDarkMode()" class="p-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--content)] text-xs cursor-pointer" title="Toggle theme">
-        <span id="themeIcon">🌙</span>
-      </button>
     </div>
   </header>
 
@@ -155,128 +169,150 @@
   <div class="flex-1 flex overflow-hidden relative">
 
     <!-- ChatGPT Style Left Sidebar: Previous Chats History -->
-    <aside id="chatgptSidebar" class="w-64 md:w-72 bg-[var(--card)] border-r border-[var(--border)] flex flex-col h-full shrink-0 transition-all duration-200 z-10">
-      <!-- New Chat Button (Top of Sidebar, like ChatGPT) -->
-      <div class="p-3 border-b border-[var(--border)]">
-        <button onclick="startNewChat()" class="w-full py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs flex items-center justify-between transition-all cursor-pointer">
-          <span class="flex items-center gap-1.5"><span>➕</span> New Campaign</span>
-          <span class="text-[10px] font-mono opacity-80">Fresh Chat</span>
+    <aside id="chatgptSidebar" class="w-64 md:w-72 bg-[#FAF7F2] border-r border-stone-200/80 flex flex-col h-full shrink-0 transition-all duration-200 z-10">
+      <!-- New Chat Button (Top of Sidebar) -->
+      <div class="p-3.5 border-b border-stone-200/80">
+        <button onclick="startNewChat()" class="w-full py-2.5 px-4 rounded-full bg-[#D97706] hover:bg-[#c46804] text-white text-xs font-black shadow-[0_8px_20px_rgba(217,119,6,0.22)] flex items-center justify-between transition-all cursor-pointer transform hover:-translate-y-0.5 active:translate-y-0">
+          <span class="flex items-center gap-2">New Campaign</span>
+          <span class="text-[10px] font-black uppercase tracking-wider opacity-90">Studio</span>
         </button>
       </div>
 
       <!-- Section Title: Previous Chats -->
-      <div class="px-3.5 pt-3 pb-1 flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
-        <span>Previous Chats</span>
-        <button onclick="loadPastChatsList()" class="hover:text-[var(--foreground)] text-xs cursor-pointer" title="Refresh chats">🔄</button>
+      <div class="px-5 pt-4 pb-2 flex items-center justify-between text-[10px] font-black uppercase tracking-[0.2em] text-[#064E3B]/50">
+        <div class="flex items-center gap-2">
+          <span class="w-4 h-px bg-[#D97706]"></span>
+          <span>Previous Chats</span>
+        </div>
+        <button onclick="loadPastChatsList()" class="hover:text-[#D97706] text-xs cursor-pointer transition-colors" title="Refresh chats">🔄</button>
       </div>
 
       <!-- Scrollable List of Previous Chats -->
-      <div id="sidebarPastChatsList" class="flex-1 overflow-y-auto p-2 space-y-1 min-h-0 text-xs">
-        <div class="p-3 text-center text-[11px] text-[var(--muted-foreground)]">Loading chats...</div>
+      <div id="sidebarPastChatsList" class="flex-1 overflow-y-auto p-3 space-y-2 min-h-0 text-xs">
+        <div class="p-3 text-center text-[11px] text-stone-400">Loading chats...</div>
       </div>
 
       <!-- Bottom User / App Meta in Sidebar -->
-      <div class="p-3 border-t border-[var(--border)] bg-[var(--background)] flex items-center justify-between text-xs">
+      <div class="p-3.5 border-t border-stone-200/80 bg-white/60 flex items-center justify-between text-xs">
         <div class="flex items-center gap-2 truncate">
-          <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-          <span class="font-medium truncate text-[var(--muted-foreground)] text-[11px]">Auto-saved chats</span>
+          <span class="w-2 h-2 rounded-full bg-[#D97706]"></span>
+          <span class="font-medium truncate text-stone-600 text-[11px]">Auto-saved chats</span>
         </div>
-        <button onclick="openPastChatsModal()" class="text-[11px] text-blue-600 dark:text-blue-400 font-semibold hover:underline cursor-pointer">
+        <button onclick="openPastChatsModal()" class="text-[11px] text-[#D97706] font-black hover:underline cursor-pointer">
           Manage All ↗
         </button>
       </div>
     </aside>
 
     <!-- Main Workspace Container (Takes full remaining width and height) -->
-    <main class="flex-1 flex flex-col h-full overflow-hidden min-w-0 bg-[var(--background)]">
+    <main class="flex-1 flex flex-col h-full overflow-hidden min-w-0 bg-[#FAF7F2]">
 
       <!-- ================= TAB 1: CHAT ================= -->
-      <section id="tabChat" class="h-full flex flex-col max-w-4xl mx-auto w-full p-4 gap-3 overflow-hidden">
+      <section id="tabChat" class="h-full flex flex-col max-w-5xl mx-auto w-full p-4 gap-4 overflow-hidden">
         
-        <!-- Top Drawer / Contact Intake & Quick-load -->
+        <!-- Top Drawer / Contact Intake & Quick-load (Labs.google style minimal container) -->
         <div class="shrink-0 space-y-2">
           <!-- Contact Ingestion Bar -->
-          <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-2.5 shadow-xs flex items-center justify-between gap-3">
-            <div class="flex items-center gap-2.5">
-              <span class="text-lg">📇</span>
-              <div>
-                <div class="text-xs font-semibold leading-tight">Contacts & Recipient Numbers</div>
-                <div class="text-[11px] text-[var(--muted-foreground)]" id="contactsStatusText">Upload CSV/Excel or paste your custom recipient numbers</div>
-              </div>
+          <div class="bg-white border border-stone-200/90 rounded-2xl p-4 shadow-xs flex items-center justify-between gap-4">
+            <div>
+              <div class="text-xs font-bold uppercase tracking-wider text-[#064E3B]">Audience & Contacts</div>
+              <div class="text-xs text-stone-500 font-normal mt-0.5" id="contactsStatusText">Import CSV/Excel recipient numbers for dynamic personalization tags</div>
             </div>
             <div class="flex items-center gap-2 flex-wrap">
-              <button onclick="openPasteModal()" class="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer" title="Paste custom phone numbers">
-                <span>📋</span> Paste Custom Numbers
+              <button onclick="openPasteModal()" class="px-4 py-2 rounded-full bg-[#D97706] hover:bg-[#c46804] text-white text-xs font-bold shadow-xs transition-colors cursor-pointer">
+                Paste Numbers
               </button>
               <input type="file" id="contactFileInput" accept=".csv,.xlsx,.tsv,.txt" class="hidden" onchange="handleFileUpload(this.files[0])">
-              <button onclick="document.getElementById('contactFileInput').click()" class="px-2.5 py-1 rounded-lg border border-[var(--border)] hover:bg-[var(--content)] text-xs font-medium flex items-center gap-1 cursor-pointer" title="Upload contact file">
-                📁 Upload CSV
+              <button onclick="document.getElementById('contactFileInput').click()" class="px-4 py-2 rounded-full bg-[#FAF7F2] hover:bg-stone-100 border border-stone-200 text-[#064E3B] text-xs font-semibold transition-colors cursor-pointer">
+                Upload CSV
               </button>
             </div>
           </div>
 
           <!-- Masked Preview Card (hidden until contacts uploaded) -->
-          <div id="contactPreviewCard" class="hidden bg-blue-500/5 border border-blue-500/20 rounded-xl p-3 text-xs">
-            <div class="flex items-center justify-between font-semibold text-blue-600 dark:text-blue-400 mb-2">
-              <span>✓ Contacts Sanitized & Deduplicated (<span id="contactValidCount">0</span> ready)</span>
-              <span id="contactExtraInfo" class="text-[11px] text-[var(--muted-foreground)] font-normal"></span>
+          <div id="contactPreviewCard" class="hidden bg-stone-50 border border-stone-200 rounded-2xl p-4 text-xs">
+            <div class="flex items-center justify-between font-bold text-[#064E3B] mb-2">
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span>Verified Contacts (<span id="contactValidCount">0</span> ready)</span>
+              </div>
+              <span id="contactExtraInfo" class="text-[11px] text-stone-400 font-mono"></span>
             </div>
             <div id="contactPreviewList" class="grid grid-cols-1 md:grid-cols-3 gap-2"></div>
           </div>
         </div>
 
         <!-- Chat Messages Scroll Container (Center Area, independently scrollable) -->
-        <div id="chatMessages" class="flex-1 overflow-y-auto space-y-3.5 pr-1 min-h-0">
-          <!-- Initial welcome message -->
-          <div class="flex gap-3 fade-in">
-            <div class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">CF</div>
-            <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl rounded-tl-none p-4 max-w-2xl text-xs space-y-2 shadow-xs">
-              <p class="font-bold text-sm text-blue-600 dark:text-blue-400">🤖 This is CRMbot service, how may I help you?</p>
-              <p class="text-slate-700 dark:text-slate-300">Please provide context to make me generate templates (e.g. <em>"a crm message to remind to pay electricity bills"</em> or <em>"flash sale for weekend"</em>).</p>
+        <div id="chatMessages" class="flex-1 overflow-y-auto space-y-4 pr-1 min-h-0">
+          <!-- Initial welcome container (Labs.google Inspired Minimal Card) -->
+          <div id="welcomeScreen" class="bg-white border border-stone-200 rounded-2xl p-6 sm:p-8 shadow-xs relative">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-[10px] font-mono uppercase tracking-widest text-[#D97706] font-bold">Studio / Campaign Drafter</span>
+              <span class="text-[10px] font-mono text-stone-400">v2.4 Active</span>
+            </div>
+            <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-[#064E3B] mb-2">Campaign Drafter & Orchestration</h2>
+            <p class="text-stone-600 text-xs sm:text-sm leading-relaxed max-w-xl font-normal">
+              Type your campaign objective, audience details, or offer below. The multi-agent orchestrator will validate claims, propose compliant candidate tones, and format personalized messages.
+            </p>
+            <div class="flex flex-wrap gap-2 pt-5">
+              <button type="button" onclick="prefillChatInput('Flash sale for boutique apparel: 25% off all items with code SPRING25 at checkout.')" class="px-3.5 py-1.5 rounded-full bg-[#FAF7F2] hover:bg-stone-100 text-stone-700 text-xs font-medium border border-stone-200 transition-colors cursor-pointer">
+                Flash Sale Promotion
+              </button>
+              <button type="button" onclick="prefillChatInput('Remind clinic patients their semi-annual hygiene checkup is due next week. Call 88888 88888 to schedule.')" class="px-3.5 py-1.5 rounded-full bg-[#FAF7F2] hover:bg-stone-100 text-stone-700 text-xs font-medium border border-stone-200 transition-colors cursor-pointer">
+                Appointment Reminder
+              </button>
+              <button type="button" onclick="prefillChatInput('Annual conservation gala for Hope Wildlife on Dec 12th at Grand Ballroom. RSVP at https://hopewildlife.org/gala.')" class="px-3.5 py-1.5 rounded-full bg-[#FAF7F2] hover:bg-stone-100 text-stone-700 text-xs font-medium border border-stone-200 transition-colors cursor-pointer">
+                Event Announcement
+              </button>
             </div>
           </div>
         </div>
 
         <!-- Tone Regeneration / Loading Notice -->
-        <div id="toneRegenNotice" class="hidden bg-blue-500/10 border border-blue-500/30 rounded-xl p-3.5 flex items-center gap-2.5 text-xs font-semibold text-blue-600 dark:text-blue-400 shrink-0 shadow-xs">
+        <div id="toneRegenNotice" class="hidden bg-[#D97706]/10 border border-[#D97706]/30 rounded-2xl p-3.5 flex items-center gap-2.5 text-xs font-bold text-[#D97706] shrink-0 shadow-xs">
           <span class="animate-spin text-base">🔄</span>
           <span>Re-exploring and generating new tone candidates based on your feedback... Please wait.</span>
         </div>
 
         <!-- Tone Proposal Container (Dynamic) -->
-        <div id="toneProposalCard" class="hidden bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 shadow-md space-y-3 shrink-0">
+        <div id="toneProposalCard" class="hidden bg-white dark:bg-[#0A2E22] border border-[#064E3B]/8 dark:border-white/10 rounded-[2rem] p-5 shadow-[0_20px_60px_-12px_rgba(28,25,23,0.08)] space-y-3.5 shrink-0 relative overflow-hidden">
+          <div class="h-1 w-full absolute top-0 left-0 bg-gradient-to-r from-[#D97706] to-[#D97706]/30"></div>
           <div class="flex items-center justify-between">
-            <h3 class="text-xs font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
-              <span>🎨</span> Candidate Tones Proposed — Select One to Plan Pipeline
-            </h3>
-            <span class="text-[10px] text-[var(--muted-foreground)]">Click to proceed or reply in chat to regenerate</span>
+            <div class="flex items-center gap-3">
+              <span class="w-6 h-px bg-[#D97706]"></span>
+              <h3 class="text-xs font-black uppercase tracking-[0.18em] text-[#D97706]">
+                Candidate Tones Proposed — Select One to Plan Pipeline
+              </h3>
+            </div>
+            <span class="text-[10px] text-[#064E3B]/50 dark:text-[#FDFBF7]/50 font-medium">Click to select or reply in chat to regenerate</span>
           </div>
-          <div id="candidateTonesList" class="grid grid-cols-1 md:grid-cols-3 gap-3 max-h-80 overflow-y-auto pr-1"></div>
+          <div id="candidateTonesList" class="grid grid-cols-1 md:grid-cols-3 gap-3.5 max-h-80 overflow-y-auto pr-1"></div>
         </div>
 
         <!-- Generated Templates Container (with Multi-Message Carousel) -->
-        <div id="templatesContainer" class="hidden bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 shadow-md space-y-3 shrink-0 max-h-[32rem] overflow-y-auto">
-          <div class="flex items-center justify-between sticky top-0 bg-[var(--card)] pb-2 border-b border-[var(--border)] z-10">
+        <div id="templatesContainer" class="hidden bg-white dark:bg-[#0A2E22] border border-[#064E3B]/8 dark:border-white/10 rounded-[2rem] p-5 shadow-[0_20px_60px_-12px_rgba(28,25,23,0.08)] space-y-3.5 shrink-0 max-h-[32rem] overflow-y-auto relative">
+          <div class="h-1 w-full absolute top-0 left-0 bg-gradient-to-r from-[#064E3B] via-[#D97706] to-[#064E3B]"></div>
+          <div class="flex items-center justify-between sticky top-0 bg-white dark:bg-[#0A2E22] pb-3 border-b border-[#064E3B]/8 dark:border-white/10 z-10 pt-1">
             <div class="flex items-center gap-3">
               <div>
-                <h3 class="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
-                  <span>✍️</span> Generated CRM Message Template
+                <h3 class="text-xs font-black uppercase tracking-wider text-[#064E3B] dark:text-[#FDFBF7] flex items-center gap-1.5">
+                  <span>Generated CRM Message Template</span>
                 </h3>
-                <span class="text-[10px] text-[var(--muted-foreground)]">Strictly verified ≤ 320 words with mandatory opt-out</span>
+                <span class="text-[10px] text-[#064E3B]/60 dark:text-[#FDFBF7]/60 font-medium">Strictly verified ≤ 320 words with mandatory opt-out</span>
               </div>
-              <span class="font-mono text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">Single Message</span>
+              <span class="font-mono text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#064E3B]/10 text-[#064E3B] dark:text-[#FDFBF7] border border-[#064E3B]/20">Single Message</span>
             </div>
             <div class="flex items-center gap-2">
-              <button id="approveCampaignBtn" onclick="approveCampaign()" class="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs flex items-center gap-1.5 cursor-pointer">
-                <span>✅</span> Approve Campaign
+              <button id="approveCampaignBtn" onclick="approveCampaign()" class="px-4 py-1.5 rounded-full bg-[#064E3B] hover:bg-[#043327] text-[#FDFBF7] text-xs font-black shadow-sm flex items-center gap-1.5 cursor-pointer transition-all transform hover:-translate-y-0.5">
+                <span>Approve Campaign</span>
               </button>
-              <button id="rejectCampaignBtn" onclick="openRejectModal()" class="px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-xs cursor-pointer">
-                ❌ Reject & Revise
+              <button id="rejectCampaignBtn" onclick="openRejectModal()" class="px-3.5 py-1.5 rounded-full border border-rose-500/20 hover:bg-rose-500/10 text-rose-600 text-xs font-bold transition-all cursor-pointer">
+                Reject & Revise
               </button>
-              <button id="exportCampaignBtn" onclick="exportCampaignJson()" class="hidden px-3 py-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--content)] text-xs font-semibold cursor-pointer">
-                📥 Download Messages
+              <button id="exportCampaignBtn" onclick="exportCampaignJson()" class="hidden px-3.5 py-1.5 rounded-full border border-[#064E3B]/12 hover:bg-[#F3EFE6] text-xs font-bold cursor-pointer">
+                Download Messages
               </button>
-              <button type="button" onclick="toggleTemplatesWindow()" class="px-3 py-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--content)] text-xs font-semibold flex items-center gap-1 cursor-pointer" title="Collapse templates window">
+              <button type="button" onclick="toggleTemplatesWindow()" class="px-3.5 py-1.5 rounded-full border border-[#064E3B]/12 hover:bg-[#F3EFE6] text-xs font-bold flex items-center gap-1 cursor-pointer" title="Collapse templates window">
                 <span>▾</span> Collapse
               </button>
             </div>
@@ -285,37 +321,39 @@
         </div>
 
         <!-- Approved Campaign Templates Collapsed Banner -->
-        <div id="approvedTemplatesBanner" class="hidden bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3 flex items-center justify-between text-xs shrink-0 shadow-xs">
-          <div class="flex items-center gap-2 text-emerald-700 dark:text-emerald-300 font-semibold">
-            <span>✅</span>
+        <div id="approvedTemplatesBanner" class="hidden bg-[#064E3B]/10 border border-[#064E3B]/20 rounded-2xl p-3 flex items-center justify-between text-xs shrink-0 shadow-xs">
+          <div class="flex items-center gap-2 text-[#064E3B] dark:text-[#FDFBF7] font-bold">
+            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
             <span>Campaign Templates Approved & Locked</span>
           </div>
-          <button type="button" onclick="toggleTemplatesWindow()" class="px-3 py-1 bg-[var(--card)] border border-[var(--border)] rounded-md hover:bg-[var(--content)] text-xs font-semibold shadow-xs cursor-pointer">
-            👁️ View / Review Templates
+          <button type="button" onclick="toggleTemplatesWindow()" class="px-3.5 py-1 bg-white dark:bg-[#0A2E22] border border-[#064E3B]/10 rounded-full hover:bg-[#F3EFE6] text-xs font-bold shadow-xs cursor-pointer">
+            Review Templates
           </button>
         </div>
 
         <!-- Dispatched to Aggregator Collapsed Banner -->
-        <div id="dispatchedAggregatorBanner" class="hidden bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3 flex items-center justify-between text-xs shrink-0 shadow-xs">
-          <div class="flex items-center gap-2 text-emerald-700 dark:text-emerald-300 font-semibold">
-            <span>🚀</span>
+        <div id="dispatchedAggregatorBanner" class="hidden bg-[#D97706]/10 border border-[#D97706]/30 rounded-2xl p-3 flex items-center justify-between text-xs shrink-0 shadow-xs">
+          <div class="flex items-center gap-2 text-[#D97706] font-bold">
+            <span class="w-2 h-2 rounded-full bg-[#D97706]"></span>
             <span id="dispatchedBannerSummary">Campaign Dispatched to Aggregator · Delivery Status Ready</span>
           </div>
-          <button type="button" onclick="toggleAggregatorDetails()" class="px-3 py-1 bg-[var(--card)] border border-[var(--border)] rounded-md hover:bg-[var(--content)] text-xs font-semibold shadow-xs cursor-pointer">
-            <span id="dispatchedToggleLabel">👁️ View Dispatch Report & Deliveries</span>
+          <button type="button" onclick="toggleAggregatorDetails()" class="px-3.5 py-1 bg-white dark:bg-[#0A2E22] border border-[#064E3B]/10 rounded-full hover:bg-[#F3EFE6] text-xs font-bold shadow-xs cursor-pointer">
+            <span id="dispatchedToggleLabel">View Dispatch Report & Deliveries</span>
           </button>
         </div>
 
         <!-- Send to Aggregator Card (Step 5: Final send step) -->
-        <div id="sendAggregatorContainer" class="hidden bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 shadow-lg space-y-4 shrink-0 max-h-[32rem] overflow-y-auto">
+        <div id="sendAggregatorContainer" class="hidden bg-white dark:bg-[#0A2E22] border border-[#064E3B]/8 dark:border-white/10 rounded-[2rem] p-5 shadow-lg space-y-4 shrink-0 max-h-[32rem] overflow-y-auto">
         </div>
 
-        <!-- Chat Input Form (Anchored firmly at bottom of screen, auto-expands with scrolling) -->
-        <form id="chatForm" onsubmit="handleChatSubmit(event)" class="shrink-0 flex items-end gap-2 pt-1">
-          <textarea id="chatInput" rows="1" placeholder="Provide campaign context (e.g. 'a crm message to remind to pay electricity bills')..." autocomplete="off"
-                    oninput="autoExpandChatInput(this)" onkeydown="handleChatInputKeydown(event)"
-                    class="flex-1 bg-[var(--card)] border border-[var(--border)] rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500 shadow-xs resize-none max-h-48 overflow-y-auto leading-relaxed custom-scrollbar transition-all"></textarea>
-          <button type="submit" id="sendBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2.5 rounded-xl text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer h-[38px] shrink-0">
+        <!-- Chat Input Form (EchoCard Floating Pill Style) -->
+        <form id="chatForm" onsubmit="handleChatSubmit(event)" class="shrink-0 flex items-center gap-2 pt-2 pb-2">
+          <div class="flex-1 bg-white border border-stone-200/90 rounded-full px-5 py-2.5 shadow-[0_12px_36px_rgba(28,25,23,0.08)] flex items-center focus-within:ring-2 focus-within:ring-[#D97706]/30 focus-within:border-[#D97706] transition-all">
+            <textarea id="chatInput" rows="1" placeholder="Provide campaign context (e.g. 'flash sale for weekend' or 'donor reminder')..." autocomplete="off"
+                      oninput="autoExpandChatInput(this)" onkeydown="handleChatInputKeydown(event)"
+                      class="w-full bg-transparent border-0 outline-none focus:outline-none text-xs text-[#064E3B] placeholder:text-stone-400 resize-none max-h-36 overflow-y-auto leading-relaxed custom-scrollbar"></textarea>
+          </div>
+          <button type="submit" id="sendBtn" class="bg-[#D97706] hover:bg-[#c46804] text-white font-black px-6 py-3 rounded-full text-xs flex items-center gap-2 shadow-[0_4px_16px_rgba(217,119,6,0.3)] transition-all cursor-pointer h-[44px] shrink-0 transform hover:-translate-y-0.5 active:translate-y-0">
             <span>Send</span>
             <span>➔</span>
           </button>
@@ -326,12 +364,12 @@
     <!-- ================= TAB 2: PIPELINE ================= -->
     <section id="tabPipeline" class="hidden h-full overflow-y-auto p-6 max-w-3xl mx-auto">
       <div class="text-center mb-6">
-        <h2 class="text-lg font-bold tracking-tight">🚀 Orchestrator Execution Pipeline</h2>
-        <p class="text-[var(--muted-foreground)] text-xs mt-1">Full lifecycle timeline of your dynamic campaign orchestration</p>
+        <h2 class="text-lg font-bold tracking-tight text-[#064E3B]">Orchestrator Execution Pipeline</h2>
+        <p class="text-stone-500 text-xs mt-1">Full lifecycle timeline of your campaign orchestration</p>
       </div>
       <div id="pipelineStepsContainer" class="relative ml-4 space-y-2">
         <!-- Rendered dynamically -->
-        <div class="text-center text-xs text-[var(--muted-foreground)] py-12">
+        <div class="text-center text-xs text-stone-400 py-12">
           No pipeline events yet. Start the conversation in Chat to build your campaign.
         </div>
       </div>
@@ -341,11 +379,11 @@
     <section id="tabLogs" class="hidden h-full flex flex-col p-6 max-w-6xl mx-auto gap-4">
       <div class="flex items-center justify-between shrink-0">
         <div>
-          <h2 class="text-lg font-bold tracking-tight">📋 System Logs & Diagnostics</h2>
-          <p class="text-[var(--muted-foreground)] text-xs">Full transparency: every LLM prompt, raw response, validation, memory op, and error</p>
+          <h2 class="text-lg font-bold tracking-tight text-[#064E3B]">System Logs & Diagnostics</h2>
+          <p class="text-stone-500 text-xs">Prompt telemetry, raw model outputs, compliance checks, and state transitions</p>
         </div>
         <div class="flex items-center gap-2">
-          <select id="logCategorySelect" onchange="loadLogs()" class="bg-[var(--card)] border border-[var(--border)] text-xs rounded-lg px-3 py-1.5">
+          <select id="logCategorySelect" onchange="loadLogs()" class="bg-white border border-stone-200 text-xs rounded-full px-4 py-2 font-semibold text-[#064E3B]">
             <option value="llm_calls">LLM Calls</option>
             <option value="channel_calls">Aggregator Channel Calls</option>
             <option value="events">Pipeline Events</option>
@@ -355,11 +393,11 @@
             <option value="actions">User Actions</option>
             <option value="errors">Errors</option>
           </select>
-          <button onclick="downloadSendLog()" class="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700 shadow-xs">
-            📥 Download Send Log
+          <button onclick="downloadSendLog()" class="px-4 py-2 rounded-full bg-[#064E3B] hover:bg-[#043327] text-white text-xs font-bold shadow-xs transition-all cursor-pointer">
+            Download Send Log
           </button>
-          <button onclick="downloadFullRunLog()" class="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 shadow-xs">
-            📥 Download Run Log
+          <button onclick="downloadFullRunLog()" class="px-4 py-2 rounded-full bg-[#D97706] hover:bg-[#b45309] text-white text-xs font-black shadow-xs transition-all cursor-pointer">
+            Download Run Log
           </button>
         </div>
       </div>
@@ -367,23 +405,23 @@
       <!-- Logs Content Grid: Category Logs (Left 2 cols) + Live Agent State & Memory (Right 1 col) -->
       <div class="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 overflow-hidden min-h-0">
         <!-- Left: Category Log Feed -->
-        <div class="lg:col-span-2 flex flex-col bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-xs p-4 overflow-y-auto">
+        <div class="lg:col-span-2 flex flex-col bg-white border border-stone-200/90 rounded-2xl shadow-xs p-5 overflow-y-auto">
           <div id="logsOutput" class="text-xs font-mono space-y-2">Loading logs...</div>
         </div>
 
         <!-- Right: Persistent Live Agent State & Memory Panel -->
-        <div class="lg:col-span-1 flex flex-col bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-xs p-4 overflow-y-auto space-y-3">
-          <div class="flex items-center justify-between border-b border-[var(--border)] pb-2 shrink-0">
-            <div class="flex items-center gap-1.5 font-bold text-xs text-blue-600 dark:text-blue-400">
-              <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <div class="lg:col-span-1 flex flex-col bg-white border border-stone-200/90 rounded-2xl shadow-xs p-5 overflow-y-auto space-y-3">
+          <div class="flex items-center justify-between border-b border-stone-100 pb-2.5 shrink-0">
+            <div class="flex items-center gap-2 font-bold text-xs text-[#064E3B]">
+              <span class="inline-block w-2 h-2 rounded-full bg-[#D97706] animate-pulse"></span>
               <span>Live Agent State & Memory</span>
             </div>
-            <button onclick="refreshLiveStateMemoryPanel()" title="Refresh Memory" class="text-[11px] text-[var(--muted-foreground)] hover:text-blue-500 font-mono cursor-pointer flex items-center gap-1">
-              <span>🔄</span> Refresh
+            <button onclick="refreshLiveStateMemoryPanel()" title="Refresh Memory" class="text-[11px] text-[#D97706] font-bold cursor-pointer flex items-center gap-1 hover:underline">
+              Refresh
             </button>
           </div>
           <div id="liveAgentMemoryContent" class="text-xs space-y-3">
-            <div class="text-[var(--muted-foreground)] text-xs">Loading live agent memory...</div>
+            <div class="text-stone-400 text-xs font-medium">Loading live agent memory...</div>
           </div>
         </div>
       </div>
@@ -392,254 +430,150 @@
   </main>
 
   <!-- Paste Contacts Modal -->
-  <div id="pasteModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-    <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+  <div id="pasteModal" class="hidden fixed inset-0 bg-[#061A13]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-[#0A2E22] border border-[#064E3B]/10 dark:border-white/10 rounded-[2rem] p-7 max-w-md w-full shadow-2xl space-y-4">
       <div class="flex items-center justify-between">
-        <h3 class="font-bold text-sm">Paste Custom Recipient Numbers</h3>
-        <button onclick="closePasteModal()" class="text-gray-400 hover:text-gray-600 text-lg cursor-pointer">✕</button>
+        <h3 class="font-black text-sm text-[#064E3B] dark:text-[#FDFBF7]">Paste Recipient Numbers</h3>
+        <button onclick="closePasteModal()" class="w-8 h-8 rounded-full border border-[#064E3B]/10 hover:bg-[#F3EFE6] dark:hover:bg-[#06241B] flex items-center justify-center text-gray-500 cursor-pointer">✕</button>
       </div>
-      <p class="text-xs text-[var(--muted-foreground)]">Paste your custom recipient contacts with <strong>Name</strong>, <strong>Phone</strong> (e.g. <code>+1...</code> or local format), and optional merge columns (e.g. <code>Discount, City</code>):</p>
-      <textarea id="pasteTextInput" rows="6" class="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl p-3 text-xs font-mono focus:outline-hidden focus:ring-2 focus:ring-blue-500" placeholder="Name, Phone, Discount&#10;Alice Smith, +19175551234, 20%&#10;Bob Jones, +14155556789, 25%&#10;Carol White, +15558880001, 15%"></textarea>
+      <p class="text-xs text-[#064E3B]/70 dark:text-[#FDFBF7]/70 font-medium">Paste custom contacts with <strong>Name</strong>, <strong>Phone</strong> (e.g. <code>+1...</code>), and optional merge columns (e.g. <code>Discount, City</code>):</p>
+      <textarea id="pasteTextInput" rows="6" class="w-full bg-[#FDFBF7] dark:bg-[#06241B] border border-[#064E3B]/15 dark:border-white/10 rounded-2xl p-3.5 text-xs font-mono focus:outline-hidden focus:ring-2 focus:ring-[#D97706]/40" placeholder="Name, Phone, Discount&#10;Alice Smith, +19175551234, 20%&#10;Bob Jones, +14155556789, 25%&#10;Carol White, +15558880001, 15%"></textarea>
       <div class="flex items-center justify-between gap-2 pt-1">
-        <span class="text-[11px] text-[var(--muted-foreground)]">One contact per line</span>
+        <span class="text-[11px] text-[#064E3B]/50 dark:text-[#FDFBF7]/50 font-medium">One contact per line</span>
         <div class="flex justify-end gap-2">
-          <button onclick="closePasteModal()" class="px-4 py-2 rounded-xl text-xs border border-[var(--border)] hover:bg-[var(--content)] cursor-pointer">Cancel</button>
-          <button onclick="submitPastedContacts()" class="px-4 py-2 rounded-xl text-xs bg-blue-600 hover:bg-blue-700 text-white font-semibold cursor-pointer">Parse Contacts</button>
+          <button onclick="closePasteModal()" class="px-4 py-2 rounded-full text-xs border border-[#064E3B]/15 hover:bg-[#F3EFE6] dark:hover:bg-[#06241B] font-semibold cursor-pointer">Cancel</button>
+          <button onclick="submitPastedContacts()" class="px-5 py-2 rounded-full text-xs bg-[#D97706] hover:bg-[#b45309] text-white font-black shadow-xs cursor-pointer">Parse Contacts</button>
         </div>
       </div>
     </div>
   </div>
 
   <!-- Raw Log Inspection Modal -->
-  <div id="rawLogModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-    <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-6 max-w-3xl w-full shadow-2xl space-y-4 max-h-[85vh] flex flex-col">
-      <div class="flex items-center justify-between border-b border-[var(--border)] pb-3">
-        <h3 class="font-bold text-sm" id="rawLogModalTitle">LLM Call Details</h3>
-        <button onclick="closeRawLogModal()" class="text-gray-400 hover:text-gray-600 text-lg">✕</button>
+  <div id="rawLogModal" class="hidden fixed inset-0 bg-[#061A13]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-[#0A2E22] border border-[#064E3B]/10 dark:border-white/10 rounded-[2rem] p-7 max-w-3xl w-full shadow-2xl space-y-4 max-h-[85vh] flex flex-col">
+      <div class="flex items-center justify-between border-b border-[#064E3B]/8 pb-3">
+        <h3 class="font-black text-sm text-[#064E3B] dark:text-[#FDFBF7]" id="rawLogModalTitle">LLM Call Details</h3>
+        <button onclick="closeRawLogModal()" class="w-8 h-8 rounded-full border border-[#064E3B]/10 hover:bg-[#F3EFE6] dark:hover:bg-[#06241B] flex items-center justify-center text-gray-500 cursor-pointer">✕</button>
       </div>
       <div class="flex-1 overflow-y-auto space-y-4 text-xs font-mono">
         <div>
-          <div class="font-bold text-[var(--muted-foreground)] uppercase text-[10px] mb-1">Full Prompt (System + Messages)</div>
-          <pre id="rawLogPrompt" class="bg-[var(--content)] p-3 rounded-lg overflow-x-auto whitespace-pre-wrap"></pre>
+          <div class="font-black text-[#D97706] uppercase tracking-wider text-[10px] mb-1">Full Prompt (System + Messages)</div>
+          <pre id="rawLogPrompt" class="bg-[#FDFBF7] dark:bg-[#06241B] p-3.5 rounded-2xl border border-[#064E3B]/8 overflow-x-auto whitespace-pre-wrap"></pre>
         </div>
         <div>
-          <div class="font-bold text-[var(--muted-foreground)] uppercase text-[10px] mb-1">Raw Response</div>
-          <pre id="rawLogResponse" class="bg-[var(--content)] p-3 rounded-lg overflow-x-auto whitespace-pre-wrap"></pre>
+          <div class="font-black text-[#064E3B] dark:text-[#FDFBF7] uppercase tracking-wider text-[10px] mb-1">Raw Response</div>
+          <pre id="rawLogResponse" class="bg-[#FDFBF7] dark:bg-[#06241B] p-3.5 rounded-2xl border border-[#064E3B]/8 overflow-x-auto whitespace-pre-wrap"></pre>
         </div>
       </div>
     </div>
   </div>
 
   <!-- Edit Template Modal -->
-  <div id="editTemplateModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-    <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-6 max-w-xl w-full shadow-2xl space-y-4">
-      <div class="flex items-center justify-between border-b border-[var(--border)] pb-3">
-        <h3 class="font-bold text-sm" id="editModalTitle">✏️ Edit Message Template</h3>
-        <button onclick="closeEditModal()" class="text-gray-400 hover:text-gray-600 text-lg">✕</button>
+  <div id="editTemplateModal" class="hidden fixed inset-0 bg-[#061A13]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-[#0A2E22] border border-[#064E3B]/10 dark:border-white/10 rounded-[2rem] p-7 max-w-xl w-full shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-[#064E3B]/8 pb-3">
+        <h3 class="font-black text-sm text-[#064E3B] dark:text-[#FDFBF7]" id="editModalTitle">✏️ Edit Message Template</h3>
+        <button onclick="closeEditModal()" class="w-8 h-8 rounded-full border border-[#064E3B]/10 hover:bg-[#F3EFE6] dark:hover:bg-[#06241B] flex items-center justify-center text-gray-500 cursor-pointer">✕</button>
       </div>
-      <p class="text-xs text-[var(--muted-foreground)]">Modify the template body directly. Compliance checks (word limit ≤ 320 words & opt-out footer) and recipient previews update immediately upon saving.</p>
-      <textarea id="editModalText" rows="7" class="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl p-3 text-xs font-sans text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500"></textarea>
+      <p class="text-xs text-[#064E3B]/70 dark:text-[#FDFBF7]/70 font-medium">Modify template body directly. Compliance checks (≤ 320 words & opt-out footer) update immediately.</p>
+      <textarea id="editModalText" rows="7" class="w-full bg-[#FDFBF7] dark:bg-[#06241B] border border-[#064E3B]/15 dark:border-white/10 rounded-2xl p-3.5 text-xs text-[#064E3B] dark:text-[#FDFBF7] focus:outline-hidden focus:ring-2 focus:ring-[#D97706]/30"></textarea>
       <div class="flex justify-end gap-2 pt-2">
-        <button onclick="closeEditModal()" class="px-4 py-2 rounded-xl text-xs border border-[var(--border)] hover:bg-[var(--content)]">Cancel</button>
-        <button onclick="saveEditedTemplate()" class="px-4 py-2 rounded-xl text-xs bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-xs">Save & Re-verify</button>
+        <button onclick="closeEditModal()" class="px-4 py-2 rounded-full text-xs border border-[#064E3B]/15 hover:bg-[#F3EFE6] font-semibold cursor-pointer">Cancel</button>
+        <button onclick="saveEditedTemplate()" class="px-5 py-2 rounded-full text-xs bg-[#D97706] hover:bg-[#b45309] text-white font-black shadow-xs cursor-pointer">Save & Re-verify</button>
       </div>
     </div>
   </div>
 
   <!-- Re-prompt / Regenerate Template Modal -->
-  <div id="repromptTemplateModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-    <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4">
-      <div class="flex items-center justify-between border-b border-[var(--border)] pb-3">
-        <h3 class="font-bold text-sm text-blue-600 dark:text-blue-400 flex items-center gap-2">
-          <span>🔄</span> <span id="repromptModalTitle">Re-prompt & Regenerate Message</span>
+  <div id="repromptTemplateModal" class="hidden fixed inset-0 bg-[#061A13]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-[#0A2E22] border border-[#064E3B]/10 dark:border-white/10 rounded-[2rem] p-7 max-w-lg w-full shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-[#064E3B]/8 pb-3">
+        <h3 class="font-black text-sm text-[#D97706] flex items-center gap-2">
+          <span id="repromptModalTitle">Re-prompt & Regenerate Message</span>
         </h3>
-        <button onclick="closeRepromptModal()" class="text-gray-400 hover:text-gray-600 text-lg">✕</button>
+        <button onclick="closeRepromptModal()" class="w-8 h-8 rounded-full border border-[#064E3B]/10 hover:bg-[#F3EFE6] dark:hover:bg-[#06241B] flex items-center justify-center text-gray-500 cursor-pointer">✕</button>
       </div>
-      <p class="text-xs text-[var(--muted-foreground)]">Specify any revisions (e.g. change clinic/business name, add/remove special offers or deadlines, adjust tone):</p>
+      <p class="text-xs text-[#064E3B]/70 dark:text-[#FDFBF7]/70 font-medium">Specify any revisions (change business name, add offers, adjust tone):</p>
       <div class="space-y-1">
-        <span class="text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-wider">Quick Presets:</span>
+        <span class="text-[10px] font-black text-[#064E3B]/50 dark:text-[#FDFBF7]/50 uppercase tracking-widest">Quick Presets:</span>
         <div class="flex items-center gap-1.5 flex-wrap">
-          <button type="button" onclick="setRepromptPreset('Change clinic/business name to: ')" class="px-2 py-1 rounded-md bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 text-[10px] font-semibold border border-blue-500/20 cursor-pointer">🏢 Change Name</button>
-          <button type="button" onclick="setRepromptPreset('Include a 20% promotional discount offer valid until this Friday')" class="px-2 py-1 rounded-md bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 text-[10px] font-semibold border border-emerald-500/20 cursor-pointer">🏷️ Add 20% Offer</button>
-          <button type="button" onclick="setRepromptPreset('Add a strict 24-hour deadline clause before service cutoff')" class="px-2 py-1 rounded-md bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 text-[10px] font-semibold border border-amber-500/20 cursor-pointer">⏰ Add Deadline</button>
-          <button type="button" onclick="setRepromptPreset('Make the tone caring, empathetic, and reassuring')" class="px-2 py-1 rounded-md bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 text-[10px] font-semibold border border-purple-500/20 cursor-pointer">❤️ Caring Tone</button>
-          <button type="button" onclick="setRepromptPreset('Make it direct, authoritative, and urgent')" class="px-2 py-1 rounded-md bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 text-[10px] font-semibold border border-rose-500/20 cursor-pointer">🚨 Urgent Tone</button>
+          <button type="button" onclick="setRepromptPreset('Change store/business name to: ')" class="px-3 py-1 rounded-full bg-[#D97706]/10 hover:bg-[#D97706]/20 text-[#D97706] text-[10px] font-bold border border-[#D97706]/20 cursor-pointer">Change Name</button>
+          <button type="button" onclick="setRepromptPreset('Include a 20% promotional discount offer valid until this Friday')" class="px-3 py-1 rounded-full bg-[#064E3B]/10 hover:bg-[#064E3B]/20 text-[#064E3B] dark:text-[#FDFBF7] text-[10px] font-bold border border-[#064E3B]/20 cursor-pointer">Add 20% Offer</button>
+          <button type="button" onclick="setRepromptPreset('Add a strict 24-hour deadline clause before service cutoff')" class="px-3 py-1 rounded-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 text-[10px] font-bold border border-amber-500/20 cursor-pointer">Add Deadline</button>
         </div>
       </div>
-      <textarea id="repromptModalText" rows="4" placeholder="e.g. 'Change clinic name to Apex Dental and add 20% discount offer'..."
-                class="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl p-3 text-xs font-sans text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500"></textarea>
+      <textarea id="repromptModalText" rows="4" placeholder="e.g. 'Change brand name to Apex Dental and add 20% discount offer'..."
+                class="w-full bg-[#FDFBF7] dark:bg-[#06241B] border border-[#064E3B]/15 dark:border-white/10 rounded-2xl p-3.5 text-xs text-[#064E3B] dark:text-[#FDFBF7] focus:outline-hidden focus:ring-2 focus:ring-[#D97706]/30"></textarea>
       <div class="flex justify-end gap-2 pt-2">
-        <button onclick="closeRepromptModal()" class="px-4 py-2 rounded-xl text-xs border border-[var(--border)] hover:bg-[var(--content)]">Cancel</button>
-        <button onclick="submitRepromptTemplate()" class="px-4 py-2 rounded-xl text-xs bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-xs">
-          Regenerate with AI
+        <button onclick="closeRepromptModal()" class="px-4 py-2 rounded-full text-xs border border-[#064E3B]/15 hover:bg-[#F3EFE6] font-semibold cursor-pointer">Cancel</button>
+        <button onclick="submitRepromptTemplate()" class="px-5 py-2 rounded-full text-xs bg-[#D97706] hover:bg-[#b45309] text-white font-black shadow-xs cursor-pointer">
+          Regenerate
         </button>
       </div>
     </div>
   </div>
 
   <!-- Reject Campaign Modal -->
-  <div id="rejectCampaignModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-    <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4">
-      <div class="flex items-center justify-between border-b border-[var(--border)] pb-3">
-        <h3 class="font-bold text-sm text-rose-600 flex items-center gap-2">
-          <span>❌</span> Reject Campaign & Provide Feedback
+  <div id="rejectCampaignModal" class="hidden fixed inset-0 bg-[#061A13]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-[#0A2E22] border border-[#064E3B]/10 dark:border-white/10 rounded-[2rem] p-7 max-w-lg w-full shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-[#064E3B]/8 pb-3">
+        <h3 class="font-black text-sm text-rose-600 flex items-center gap-2">
+          <span>Reject Campaign & Provide Feedback</span>
         </h3>
-        <button onclick="closeRejectModal()" class="text-gray-400 hover:text-gray-600 text-lg">✕</button>
+        <button onclick="closeRejectModal()" class="w-8 h-8 rounded-full border border-[#064E3B]/10 hover:bg-[#F3EFE6] flex items-center justify-center text-gray-500 cursor-pointer">✕</button>
       </div>
-      <div class="text-xs text-slate-950 dark:text-slate-100 space-y-2">
-        <p class="font-bold text-slate-950 dark:text-white">Tell CampaignForge what went wrong or what you'd like changed:</p>
-        <div class="space-y-2 text-xs text-slate-900 dark:text-slate-200">
-          <label class="flex items-center gap-2 cursor-pointer font-medium">
-            <input type="checkbox" id="rejectReasonTone" class="rounded border-slate-400">
-            <span>Tone wasn't right (e.g. too casual, too aggressive, or too stiff)</span>
+      <div class="text-xs text-[#064E3B] dark:text-[#FDFBF7] space-y-2">
+        <p class="font-black">Tell EchoCard what went wrong or what you'd like changed:</p>
+        <div class="space-y-2 text-xs font-medium">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" id="rejectReasonTone" class="rounded border-[#064E3B]/30">
+            <span>Tone wasn't right (too casual, too aggressive, or too stiff)</span>
           </label>
-          <label class="flex items-center gap-2 cursor-pointer font-medium">
-            <input type="checkbox" id="rejectReasonFacts" class="rounded border-slate-400">
-            <span>Incorrect statistics or details made up without my input</span>
-          </label>
-          <label class="flex items-center gap-2 cursor-pointer font-medium">
-            <input type="checkbox" id="rejectReasonLength" class="rounded border-slate-400">
-            <span>Too long / too short / wrong sequence cadence</span>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" id="rejectReasonFacts" class="rounded border-[#064E3B]/30">
+            <span>Incorrect details or claims made up without input</span>
           </label>
         </div>
       </div>
       <div>
-        <label class="block text-xs font-bold mb-1 text-slate-950 dark:text-slate-100">Specific revision instructions / What to change:</label>
-        <textarea id="rejectFeedbackText" rows="4" placeholder="e.g. 'Remove the 50 students claim, we haven't confirmed numbers yet. Ask me for statistics instead and use a warmer, more grateful tone.'..."
-                  class="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl p-3 text-xs font-sans text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-rose-500"></textarea>
+        <label class="block text-xs font-black mb-1 text-[#064E3B] dark:text-[#FDFBF7]">Specific revision instructions:</label>
+        <textarea id="rejectFeedbackText" rows="4" placeholder="e.g. 'Use a warmer, more grateful tone and remove the deadline'..."
+                  class="w-full bg-[#FDFBF7] dark:bg-[#06241B] border border-[#064E3B]/15 rounded-2xl p-3.5 text-xs text-[#064E3B] dark:text-[#FDFBF7] focus:outline-hidden focus:ring-2 focus:ring-rose-500"></textarea>
       </div>
       <div class="flex justify-end gap-2 pt-2">
-        <button onclick="closeRejectModal()" class="px-4 py-2 rounded-xl text-xs border border-[var(--border)] hover:bg-[var(--content)]">Cancel</button>
-        <button onclick="submitRejectFeedback()" class="px-4 py-2 rounded-xl text-xs bg-rose-600 hover:bg-rose-700 text-white font-semibold shadow-xs">
-      </div>
-    </div>
-  </div>
-
-  <!-- Tool Webhooks Modal -->
-  <div id="toolWebhooksModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-    <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-6 max-w-2xl w-full shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
-      <div class="flex items-center justify-between border-b border-[var(--border)] pb-3 shrink-0">
-        <div>
-          <h3 class="font-bold text-sm text-blue-600 dark:text-blue-400 flex items-center gap-2">
-            <span>🛠️</span> Configure Tool Webhooks & APIs
-          </h3>
-          <p class="text-[11px] text-[var(--muted-foreground)]">CRM Orchestrator is tool-agnostic. Configure custom webhooks or APIs (Zapier, Make, Mock Aggregator, Twilio, Infobip) to broadcast outbound campaigns.</p>
-        </div>
-        <button onclick="closeToolWebhooksModal()" class="text-gray-400 hover:text-gray-600 text-lg cursor-pointer">✕</button>
-      </div>
-
-      <!-- Quick Preset & Add New Tool Webhook Form -->
-      <form onsubmit="saveNewToolWebhook(event)" class="p-4 bg-[var(--background)] border border-[var(--border)] rounded-xl space-y-3 shrink-0">
-        <div class="flex items-center justify-between">
-          <div class="text-xs font-bold text-[var(--foreground)] flex items-center gap-1.5">
-            <span>➕</span> Add New Tool Webhook / API
-          </div>
-          <div class="flex items-center gap-1.5 flex-wrap">
-            <button type="button" onclick="fillMockAggregatorPreset('twilio')" class="text-xs px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-semibold hover:bg-emerald-500/20 transition-all flex items-center gap-1 cursor-pointer" title="Auto-fill Mock Aggregator Twilio API endpoint">
-              <span>⚡</span> Twilio API Preset
-            </button>
-            <button type="button" onclick="fillMockAggregatorPreset('infobip')" class="text-xs px-2.5 py-1 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 font-semibold hover:bg-indigo-500/20 transition-all flex items-center gap-1 cursor-pointer" title="Auto-fill Mock Aggregator Infobip API endpoint">
-              <span>⚡</span> Infobip API Preset
-            </button>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <div>
-            <label class="block text-[11px] font-semibold text-[var(--muted-foreground)] mb-1">Tool Name:</label>
-            <input type="text" id="newWebhookName" placeholder="e.g. Mock Aggregator, Zapier CRM, Slack Alerts" required
-                   class="w-full bg-[var(--card)] border border-[var(--border)] rounded-lg p-2 text-xs">
-          </div>
-          <div>
-            <label class="block text-[11px] font-semibold text-[var(--muted-foreground)] mb-1">Webhook URL / API Endpoint:</label>
-            <input type="url" id="newWebhookUrl" placeholder="http://localhost:3000/... or https://..." required
-                   class="w-full bg-[var(--card)] border border-[var(--border)] rounded-lg p-2 text-xs font-mono">
-          </div>
-        </div>
-
-        <div>
-          <label class="block text-[11px] font-semibold text-[var(--muted-foreground)] mb-1">Custom Headers (Optional JSON):</label>
-          <textarea id="newWebhookHeaders" rows="2" placeholder='{"Authorization": "Basic ..."}'
-                    class="w-full bg-[var(--card)] border border-[var(--border)] rounded-lg p-2 text-xs font-mono"></textarea>
-        </div>
-
-        <div id="webhookFormTestResult" class="hidden text-xs"></div>
-
-        <div class="flex items-center justify-between pt-1">
-          <button type="button" onclick="testHandshakeProbe()" id="btnHandshakeProbe" class="px-3.5 py-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--card)] text-xs font-semibold flex items-center gap-1.5 cursor-pointer">
-            <span>🤝</span> Test Handshake (Ping Latency)
-          </button>
-          <button type="submit" id="saveWebhookBtn" class="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs flex items-center gap-1.5 transition-all cursor-pointer">
-            <span>⚡</span> Save Webhook
-          </button>
-        </div>
-      </form>
-
-      <!-- Inbound Reference Card -->
-      <div class="p-3 bg-[var(--background)] border border-[var(--border)] rounded-xl space-y-2 shrink-0">
-        <div class="flex items-center justify-between">
-          <span class="text-[11px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
-            <span>📥</span> Orchestrator Callback Endpoints (Inbound SMS & Delivery Status)
-          </span>
-          <span class="text-[10px] text-[var(--muted-foreground)]">For aggregators / tools</span>
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs font-mono">
-          <div class="p-2 bg-[var(--card)] rounded-lg border border-[var(--border)] flex items-center justify-between gap-1">
-            <div class="truncate text-[11px]">
-              <span class="px-1 py-0.5 rounded bg-emerald-500/10 text-emerald-600 font-bold font-sans">POST</span>
-              <span class="ml-1 text-[var(--foreground)]">/api/webhooks/mock/inbound</span>
-            </div>
-            <button type="button" onclick="copyWebhookToClipboard('http://localhost:8000/api/webhooks/mock/inbound', this)" class="px-2 py-0.5 rounded text-[10px] bg-[var(--content)] hover:bg-[var(--border)] font-sans font-semibold shrink-0 cursor-pointer">📋 Copy</button>
-          </div>
-          <div class="p-2 bg-[var(--card)] rounded-lg border border-[var(--border)] flex items-center justify-between gap-1">
-            <div class="truncate text-[11px]">
-              <span class="px-1 py-0.5 rounded bg-blue-500/10 text-blue-600 font-bold font-sans">POST</span>
-              <span class="ml-1 text-[var(--foreground)]">/api/webhooks/mock/status</span>
-            </div>
-            <button type="button" onclick="copyWebhookToClipboard('http://localhost:8000/api/webhooks/mock/status', this)" class="px-2 py-0.5 rounded text-[10px] bg-[var(--content)] hover:bg-[var(--border)] font-sans font-semibold shrink-0 cursor-pointer">📋 Copy</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Saved Webhooks List -->
-      <div class="flex-1 overflow-y-auto space-y-2 pr-1">
-        <div class="text-[11px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] mb-1">Configured Tool Webhooks & APIs</div>
-        <div id="toolWebhooksList" class="space-y-2"></div>
-      </div>
-
-      <div class="flex justify-end pt-2 border-t border-[var(--border)] shrink-0">
-        <button onclick="closeToolWebhooksModal()" class="px-4 py-2 rounded-xl text-xs border border-[var(--border)] hover:bg-[var(--content)] cursor-pointer">Close</button>
+        <button onclick="closeRejectModal()" class="px-4 py-2 rounded-full text-xs border border-[#064E3B]/15 hover:bg-[#F3EFE6] font-semibold cursor-pointer">Cancel</button>
+        <button onclick="submitRejectFeedback()" class="px-5 py-2 rounded-full text-xs bg-rose-600 hover:bg-rose-700 text-white font-black shadow-xs cursor-pointer">Submit Feedback</button>
       </div>
     </div>
   </div>
 
   <!-- Past Chats / Conversation History Modal -->
-  <div id="pastChatsModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-    <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-6 max-w-2xl w-full shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
-      <div class="flex items-center justify-between border-b border-[var(--border)] pb-3 shrink-0">
+  <div id="pastChatsModal" class="hidden fixed inset-0 bg-[#061A13]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-[#0A2E22] border border-[#064E3B]/10 dark:border-white/10 rounded-[2rem] p-7 max-w-2xl w-full shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
+      <div class="flex items-center justify-between border-b border-[#064E3B]/8 pb-3 shrink-0">
         <div>
-          <h3 class="font-bold text-sm text-blue-600 dark:text-blue-400 flex items-center gap-2">
+          <h3 class="font-black text-sm text-[#064E3B] dark:text-[#FDFBF7] flex items-center gap-2">
             <span>📜</span> Conversation Chats & Campaigns
           </h3>
-          <p class="text-[11px] text-[var(--muted-foreground)]">Select a previous conversation to reload its messages, review approved templates, or resend via aggregator & tool webhooks.</p>
+          <p class="text-[11px] text-[#064E3B]/60 dark:text-[#FDFBF7]/60 font-medium">Select a previous conversation to reload its messages, review approved templates, or continue planning.</p>
         </div>
-        <button onclick="closePastChatsModal()" class="text-gray-400 hover:text-gray-600 text-lg">✕</button>
+        <button onclick="closePastChatsModal()" class="w-8 h-8 rounded-full border border-[#064E3B]/10 hover:bg-[#F3EFE6] flex items-center justify-center text-gray-500 cursor-pointer">✕</button>
       </div>
 
       <div class="flex justify-between items-center shrink-0">
-        <span class="text-xs font-bold text-[var(--muted-foreground)] uppercase tracking-wider">Saved Chats</span>
-        <button onclick="startNewChat(); closePastChatsModal();" class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs flex items-center gap-1">
-          <span>➕</span> Start New Campaign
+        <span class="text-xs font-black text-[#D97706] uppercase tracking-wider">Saved Chats</span>
+        <button onclick="startNewChat(); closePastChatsModal();" class="px-4 py-2 rounded-full bg-[#D97706] hover:bg-[#b45309] text-white font-black text-xs shadow-xs flex items-center gap-1.5 cursor-pointer">
+          <span>Start New Campaign</span>
         </button>
       </div>
 
       <!-- Chats List -->
       <div class="flex-1 overflow-y-auto space-y-2 pr-1" id="pastChatsList">
-        <div class="p-6 text-center text-xs text-[var(--muted-foreground)]">Loading chats...</div>
+        <div class="p-6 text-center text-xs text-[#064E3B]/50 font-medium">Loading chats...</div>
       </div>
 
-      <div class="flex justify-end pt-2 border-t border-[var(--border)] shrink-0">
-        <button onclick="closePastChatsModal()" class="px-4 py-2 rounded-xl text-xs border border-[var(--border)] hover:bg-[var(--content)]">Close</button>
+      <div class="flex justify-end pt-2 border-t border-[#064E3B]/8 shrink-0">
+        <button onclick="closePastChatsModal()" class="px-4 py-2 rounded-full text-xs border border-[#064E3B]/15 hover:bg-[#F3EFE6] font-semibold cursor-pointer">Close</button>
       </div>
     </div>
   </div>
@@ -656,7 +590,9 @@
     function toggleDarkMode() {
       document.documentElement.classList.toggle('dark');
       const isDark = document.documentElement.classList.contains('dark');
-      document.getElementById('themeIcon').textContent = isDark ? '☀️' : '🌙';
+      localStorage.setItem('echocard_theme', isDark ? 'dark' : 'light');
+      const icon = document.getElementById('themeIcon');
+      if (icon) icon.textContent = isDark ? '☀️' : '🌙';
     }
 
     // Tab Switching
@@ -665,15 +601,12 @@
       document.getElementById('tabPipeline').classList.toggle('hidden', tab !== 'pipeline');
       document.getElementById('tabLogs').classList.toggle('hidden', tab !== 'logs');
 
-      document.getElementById('tabChatBtn').className = tab === 'chat'
-        ? "px-4 py-1.5 rounded-md bg-[var(--card)] shadow-xs text-[var(--foreground)] transition-all font-semibold"
-        : "px-4 py-1.5 rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-all";
-      document.getElementById('tabPipelineBtn').className = tab === 'pipeline'
-        ? "px-4 py-1.5 rounded-md bg-[var(--card)] shadow-xs text-[var(--foreground)] transition-all font-semibold flex items-center gap-1.5"
-        : "px-4 py-1.5 rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-all flex items-center gap-1.5";
-      document.getElementById('tabLogsBtn').className = tab === 'logs'
-        ? "px-4 py-1.5 rounded-md bg-[var(--card)] shadow-xs text-[var(--foreground)] transition-all font-semibold"
-        : "px-4 py-1.5 rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-all";
+      const activeClass = "text-xs font-black text-[#064E3B] hover:text-[#D97706] transition-colors cursor-pointer py-1 border-b-2 border-[#D97706]";
+      const inactiveClass = "text-xs font-bold text-stone-500 hover:text-[#064E3B] transition-colors cursor-pointer py-1 border-b-2 border-transparent";
+
+      document.getElementById('tabChatBtn').className = tab === 'chat' ? activeClass : inactiveClass;
+      document.getElementById('tabPipelineBtn').className = tab === 'pipeline' ? activeClass : inactiveClass;
+      document.getElementById('tabLogsBtn').className = tab === 'logs' ? activeClass : inactiveClass;
 
       if (tab === 'logs') loadLogs();
     }
@@ -852,14 +785,14 @@
             </div>
             <div class="flex items-center gap-2 shrink-0">
               <button type="button" onclick="testToolWebhook('${w.id}')" id="test-wh-btn-${w.id}" class="px-2.5 py-1 rounded-lg border border-[var(--border)] hover:bg-[var(--card)] text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer" title="Test Webhook Connection">
-                <span>⚡ Test</span>
+                <span>Test</span>
               </button>
               <label class="flex items-center cursor-pointer text-xs gap-1" title="Enable/Disable tool webhook broadcast">
                 <input type="checkbox" onchange="toggleToolWebhookEnabled('${w.id}', this.checked)" ${w.enabled ? 'checked' : ''} class="w-4 h-4 rounded text-blue-600">
                 <span class="text-[10px] text-[var(--muted-foreground)]">${w.enabled ? 'Active' : 'Off'}</span>
               </label>
               <button type="button" onclick="deleteToolWebhook('${w.id}')" class="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer" title="Delete tool webhook">
-                🗑️
+                Delete
               </button>
             </div>
           </div>
@@ -871,7 +804,7 @@
       const btn = document.getElementById(`test-wh-btn-${webhookId}`);
       if (btn) {
         btn.disabled = true;
-        btn.innerHTML = `<span>⏳ Probing...</span>`;
+        btn.innerHTML = `<span>Probing...</span>`;
       }
       try {
         const res = await fetch(`/api/tools/webhooks/${webhookId}/test`, { method: 'POST' });
@@ -884,7 +817,6 @@
             : "p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-600 text-xs font-semibold flex items-center justify-between";
           testResultEl.innerHTML = `
             <div class="flex items-center gap-1.5">
-              <span>${data.status === 'success' ? '🟢' : '🔴'}</span>
               <span>${data.message}</span>
             </div>
             <span class="font-mono text-[10px] px-2 py-0.5 rounded bg-[var(--card)] border border-[var(--border)]">${data.latency_ms || 0} ms</span>
@@ -896,7 +828,7 @@
       } finally {
         if (btn) {
           btn.disabled = false;
-          btn.innerHTML = `<span>⚡ Test</span>`;
+          btn.innerHTML = `<span>Test</span>`;
         }
       }
     }
@@ -972,7 +904,7 @@
         alert("Error: " + err.message);
       } finally {
         saveBtn.disabled = false;
-        saveBtn.innerHTML = `<span>⚡ Save Webhook</span>`;
+        saveBtn.innerHTML = `<span>Save Webhook</span>`;
       }
     }
 
@@ -1344,22 +1276,39 @@
       }
     }
 
+    function getWelcomeHeroHTML() {
+      return `
+        <div id="welcomeScreen" class="bg-white border border-stone-200 rounded-2xl p-6 sm:p-8 shadow-xs relative">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-[10px] font-mono uppercase tracking-widest text-[#D97706] font-bold">Studio / Campaign Drafter</span>
+            <span class="text-[10px] font-mono text-stone-400">v2.4 Active</span>
+          </div>
+          <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-[#064E3B] mb-2">Campaign Drafter & Orchestration</h2>
+          <p class="text-stone-600 text-xs sm:text-sm leading-relaxed max-w-xl font-normal">
+            Type your campaign objective, audience details, or offer below. The multi-agent orchestrator will validate claims, propose compliant candidate tones, and format personalized messages.
+          </p>
+          <div class="flex flex-wrap gap-2 pt-5">
+            <button type="button" onclick="prefillChatInput('Flash sale for boutique apparel: 25% off all items with code SPRING25 at checkout.')" class="px-3.5 py-1.5 rounded-full bg-[#FAF7F2] hover:bg-stone-100 text-stone-700 text-xs font-medium border border-stone-200 transition-colors cursor-pointer">
+              Flash Sale Promotion
+            </button>
+            <button type="button" onclick="prefillChatInput('Remind clinic patients their semi-annual hygiene checkup is due next week. Call 88888 88888 to schedule.')" class="px-3.5 py-1.5 rounded-full bg-[#FAF7F2] hover:bg-stone-100 text-stone-700 text-xs font-medium border border-stone-200 transition-colors cursor-pointer">
+              Appointment Reminder
+            </button>
+            <button type="button" onclick="prefillChatInput('Annual conservation gala for Hope Wildlife on Dec 12th at Grand Ballroom. RSVP at https://hopewildlife.org/gala.')" class="px-3.5 py-1.5 rounded-full bg-[#FAF7F2] hover:bg-stone-100 text-stone-700 text-xs font-medium border border-stone-200 transition-colors cursor-pointer">
+              Event Announcement
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
     function startNewChat() {
       currentSessionId = "session_" + Math.random().toString(36).substring(2, 10);
       isCampaignApproved = false;
       currentTemplatesStore = [];
       activeToneProposals = [];
       const chatContainer = document.getElementById('chatMessages');
-      chatContainer.innerHTML = `
-        <div class="flex gap-3">
-          <div class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shrink-0">CF</div>
-          <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl rounded-tl-none p-4 max-w-2xl text-xs space-y-2 shadow-xs">
-            <p class="font-semibold text-sm">Welcome to CampaignForge Orchestrator!</p>
-            <p class="text-[var(--muted-foreground)]">I help you build high-converting, compliant CRM messaging campaigns for <strong>any business or organization</strong> (retail flash sales, dental clinic reminders, SaaS renewals, NGO appeals, education registrations, salon bookings, and more).</p>
-            <p>Tell me about your business and campaign idea to get started!</p>
-          </div>
-        </div>
-      `;
+      chatContainer.innerHTML = getWelcomeHeroHTML();
       document.getElementById('toneProposalCard').classList.add('hidden');
       const regenNotice = document.getElementById('toneRegenNotice');
       if (regenNotice) regenNotice.classList.add('hidden');
@@ -1585,125 +1534,125 @@
         const initialTc = toneCandidates.find(t => t.name === window.activeCampaignForms[formId].tone) || toneCandidates[0];
 
         formCardHTML = `
-          <div id="campaign-form-${formId}" class="mt-2 p-3 bg-[var(--background)] rounded-xl border border-blue-500/40 shadow-xs text-left whitespace-normal transition-all">
-            <div class="flex items-center justify-between border-b border-[var(--border)] pb-1.5 cursor-pointer select-none group" onclick="toggleFormCardCollapse('${formId}')">
-              <div class="font-bold text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1.5 truncate">
-                <span>📋</span> <span id="cf-form-title-${formId}">Confirmed Campaign Details (Step 1 of 2)</span>
+          <div id="campaign-form-${formId}" class="mt-2 p-3.5 bg-white rounded-2xl border border-stone-200/90 shadow-xs text-left whitespace-normal transition-all">
+            <div class="flex items-center justify-between border-b border-stone-100 pb-2 cursor-pointer select-none group" onclick="toggleFormCardCollapse('${formId}')">
+              <div class="font-bold text-xs text-[#064E3B] flex items-center gap-1.5 truncate">
+                <span id="cf-form-title-${formId}">Confirmed Campaign Details (Step 1 of 2)</span>
               </div>
               <div class="flex items-center gap-2 shrink-0">
-                <span class="text-[10px] text-[var(--muted-foreground)]">Domain: ${formCardData.business_type || 'General'}</span>
-                <span id="cf-form-toggle-icon-${formId}" class="text-[10px] font-mono font-bold text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded bg-[var(--card)] border border-[var(--border)] group-hover:border-blue-500 transition-colors">▾ Collapse</span>
+                <span class="text-[10px] text-stone-500 font-medium">Domain: ${formCardData.business_type || 'General'}</span>
+                <span id="cf-form-toggle-icon-${formId}" class="text-[10px] font-mono font-bold text-[#064E3B] px-2 py-0.5 rounded-full bg-stone-100 border border-stone-200 group-hover:border-[#064E3B] transition-colors">Collapse</span>
               </div>
             </div>
 
             <div id="campaign-form-content-${formId}" class="pt-2">
               <!-- STEP 1: Details & Context -->
               <div id="cf-step1-${formId}" class="space-y-2.5">
-                <div class="flex items-center justify-between text-[11px] pb-1 border-b border-[var(--border)]">
-                  <span class="font-bold text-blue-600 dark:text-blue-400">Step 1 of 2: Campaign Details & Context</span>
-                  <span class="text-[10px] text-[var(--muted-foreground)]">Next: Tone & Candidate Copy</span>
+                <div class="flex items-center justify-between text-[11px] pb-1 border-b border-stone-100">
+                  <span class="font-bold text-[#064E3B]">Step 1 of 2: Campaign Details & Context</span>
+                  <span class="text-[10px] text-stone-400">Next: Tone & Candidate Copy</span>
                 </div>
 
                 <!-- Organization Name -->
                 <div>
-                  <label class="block text-[11px] font-semibold text-[var(--foreground)] mb-0.5">
-                    🏢 Organization / Business Name
+                  <label class="block text-[11px] font-semibold text-stone-700 mb-0.5">
+                    Organization / Business Name
                   </label>
                   <input type="text" id="cf-org-name-${formId}" value="${orgVal}"
                          placeholder="e.g. Hope Wildlife Sanctuary, City Power & Light, Green Valley Grocers..."
-                         class="w-full px-2.5 py-1.5 bg-[var(--card)] border border-[var(--border)] rounded-lg text-xs outline-none focus:ring-1 focus:ring-blue-500 text-[var(--foreground)]">
+                         class="w-full px-3 py-1.5 bg-stone-50 border border-stone-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-[#064E3B] text-stone-900">
                 </div>
 
                 <!-- Physical Address / Location -->
                 <div>
-                  <label class="block text-[11px] font-semibold text-[var(--foreground)] mb-0.5">
-                    📍 Location / Physical Address
+                  <label class="block text-[11px] font-semibold text-stone-700 mb-0.5">
+                    Location / Physical Address
                   </label>
                   <input type="text" id="cf-address-${formId}" value="${addrVal}"
                          placeholder="e.g. 6th Cross, 10th Main, Downtown Plaza, or Online / Nationwide..."
-                         class="w-full px-2.5 py-1.5 bg-[var(--card)] border border-[var(--border)] rounded-lg text-xs outline-none focus:ring-1 focus:ring-blue-500 text-[var(--foreground)]">
+                         class="w-full px-3 py-1.5 bg-stone-50 border border-stone-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-[#064E3B] text-stone-900">
                 </div>
 
                 <!-- Event Date & Timing -->
                 <div>
-                  <label class="block text-[11px] font-semibold text-[var(--foreground)] mb-0.5">
-                    📅 Event Date & Timing / Deadline
+                  <label class="block text-[11px] font-semibold text-stone-700 mb-0.5">
+                    Event Date & Timing / Deadline
                   </label>
                   <input type="text" id="cf-date-${formId}" value="${dateVal}"
                          placeholder="e.g. This Saturday 10 AM, Nov 15th, within 48 hours..."
-                         class="w-full px-2.5 py-1.5 bg-[var(--card)] border border-[var(--border)] rounded-lg text-xs outline-none focus:ring-1 focus:ring-blue-500 text-[var(--foreground)]">
+                         class="w-full px-3 py-1.5 bg-stone-50 border border-stone-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-[#064E3B] text-stone-900">
                 </div>
 
                 <!-- Payment Link / URL or Contact Phone -->
                 <div>
-                  <label class="block text-[11px] font-semibold text-[var(--foreground)] mb-0.5">
-                    🔗 Payment / RSVP Link or Contact Phone
+                  <label class="block text-[11px] font-semibold text-stone-700 mb-0.5">
+                    Payment / RSVP Link or Contact Phone
                   </label>
                   <input type="text" id="cf-link-${formId}" value="${linkVal}"
                          placeholder="e.g. https://give.hopecharity.org or 88888 88888"
-                         class="w-full px-2.5 py-1.5 bg-[var(--card)] border border-[var(--border)] rounded-lg text-xs outline-none focus:ring-1 focus:ring-blue-500 text-[var(--foreground)]">
+                         class="w-full px-3 py-1.5 bg-stone-50 border border-stone-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-[#064E3B] text-stone-900">
                 </div>
 
                 <!-- Message Format & Channel -->
                 <div>
-                  <label class="block text-[11px] font-semibold text-[var(--foreground)] mb-0.5">
-                    📨 Message Format & Channel
+                  <label class="block text-[11px] font-semibold text-stone-700 mb-0.5">
+                    Message Format & Channel
                   </label>
-                  <div class="grid grid-cols-2 gap-1.5" id="cf-format-group-${formId}">
+                  <div class="grid grid-cols-2 gap-2" id="cf-format-group-${formId}">
                     <button type="button" onclick="selectFormFormat('${formId}', 'sms')" id="cf-fmt-sms-${formId}"
-                            class="py-1.5 px-2 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1 transition-all cursor-pointer ${!isEmail ? 'border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold' : 'border-[var(--border)] bg-[var(--card)] text-[var(--muted-foreground)]'}">
-                      <span>📱</span> SMS / WhatsApp
+                            class="py-1.5 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1 transition-all cursor-pointer ${!isEmail ? 'border-[#064E3B] bg-emerald-50 text-[#064E3B] font-bold' : 'border-stone-200 bg-stone-50 text-stone-600'}">
+                      <span>SMS / WhatsApp</span>
                     </button>
                     <button type="button" onclick="selectFormFormat('${formId}', 'email')" id="cf-fmt-email-${formId}"
-                            class="py-1.5 px-2 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1 transition-all cursor-pointer ${isEmail ? 'border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold' : 'border-[var(--border)] bg-[var(--card)] text-[var(--muted-foreground)]'}">
-                      <span>📧</span> Email Format
+                            class="py-1.5 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1 transition-all cursor-pointer ${isEmail ? 'border-[#064E3B] bg-emerald-50 text-[#064E3B] font-bold' : 'border-stone-200 bg-stone-50 text-stone-600'}">
+                      <span>Email Format</span>
                     </button>
                   </div>
                 </div>
 
                 <!-- Specific Template Request (Must-Include Phrasing) -->
                 <div>
-                  <label class="block text-[11px] font-semibold text-[var(--foreground)] mb-0.5">
-                    ✍️ Custom Output / Must-Include Phrasing (Optional)
+                  <label class="block text-[11px] font-semibold text-stone-700 mb-0.5">
+                    Custom Output / Must-Include Phrasing (Optional)
                   </label>
                   <input type="text" id="cf-template-req-${formId}" value="${tmplVal}"
                          placeholder="e.g. Free admission, food donation, volunteer perk, 20% discount..."
-                         class="w-full px-2.5 py-1.5 bg-[var(--card)] border border-[var(--border)] rounded-lg text-xs outline-none focus:ring-1 focus:ring-blue-500 text-[var(--foreground)]">
+                         class="w-full px-3 py-1.5 bg-stone-50 border border-stone-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-[#064E3B] text-stone-900">
                 </div>
 
                 <!-- Dynamic Domain-Specific Context Fields -->
                 ${dynamicFieldsHTML}
 
                 <!-- Step 1 Footer Action -->
-                <div class="pt-2 border-t border-[var(--border)] flex items-center justify-between gap-2">
+                <div class="pt-2 border-t border-stone-100 flex items-center justify-between gap-2">
                   <button type="button" onclick="submitCampaignForm('${formId}', true)"
-                          class="text-[11px] text-[var(--muted-foreground)] hover:text-slate-900 dark:hover:text-slate-100 underline cursor-pointer py-1">
+                          class="text-[11px] text-stone-500 hover:text-stone-800 underline cursor-pointer py-1">
                     Skip Unfilled & Quick Generate
                   </button>
                   <button type="button" onclick="goToFormStep('${formId}', 2)"
-                          class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer">
+                          class="px-4 py-2 bg-[#064E3B] hover:bg-[#043327] text-white font-bold text-xs rounded-full shadow-xs transition-all flex items-center gap-1.5 cursor-pointer">
                     <span>Next: Tone & Candidate Copy</span>
-                    <span>➔</span>
+                    <span>&rarr;</span>
                   </button>
                 </div>
               </div>
 
               <!-- STEP 2: Tone & Message Previews -->
               <div id="cf-step2-${formId}" class="space-y-2.5 hidden">
-                <div class="flex items-center justify-between text-[11px] pb-1 border-b border-[var(--border)]">
-                  <button type="button" onclick="goToFormStep('${formId}', 1)" class="text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 font-semibold cursor-pointer">
-                    <span>⬅</span> <span>Back to Details</span>
+                <div class="flex items-center justify-between text-[11px] pb-1 border-b border-stone-100">
+                  <button type="button" onclick="goToFormStep('${formId}', 1)" class="text-[#064E3B] hover:underline flex items-center gap-1 font-semibold cursor-pointer">
+                    <span>&larr;</span> <span>Back to Details</span>
                   </button>
-                  <span class="font-bold text-blue-600 dark:text-blue-400">Step 2 of 2: Tone Selection & Copy</span>
+                  <span class="font-bold text-[#064E3B]">Step 2 of 2: Tone Selection & Copy</span>
                 </div>
 
                 <!-- Tone Tabs (Horizontal Pills) -->
                 <div>
                   <div class="flex items-center justify-between mb-1">
-                    <label class="block text-[11px] font-semibold text-[var(--foreground)]">
-                      🎭 Select Candidate Tone
+                    <label class="block text-[11px] font-semibold text-stone-700">
+                      Select Candidate Tone
                     </label>
-                    <span class="text-[10px] text-[var(--muted-foreground)]">Click to switch candidate preview</span>
+                    <span class="text-[10px] text-stone-400">Click to switch candidate preview</span>
                   </div>
                   <div id="cf-tone-tabs-${formId}" class="flex items-center gap-1.5 overflow-x-auto pb-1">
                     ${toneTabsHTML}
@@ -1711,72 +1660,72 @@
                 </div>
 
                 <!-- Single Sleek Candidate Message Preview Container -->
-                <div id="cf-tone-preview-container-${formId}" class="p-3 bg-[var(--card)] rounded-xl border border-blue-500/30 space-y-2">
+                <div id="cf-tone-preview-container-${formId}" class="p-3 bg-stone-50 rounded-2xl border border-stone-200 space-y-2">
                   <div id="cf-active-preview-meta-${formId}">
                     <div class="flex items-center justify-between">
-                      <span class="font-bold text-xs text-blue-600 dark:text-blue-400">${initialTc ? initialTc.name : ''}</span>
-                      <span class="text-[10px] px-1.5 py-0.5 rounded font-medium ${(initialTc && initialTc.compliant !== false) ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-amber-500/10 text-amber-600'}">
+                      <span class="font-bold text-xs text-[#064E3B]">${initialTc ? initialTc.name : ''}</span>
+                      <span class="text-[10px] px-2 py-0.5 rounded-full font-medium ${(initialTc && initialTc.compliant !== false) ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
                         ${(initialTc && initialTc.word_count) || 0} words • ${(initialTc && initialTc.compliant !== false) ? 'Compliant' : 'Over limit'}
                       </span>
                     </div>
-                    ${initialTc && initialTc.description ? `<p class="text-[10px] text-[var(--muted-foreground)] mt-0.5">${initialTc.description}</p>` : ''}
+                    ${initialTc && initialTc.description ? `<p class="text-[10px] text-stone-500 mt-0.5">${initialTc.description}</p>` : ''}
                   </div>
-                  <div id="cf-active-preview-body-${formId}" class="p-3 bg-[var(--background)] rounded-lg border border-[var(--border)] text-xs text-[var(--foreground)] whitespace-pre-wrap leading-relaxed shadow-2xs">
-                    <blockquote class="border-l-2 border-blue-500 pl-2.5 italic">${initialTc ? initialTc.preview : ''}</blockquote>
+                  <div id="cf-active-preview-body-${formId}" class="p-3 bg-white rounded-xl border border-stone-200 text-xs text-stone-900 whitespace-pre-wrap leading-relaxed shadow-2xs">
+                    <blockquote class="border-l-2 border-[#064E3B] pl-2.5 italic">${initialTc ? initialTc.preview : ''}</blockquote>
                   </div>
                 </div>
 
                 <!-- Custom Tone & Suggestions Input (Regeneration Loop) -->
-                <div class="p-2.5 bg-[var(--card)] rounded-xl border border-[var(--border)] space-y-1.5">
+                <div class="p-2.5 bg-stone-50 rounded-2xl border border-stone-200 space-y-1.5">
                   <div class="flex items-center justify-between">
-                    <label class="block text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-wider">
-                      💡 Customize Tone or Add/Remove Clauses
+                    <label class="block text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+                      Customize Tone or Add/Remove Clauses
                     </label>
-                    <span class="text-[10px] text-blue-600 dark:text-blue-400 font-medium">Refines previews in a loop</span>
+                    <span class="text-[10px] text-[#064E3B] font-medium">Refines previews in a loop</span>
                   </div>
                   <div class="flex items-center gap-1.5">
                     <input type="text" id="cf-tone-feedback-${formId}" value=""
                            placeholder="e.g. 'Make it more urgent and add deadline' or 'Warm & witty tone'..."
-                           class="flex-1 px-2.5 py-1.5 bg-[var(--background)] border border-[var(--border)] rounded-lg text-xs outline-none focus:ring-1 focus:ring-blue-500 text-[var(--foreground)]"
+                           class="flex-1 px-3 py-1.5 bg-white border border-stone-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-[#064E3B] text-stone-900"
                            onkeydown="if(event.key==='Enter'){event.preventDefault();regenerateTonePreviewsAction('${formId}');}">
                     <button type="button" id="cf-tone-regen-btn-${formId}" onclick="regenerateTonePreviewsAction('${formId}')"
-                            class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg shrink-0 transition-all shadow-xs cursor-pointer flex items-center gap-1">
-                      <span>🔄 Regenerate Previews</span>
+                            class="px-3.5 py-1.5 bg-[#064E3B] hover:bg-[#043327] text-white font-bold text-xs rounded-xl shrink-0 transition-all shadow-xs cursor-pointer flex items-center gap-1">
+                      <span>Regenerate Previews</span>
                     </button>
                   </div>
-                  <div id="cf-tone-regen-status-${formId}" class="text-[10px] text-[var(--muted-foreground)] hidden"></div>
+                  <div id="cf-tone-regen-status-${formId}" class="text-[10px] text-stone-500 hidden"></div>
                 </div>
 
                 <!-- Additional Info & Clauses (Expandable tags with +) -->
                 <div>
                   <div class="flex items-center justify-between mb-0.5">
-                    <label class="text-[11px] font-semibold text-[var(--foreground)]">
-                      ➕ Additional Clauses & Custom Notes
+                    <label class="text-[11px] font-semibold text-stone-700">
+                      Additional Clauses & Custom Notes
                     </label>
-                    <span class="text-[10px] text-[var(--muted-foreground)]">Add offers, conditions, deadlines</span>
+                    <span class="text-[10px] text-stone-400">Add offers, conditions, deadlines</span>
                   </div>
                   <div id="cf-notes-list-${formId}" class="flex flex-wrap gap-1 mb-1"></div>
                   <div class="flex items-center gap-1.5">
                     <input type="text" id="cf-new-note-${formId}" placeholder="e.g. Free admission, Bring valid ID..."
-                           class="flex-1 px-2.5 py-1.5 bg-[var(--card)] border border-[var(--border)] rounded-lg text-xs outline-none focus:ring-1 focus:ring-blue-500 text-[var(--foreground)]"
+                           class="flex-1 px-3 py-1.5 bg-white border border-stone-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-[#064E3B] text-stone-900"
                            onkeydown="if(event.key==='Enter'){event.preventDefault();addFormNote('${formId}');}">
                     <button type="button" onclick="addFormNote('${formId}')"
-                            class="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shrink-0 cursor-pointer shadow-xs">
+                            class="px-3 py-1.5 bg-[#064E3B] hover:bg-[#043327] text-white rounded-xl text-xs font-bold shrink-0 cursor-pointer shadow-xs">
                       + Add
                     </button>
                   </div>
                 </div>
 
                 <!-- Step 2 Action Footer -->
-                <div class="pt-2 border-t border-[var(--border)] flex items-center justify-between gap-2">
+                <div class="pt-2 border-t border-stone-100 flex items-center justify-between gap-2">
                   <button type="button" onclick="goToFormStep('${formId}', 1)"
-                          class="px-3 py-1.5 text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] border border-[var(--border)] rounded-lg cursor-pointer">
-                    ⬅ Edit Details
+                          class="px-3.5 py-1.5 text-xs text-stone-600 hover:text-stone-900 border border-stone-200 rounded-full cursor-pointer bg-white">
+                    Edit Details
                   </button>
                   <button type="button" onclick="submitCampaignForm('${formId}', false)"
-                          class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer">
-                    <span>✨ Confirm & Generate Message</span>
-                    <span>➔</span>
+                          class="px-4 py-2 bg-[#D97706] hover:bg-[#b45309] text-white font-bold text-xs rounded-full shadow-xs transition-all flex items-center gap-1.5 cursor-pointer">
+                    <span>Confirm & Generate Message</span>
+                    <span>&rarr;</span>
                   </button>
                 </div>
               </div>
@@ -2669,23 +2618,23 @@
         <div class="border border-[var(--border)] bg-[var(--card)] rounded-xl p-4 space-y-3 shadow-xs">
           <div class="flex items-center justify-between border-b border-[var(--border)] pb-2 flex-wrap gap-2">
             <div class="flex items-center gap-2 flex-wrap">
-              <span class="font-bold text-xs uppercase tracking-wider text-blue-600 dark:text-blue-400">
+              <span class="font-bold text-xs uppercase tracking-wider text-[#064E3B]">
                 ${t.tone || 'Campaign Tone'} — Message ${t.message_index} (${t.stage || 'Touchpoint'})
               </span>
-              <span class="text-[11px] font-mono px-2 py-0.5 rounded-md ${t.word_count <= (t.word_limit || 320) ? 'bg-emerald-500/10 text-emerald-600 font-semibold' : 'bg-red-500/10 text-red-600 font-semibold'}">
-                📏 ${t.word_count} / ${t.word_limit || 320} words ${t.compliant ? '✅' : '⚠️'}
+              <span class="text-[11px] font-mono px-2 py-0.5 rounded-md ${t.word_count <= (t.word_limit || 320) ? 'bg-emerald-500/10 text-emerald-700 font-semibold' : 'bg-red-500/10 text-red-700 font-semibold'}">
+                ${t.word_count} / ${t.word_limit || 320} words ${t.compliant ? '(Compliant)' : '(Exceeded)'}
               </span>
-              <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 font-medium">
-                Opt-out: ✅
+              <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-semibold">
+                Opt-out: Compliant
               </span>
-              <div class="flex items-center gap-1 pl-1 border-l border-[var(--border)]">
-                <span class="text-[10px] font-semibold text-[var(--muted-foreground)]">Drafts:</span>
+              <div class="flex items-center gap-1 pl-1 border-l border-stone-200">
+                <span class="text-[10px] font-semibold text-stone-500">Drafts:</span>
                 ${versionsPillsHTML}
               </div>
             </div>
             <div class="flex items-center gap-2">
-              <button onclick="openEditModal(${t.message_index})" class="px-2 py-1 rounded-md border border-[var(--border)] hover:bg-[var(--content)] text-xs font-medium text-[var(--foreground)] cursor-pointer">✏️ Edit</button>
-              <button onclick="regenerateTemplateAction(${t.message_index})" class="px-2 py-1 rounded-md border border-[var(--border)] hover:bg-[var(--content)] text-xs font-medium text-blue-600 dark:text-blue-400 cursor-pointer">🔄 Regenerate</button>
+              <button onclick="openEditModal(${t.message_index})" class="px-2.5 py-1 rounded-full border border-stone-200 hover:bg-stone-100 text-xs font-medium text-stone-700 cursor-pointer">Edit</button>
+              <button onclick="regenerateTemplateAction(${t.message_index})" class="px-2.5 py-1 rounded-full border border-stone-200 hover:bg-stone-100 text-xs font-semibold text-[#064E3B] cursor-pointer">Regenerate</button>
             </div>
           </div>
 
@@ -3642,21 +3591,21 @@
         `;
 
         container.innerHTML = `
-          <div class="flex items-center justify-between border-b border-[var(--border)] pb-3">
+          <div class="flex items-center justify-between border-b border-stone-200 pb-3">
             <div>
-              <h3 class="text-sm font-bold text-blue-600 dark:text-blue-400 flex items-center gap-2">
-                <span>🚀</span> Outbound Campaign Dispatch
+              <h3 class="text-sm font-bold text-[#064E3B] flex items-center gap-2">
+                <span>Outbound Campaign Dispatch</span>
               </h3>
-              <p class="text-xs text-[var(--muted-foreground)]">Pre-flight verification report and tool-agnostic message dispatch</p>
+              <p class="text-xs text-stone-500">Pre-flight verification report and message dispatch</p>
             </div>
-            <button type="button" onclick="toggleAggregatorDetails()" class="px-3 py-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--content)] text-xs font-semibold flex items-center gap-1 cursor-pointer" title="Collapse dispatch window">
+            <button type="button" onclick="toggleAggregatorDetails()" class="px-3 py-1.5 rounded-full border border-stone-200 hover:bg-stone-100 text-xs font-semibold flex items-center gap-1 cursor-pointer" title="Collapse dispatch window">
               <span>▾</span> Collapse
             </button>
           </div>
 
           <!-- Pre-flight Report -->
-          <div class="space-y-1.5 p-3 bg-[var(--background)] rounded-xl border border-[var(--border)]">
-            <div class="text-[11px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] mb-1">Pre-flight Verification Report</div>
+          <div class="space-y-1.5 p-3.5 bg-stone-50 rounded-2xl border border-stone-200">
+            <div class="text-[11px] font-bold uppercase tracking-wider text-stone-500 mb-1">Pre-flight Verification Report</div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
               ${checkBadge(checks.e164_valid, 'Valid E.164 recipient numbers')}
               ${checkBadge(checks.tags_resolved, 'Tags resolved from contacts table')}
@@ -3670,72 +3619,70 @@
           </div>
 
           ${!checks.tool_webhook_configured ? `
-            <div class="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-700 dark:text-amber-300 font-medium space-y-2.5">
+            <div class="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-900 font-medium space-y-2.5">
               <div class="flex items-start gap-2">
-                <span class="text-base shrink-0">🔌</span>
                 <div>
-                  <div class="font-bold text-amber-800 dark:text-amber-200">No Tool Webhook or API Configured (Dispatch Paused)</div>
-                  <p class="text-[11px] text-[var(--muted-foreground)] mt-0.5 leading-relaxed">
+                  <div class="font-bold text-amber-900">No Tool Webhook or API Configured (Dispatch Paused)</div>
+                  <p class="text-[11px] text-stone-600 mt-0.5 leading-relaxed">
                     CRM Orchestrator is completely tool-agnostic. No hardcoded mock aggregator is attached. Dispatches require an active tool webhook or API.
                   </p>
                 </div>
               </div>
               <div class="flex items-center gap-2 pt-0.5 flex-wrap">
-                <button type="button" onclick="openToolWebhooksModal()" class="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer">
-                  <span>🛠️</span> Configure Tool Webhook / API
+                <button type="button" onclick="openToolWebhooksModal()" class="px-3.5 py-1.5 rounded-full bg-[#064E3B] hover:bg-[#043327] text-white font-semibold text-xs shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer">
+                  Configure Tool Webhook / API
                 </button>
-                <button type="button" onclick="autoConnectMockAggregator('${sessionId}', 'twilio')" class="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer" title="Auto-connect Mock Aggregator via Twilio API">
-                  <span>⚡</span> 1-Click Twilio API
+                <button type="button" onclick="autoConnectMockAggregator('${sessionId}', 'twilio')" class="px-3.5 py-1.5 rounded-full bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer" title="Auto-connect Mock Aggregator via Twilio API">
+                  Twilio API
                 </button>
-                <button type="button" onclick="autoConnectMockAggregator('${sessionId}', 'infobip')" class="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer" title="Auto-connect Mock Aggregator via Infobip API">
-                  <span>⚡</span> 1-Click Infobip API
+                <button type="button" onclick="autoConnectMockAggregator('${sessionId}', 'infobip')" class="px-3.5 py-1.5 rounded-full bg-indigo-700 hover:bg-indigo-800 text-white font-semibold text-xs shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer" title="Auto-connect Mock Aggregator via Infobip API">
+                  Infobip API
                 </button>
               </div>
             </div>
           ` : ''}
 
           ${!checks.tags_resolved ? `
-            <div class="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs text-rose-600 dark:text-rose-400 space-y-2">
+            <div class="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-800 space-y-2">
               <div class="flex items-center gap-2 font-bold">
-                <span>❌</span> Unresolved Template Tag: <code class="px-1.5 py-0.5 bg-rose-500/20 rounded font-mono text-[11px]">${(data.unresolved_tags && data.unresolved_tags.length) ? data.unresolved_tags.map(t => '{{' + t + '}}').join(', ') : '{{link}}'}</code>
+                <span>Unresolved Template Tag:</span> <code class="px-1.5 py-0.5 bg-rose-100 rounded font-mono text-[11px]">${(data.unresolved_tags && data.unresolved_tags.length) ? data.unresolved_tags.map(t => '{{' + t + '}}').join(', ') : '{{link}}'}</code>
               </div>
-              <p class="text-[11px] text-[var(--muted-foreground)] leading-relaxed">
+              <p class="text-[11px] text-stone-600 leading-relaxed">
                 Dispatch is paused because the template contains placeholder tags that do not exist in your contacts table. Sending now would deliver raw brackets to your customer.
               </p>
               <div class="flex items-center gap-2 pt-1 flex-wrap">
-                <button type="button" onclick="toggleTemplatesWindow()" class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs flex items-center gap-1 cursor-pointer">
-                  <span>✏️</span> Edit Template to Remove / Replace Tag
+                <button type="button" onclick="toggleTemplatesWindow()" class="px-3.5 py-1.5 rounded-full bg-[#064E3B] hover:bg-[#043327] text-white font-semibold text-xs shadow-xs flex items-center gap-1 cursor-pointer">
+                  Edit Template
                 </button>
-                <button type="button" onclick="autoStripUnresolvedTags('${sessionId}')" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs flex items-center gap-1 cursor-pointer" title="Auto-clean placeholder tags from templates">
-                  <span>⚡</span> 1-Click Auto-Clean Tags
+                <button type="button" onclick="autoStripUnresolvedTags('${sessionId}')" class="px-3.5 py-1.5 rounded-full bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs shadow-xs flex items-center gap-1 cursor-pointer" title="Auto-clean placeholder tags from templates">
+                  Auto-Clean Tags
                 </button>
-                <button type="button" onclick="openPasteModal()" class="px-3 py-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--content)] text-xs font-medium cursor-pointer">
-                  <span>📋</span> Paste Contacts with Tag Column
+                <button type="button" onclick="openPasteModal()" class="px-3.5 py-1.5 rounded-full border border-stone-200 hover:bg-stone-100 text-xs font-medium cursor-pointer">
+                  Paste Contacts with Tag Column
                 </button>
               </div>
             </div>
           ` : ''}
 
           ${data.unregistered_policy_message && checks.tool_webhook_configured ? `
-            <div class="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-700 dark:text-amber-300 font-medium space-y-2.5">
+            <div class="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-900 font-medium space-y-2.5">
               <div class="flex items-start gap-2">
-                <span class="text-base shrink-0">⚠️</span>
                 <div>
-                  <div class="font-bold text-amber-800 dark:text-amber-200">Recipient Phone Numbers Not Registered in Aggregator</div>
-                  <p class="text-[11px] text-[var(--muted-foreground)] mt-0.5 leading-relaxed">
+                  <div class="font-bold text-amber-900">Recipient Phone Numbers Not Registered in Aggregator</div>
+                  <p class="text-[11px] text-stone-600 mt-0.5 leading-relaxed">
                     ${data.unregistered_policy_message}
                   </p>
                 </div>
               </div>
               <div class="flex items-center gap-2 pt-0.5 flex-wrap">
-                <button type="button" onclick="autoRegisterRecipientsInAggregator('${sessionId}')" class="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer">
-                  <span>⚡</span> 1-Click Register in Mock Aggregator
+                <button type="button" onclick="autoRegisterRecipientsInAggregator('${sessionId}')" class="px-3.5 py-1.5 rounded-full bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer">
+                  Register in Mock Aggregator
                 </button>
-                <a href="${aggregatorUrl}/phone" target="_blank" class="px-3 py-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--content)] text-xs font-medium inline-flex items-center gap-1.5 text-[var(--foreground)] no-underline">
-                  <span>📱</span> Open Mock Phone (http://localhost:3000/phone) ↗
+                <a href="${aggregatorUrl}/phone" target="_blank" class="px-3.5 py-1.5 rounded-full border border-stone-200 hover:bg-stone-100 text-xs font-medium inline-flex items-center gap-1.5 text-stone-800 no-underline">
+                  Open Mock Phone ↗
                 </a>
-                <button type="button" onclick="renderSendAggregatorCard('${sessionId}')" class="px-3 py-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--content)] text-xs font-medium cursor-pointer flex items-center gap-1">
-                  <span>🔄</span> Re-verify
+                <button type="button" onclick="renderSendAggregatorCard('${sessionId}')" class="px-3.5 py-1.5 rounded-full border border-stone-200 hover:bg-stone-100 text-xs font-medium cursor-pointer flex items-center gap-1">
+                  Re-verify
                 </button>
               </div>
             </div>
@@ -3743,7 +3690,7 @@
 
           <!-- Personalized Previews -->
           <div class="space-y-2">
-            <div class="text-[11px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
+            <div class="text-[11px] font-bold uppercase tracking-wider text-stone-500">
               Personalized Previews (Showing first ${Math.min((data.previews || []).length, 6)} of ${data.total_recipients} recipients)
             </div>
             <div class="space-y-2">
@@ -3752,13 +3699,13 @@
           </div>
 
           <!-- Outbound Tool Webhook Broadcast Details -->
-          <div class="p-3 bg-[var(--background)] rounded-xl border border-[var(--border)] space-y-2">
+          <div class="p-3.5 bg-stone-50 rounded-2xl border border-stone-200 space-y-2">
             <div class="flex items-center justify-between">
-              <div class="text-[11px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] flex items-center gap-1.5">
-                <span>🛠️</span> Outbound Tool Webhooks & APIs (${activeWebhooks.length} active)
+              <div class="text-[11px] font-bold uppercase tracking-wider text-stone-600 flex items-center gap-1.5">
+                <span>Outbound Tool Webhooks & APIs (${activeWebhooks.length} active)</span>
               </div>
-              <button type="button" onclick="openToolWebhooksModal()" class="text-xs text-blue-600 dark:text-blue-400 font-semibold hover:underline cursor-pointer">
-                ⚙️ Manage Webhooks
+              <button type="button" onclick="openToolWebhooksModal()" class="text-xs text-[#064E3B] font-semibold hover:underline cursor-pointer">
+                Manage Webhooks
               </button>
             </div>
             ${webhooksPreviewHtml}
@@ -3766,20 +3713,20 @@
 
           <!-- Confirm Action Button -->
           <div id="sendActionContainer" class="flex items-center justify-between pt-2">
-            <div class="text-xs text-[var(--muted-foreground)]">
+            <div class="text-xs text-stone-500">
               Total recipients: <strong>${data.total_recipients}</strong> · Messages to dispatch: <strong>${data.total_recipients}</strong>
             </div>
             <button id="btnConfirmSend" onclick="confirmSendCampaign('${data.job_id}', '${data.csrf_token}')"
                     ${!data.passed ? 'disabled' : ''}
-                    class="px-5 py-2.5 rounded-xl font-bold text-xs shadow-md transition-all flex items-center gap-2 ${
-                      data.passed ? 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer' : 'bg-gray-400 text-gray-200 cursor-not-allowed opacity-60'
+                    class="px-5 py-2.5 rounded-full font-bold text-xs shadow-sm transition-all flex items-center gap-2 ${
+                      data.passed ? 'bg-[#D97706] hover:bg-[#b45309] text-white cursor-pointer' : 'bg-stone-300 text-stone-500 cursor-not-allowed'
                     }">
-              <span>🚀 Confirm & Send Message</span>
+              <span>Confirm & Send Message</span>
             </button>
           </div>
 
           <!-- Post-Send Items Container -->
-          <div id="sendResultsContainer" class="hidden space-y-3 pt-3 border-t border-[var(--border)]">
+          <div id="sendResultsContainer" class="hidden space-y-3 pt-3 border-t border-stone-200">
           </div>
         `;
 
@@ -3787,7 +3734,7 @@
           step_id: 'dispatch_preflight',
           step_order: 5,
           step_title: 'Step 5: Send to Aggregator',
-          step_icon: '🚀',
+          step_icon: '•',
           status: data.passed ? 'completed' : 'blocked',
           description: data.passed ? 'Pre-flight passed. Ready for human confirm.' : (data.unregistered_policy_message || 'Pre-flight checks pending.'),
           details: { checks: data.checks, total_recipients: data.total_recipients }
@@ -3819,7 +3766,7 @@
           alert('Send failed: ' + (data.detail || data.error || 'Server error'));
           if (btn) {
             btn.disabled = false;
-            btn.innerHTML = `<span>🚀 Confirm & Send Message</span>`;
+            btn.innerHTML = `<span>Confirm & Send Message</span>`;
           }
           return;
         }
@@ -3839,9 +3786,9 @@
         const approveBtn = document.getElementById('approveCampaignBtn');
         if (approveBtn) {
           approveBtn.disabled = true;
-          approveBtn.innerHTML = `<span>🔒</span> Campaign Dispatched`;
+          approveBtn.innerHTML = `<span>Campaign Dispatched</span>`;
           approveBtn.classList.remove('bg-emerald-600', 'hover:bg-emerald-700');
-          approveBtn.classList.add('bg-slate-500', 'opacity-60', 'cursor-not-allowed');
+          approveBtn.classList.add('bg-stone-300', 'text-stone-600', 'cursor-not-allowed');
         }
 
         renderSendResults(data, jobId);
@@ -3863,10 +3810,10 @@
         if (cpCard) cpCard.classList.add('hidden');
 
         // Post clean chat message confirmation with options for follow-up or new campaign
-        const postDispatchMsg = `🚀 **Campaign Dispatched & Delivered!** All ${(data.items || []).length} recipient messages have been transmitted to the outbound webhooks and carrier aggregator.\n\nAll review and dispatch boxes have been cleared from view. What would you like to build next?`;
+        const postDispatchMsg = `**Campaign Dispatched & Delivered!** All ${(data.items || []).length} recipient messages have been transmitted to the outbound webhooks and carrier aggregator.\n\nAll review and dispatch boxes have been cleared from view. What would you like to build next?`;
         const postDispatchOptions = [
-          "📅 Create Follow-Up Reminder Template",
-          "🆕 Start New Campaign"
+          "Create Follow-Up Reminder Template",
+          "Start New Campaign"
         ];
         appendChatMessage('assistant', postDispatchMsg, false, postDispatchOptions);
 
@@ -3878,7 +3825,7 @@
         alert('Send request error: ' + e.message);
         if (btn) {
           btn.disabled = false;
-          btn.innerHTML = `<span>🚀 Confirm & Send Message</span>`;
+          btn.innerHTML = `<span>Confirm & Send Message</span>`;
         }
       }
     }
@@ -3956,9 +3903,12 @@
 
     function closeRawLogModal() { document.getElementById('rawLogModal').classList.add('hidden'); }
 
-    // Demo Snapshot Support for Test Case Reporting
+    // Initialize EchoCard Brand Theme (Exact Image 2 Style: Radiant Cream #FAF7F2 & Deep Ink #064E3B)
     window.addEventListener('DOMContentLoaded', () => {
-      document.documentElement.classList.add('dark');
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('echocard_theme', 'light');
+      const icon = document.getElementById('themeIcon');
+      if (icon) icon.textContent = '🌙';
       const hash = window.location.hash.replace('#', '');
       if (hash === 'demo_phishing_refusal') {
         const welcome = document.getElementById('welcomeScreen');
@@ -3977,16 +3927,16 @@
                 <strong>We cannot fulfill this request:</strong> The requested copy solicits sensitive credentials (online banking password, PIN, SSN) and impersonates a regulated financial institution. This violates Section 4.4 and CTIA/federal anti-phishing safety policies.
               </p>
               <div class="pt-2 border-t border-red-500/30">
-                <div class="text-[11px] font-semibold text-slate-300 mb-2">💡 Compliant Alternative Suggestions (Click to prefill):</div>
+                <div class="text-[11px] font-semibold text-slate-300 mb-2">Compliant Alternative Suggestions (Click to prefill):</div>
                 <div class="flex flex-wrap gap-2">
                   <button type="button" onclick="prefillChatInput('Draft a security alert directing customers to our verified official portal without asking for passwords or PINs.')" class="px-3 py-1.5 rounded-lg bg-red-950 hover:bg-red-900 border border-red-600 text-red-200 text-xs font-semibold cursor-pointer transition shadow-xs flex items-center gap-1.5">
-                    <span>🛡️</span> <span>Factual Security Notification</span>
+                    <span>Factual Security Notification</span>
                   </button>
                   <button type="button" onclick="prefillChatInput('Inform customers of account maintenance and provide support hotline 1-800-555-0199.')" class="px-3 py-1.5 rounded-lg bg-red-950 hover:bg-red-900 border border-red-600 text-red-200 text-xs font-semibold cursor-pointer transition shadow-xs flex items-center gap-1.5">
-                    <span>💼</span> <span>Polite Account Update</span>
+                    <span>Polite Account Update</span>
                   </button>
                   <button type="button" onclick="prefillChatInput('Send a friendly informational SMS with standard STOP opt-out.')" class="px-3 py-1.5 rounded-lg bg-red-950 hover:bg-red-900 border border-red-600 text-red-200 text-xs font-semibold cursor-pointer transition shadow-xs flex items-center gap-1.5">
-                    <span>🤝</span> <span>Friendly General Outreach</span>
+                    <span>Friendly General Outreach</span>
                   </button>
                 </div>
               </div>
@@ -4007,11 +3957,11 @@
           event_date: "Saturday, Dec 12, 2026",
           link_or_contact: "https://hopewildlife.org/gala",
           channel_format: "sms",
-          tone: "Friendly & Casual 🌟",
+          tone: "Friendly & Casual",
           tone_candidates: [
             {
               id: "tone_1",
-              name: "Urgent & Direct ⚡",
+              name: "Urgent & Direct",
               description: "Direct register highlighting upcoming registration deadlines.",
               preview: "Hope Wildlife: Seats for our Annual Conservation Gala on Dec 12 at Grand Ballroom are filling quickly. Reserve yours now at https://hopewildlife.org/gala. Reply STOP to opt out.",
               word_count: 27,
@@ -4019,7 +3969,7 @@
             },
             {
               id: "tone_2",
-              name: "Friendly & Casual 🌟",
+              name: "Friendly & Casual",
               description: "Warm, community-driven invitation welcoming supporters.",
               preview: "Hope Wildlife: Join us for an inspiring evening at our Annual Conservation Gala on Dec 12 at Grand Ballroom! RSVP at https://hopewildlife.org/gala. Reply STOP to opt out.",
               word_count: 26,
@@ -4027,7 +3977,7 @@
             },
             {
               id: "tone_3",
-              name: "Professional & Polite 💼",
+              name: "Professional & Polite",
               description: "Refined and courteous formal gala invitation.",
               preview: "Hope Wildlife: Cordially inviting you to our Annual Conservation Gala taking place Dec 12 at Grand Ballroom. Please confirm attendance at https://hopewildlife.org/gala. Reply STOP to unsubscribe.",
               word_count: 28,
@@ -4035,7 +3985,7 @@
             }
           ]
         };
-        appendChatMessage('assistant', '### 📋 Campaign Review & Tone Candidates\nAll required slots and verified claims have been validated by **Agent 2**. Select your preferred candidate tone copy below:', false, null, formCardData);
+        appendChatMessage('assistant', '### Campaign Review & Tone Candidates\nAll required slots and verified claims have been validated by **Agent 2**. Select your preferred candidate tone copy below:', false, null, formCardData);
         setTimeout(() => {
           if (latestActiveFormId && typeof goToFormStep === 'function') {
             goToFormStep(latestActiveFormId, 2);

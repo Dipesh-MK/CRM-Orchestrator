@@ -13,8 +13,8 @@ flowchart TD
     API <--> Supervisor[Supervisor State Machine]
     
     subgraph Agents [Three Specialized LLM Agents]
-        A1[Agent 1: Drafter & Collector\nDefault: gemini-3.6-flash / qwen2.5]
-        A2[Agent 2: Completeness Checker\nDefault: gemini-3.5-flash / qwen2.5]
+        A1[Agent 1: Drafter & Collector\nDefault: gemini-3.6-flash / groq llama-3.3-70b]
+        A2[Agent 2: Completeness Checker\nDefault: gemini-3.5-flash / groq llama-3.3-70b]
         A3[Agent 3: Guardrail Agent\nDefault: claude-sonnet-5-5 or gemini-3.1-pro]
     end
 
@@ -74,9 +74,9 @@ agents:
     max_tokens: 1024
     timeout_seconds: 30
     fallback:
-      provider: "ollama"
-      model: "qwen2.5:7b-instruct"
-      base_url: "http://localhost:11434/v1"
+      provider: "groq"
+      model: "llama-3.3-70b-versatile"
+      base_url: "https://api.groq.com/openai/v1"
 
   agent2_checker:
     provider: "google"
@@ -85,9 +85,9 @@ agents:
     max_tokens: 1024
     timeout_seconds: 30
     fallback:
-      provider: "ollama"
-      model: "qwen2.5:7b-instruct"
-      base_url: "http://localhost:11434/v1"
+      provider: "groq"
+      model: "llama-3.3-70b-versatile"
+      base_url: "https://api.groq.com/openai/v1"
 
   guardrail_agent:
     primary:

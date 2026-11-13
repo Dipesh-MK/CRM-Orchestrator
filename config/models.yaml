@@ -1,6 +1,6 @@
 # models.yaml - Multi-Agent Model Configuration for CRM Orchestrator v2
-# Priority: Accuracy first, latency second. No Gemini 2.5 models.
-# Local Ollama fallback allowed for Agents 1 & 2 only, NEVER for Guardrail.
+# Priority: Accuracy first, latency second.
+# Groq API fallback for Agents 1 & 2 only, NEVER for Guardrail.
 
 agents:
   agent1_drafter:
@@ -10,9 +10,9 @@ agents:
     max_tokens: 1024
     timeout_seconds: 30
     fallback:
-      provider: "ollama"
-      model: "qwen2.5:1.5b"
-      base_url: "http://localhost:11434/v1"
+      provider: "groq"
+      model: "llama-3.3-70b-versatile"
+      base_url: "https://api.groq.com/openai/v1"
 
   agent2_checker:
     provider: "google"
@@ -21,9 +21,9 @@ agents:
     max_tokens: 1024
     timeout_seconds: 30
     fallback:
-      provider: "ollama"
-      model: "qwen2.5:1.5b"
-      base_url: "http://localhost:11434/v1"
+      provider: "groq"
+      model: "llama-3.3-70b-versatile"
+      base_url: "https://api.groq.com/openai/v1"
 
   guardrail_agent:
     primary:

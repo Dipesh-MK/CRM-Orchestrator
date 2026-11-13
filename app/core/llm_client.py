@@ -24,14 +24,70 @@ class LLMClient:
         self.storage = get_storage()
 
     async def check_health(self) -> Dict[str, Any]:
-        """Verify if Ollama/OpenAI server and target model are reachable."""
+        """Verify if Groq/Ollama/OpenAI server and target model are reachable."""
         base_url = self.config.llm.base_url.rstrip("/")
-        # If OpenAI format /v1 is used, root or /models is standard
         tags_url = base_url.replace("/v1", "") + "/api/tags"
         models_url = f"{base_url}/models"
+        is_groq = "groq.com" in base_url
         
+        # If Groq API and no API key is provided, return immediately without network call
+        if is_groq and not self.config.llm.api_key:
+            return {
+                "reachable": False,
+                "type": "groq",
+                "target_model": self.config.llm.model,
+                "target_model_available": False,
+                "message": "GROQ_API_KEY is not configured. Please add GROQ_API_KEY=gsk_... to your .env file."
+            }
+
         async with httpx.AsyncClient(timeout=10.0) as client:
-            # Try ollama native tags first
+            # If Groq API, query models endpoint with API key
+            if is_groq:
+                try:
+                    headers = {
+                        "Authorization": f"Bearer {self.config.llm.api_key}"
+                    }
+                    res = await client.get(models_url, headers=headers)
+                    if res.status_code == 200:
+                        models_data = res.json()
+                        available_models = [m.get("id") for m in models_data.get("data", [])]
+                        target = self.config.llm.model
+                        is_available = any(target in m or m in target for m in available_models)
+                        return {
+                            "reachable": True,
+                            "type": "groq",
+                            "available_models": available_models,
+                            "target_model": target,
+                            "target_model_available": is_available,
+                            "message": f"Groq API reachable ({'model verified' if is_available else 'target model not found'})"
+                        }
+                    elif res.status_code == 401:
+                        return {
+                            "reachable": False,
+                            "type": "groq",
+                            "target_model": self.config.llm.model,
+                            "target_model_available": False,
+                            "message": "Groq API authentication failed (HTTP 401). Please check GROQ_API_KEY in .env"
+                        }
+                    else:
+                        return {
+                            "reachable": False,
+                            "type": "groq",
+                            "target_model": self.config.llm.model,
+                            "target_model_available": False,
+                            "message": f"Groq API returned HTTP {res.status_code}: {res.text}"
+                        }
+                except Exception as e:
+                    return {
+                        "reachable": False,
+                        "type": "groq",
+                        "target_model": self.config.llm.model,
+                        "target_model_available": False,
+                        "error": str(e),
+                        "message": f"Groq API unreachable at {base_url}: {e}"
+                    }
+
+            # Try local Ollama native /api/tags as fallback for local instances
             try:
                 res = await client.get(tags_url)
                 if res.status_code == 200:
@@ -41,11 +97,11 @@ class LLMClient:
                     is_available = any(target in m or m in target for m in available_models)
                     return {
                         "reachable": True,
-                        "type": "ollama",
+                        "type": "local_llm",
                         "available_models": available_models,
                         "target_model": target,
                         "target_model_available": is_available,
-                        "message": "Ollama reachable" if is_available else f"Model {target} not found in Ollama models: {available_models}"
+                        "message": "Local LLM reachable" if is_available else f"Model {target} not found in local models: {available_models}"
                     }
             except Exception:
                 pass
@@ -75,7 +131,7 @@ class LLMClient:
                     "target_model": self.config.llm.model,
                     "target_model_available": False,
                     "error": str(e),
-                    "message": f"LLM server unreachable at {self.config.llm.base_url}. Please ensure Ollama or API server is running."
+                    "message": f"LLM server unreachable at {self.config.llm.base_url}. Please ensure API key and connection are configured."
                 }
 
             return {
@@ -100,30 +156,52 @@ class LLMClient:
         temp = temperature if temperature is not None else self.config.llm.temperature
         base_url = self.config.llm.base_url.rstrip("/")
         endpoint = f"{base_url}/chat/completions"
-        
+        is_groq = "groq.com" in base_url
+
+        if is_groq and not self.config.llm.api_key:
+            return {
+                "id": call_id,
+                "status": "error",
+                "raw_response": "",
+                "error": "GROQ_API_KEY is not configured. Please add GROQ_API_KEY=gsk_... to your .env file.",
+                "latency_ms": 0,
+                "tokens": {"prompt": 0, "completion": 0}
+            }
+
         headers = {
             "Content-Type": "application/json"
         }
         if self.config.llm.api_key:
             headers["Authorization"] = f"Bearer {self.config.llm.api_key}"
-        messages = [
+
+        max_tokens = PURPOSE_MAX_TOKENS.get(purpose, 800)
+        messages_payload = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_message}
         ]
 
-        max_tokens = PURPOSE_MAX_TOKENS.get(purpose, 800)
+        # Groq and OpenAI require the word 'json' in messages when response_format is json_object
+        if json_mode:
+            has_json = any("json" in m["content"].lower() for m in messages_payload)
+            if not has_json:
+                messages_payload[0]["content"] += "\nRespond strictly in valid JSON format."
+
         payload: Dict[str, Any] = {
             "model": self.config.llm.model,
-            "messages": messages,
+            "messages": messages_payload,
             "temperature": temp,
             "max_tokens": max_tokens,
             "stream": False,
-            "keep_alive": "15m",
-            "options": {
+        }
+
+        # Ollama-specific options; omitted for Groq/OpenAI to avoid HTTP 400 Bad Request
+        if "11434" in base_url or ("localhost" in base_url and "groq" not in base_url):
+            payload["keep_alive"] = "15m"
+            payload["options"] = {
                 "num_predict": max_tokens,
                 "keep_alive": "15m"
             }
-        }
+
         if json_mode:
             payload["response_format"] = {"type": "json_object"}
 
@@ -173,15 +251,22 @@ class LLMClient:
                         
                         # Try parsing wait duration from header or body
                         wait_seconds = 2.0 * (attempt + 1)
-                        try:
-                            resp_err = resp.json().get("error", {})
-                            msg = resp_err.get("message", "")
-                            # Look for patterns like "try again in 28.619s" or "try again in 5s"
-                            match = re.search(r"try again in ([0-9]+(?:\.[0-9]+)?)s", msg)
-                            if match:
-                                wait_seconds = min(float(match.group(1)) + 0.5, 35.0)
-                        except Exception:
-                            pass
+                        retry_after_hdr = resp.headers.get("retry-after")
+                        if retry_after_hdr:
+                            try:
+                                wait_seconds = min(float(retry_after_hdr) + 0.5, 35.0)
+                            except ValueError:
+                                pass
+                        else:
+                            try:
+                                resp_err = resp.json().get("error", {})
+                                msg = resp_err.get("message", "")
+                                # Look for patterns like "try again in 28.619s" or "try again in 5s"
+                                match = re.search(r"try again in ([0-9]+(?:\.[0-9]+)?)s", msg)
+                                if match:
+                                    wait_seconds = min(float(match.group(1)) + 0.5, 35.0)
+                            except Exception:
+                                pass
                         
                         if attempt < total_attempts - 1:
                             print(f"[RateLimit] 429 encountered in {purpose}. Waiting {wait_seconds:.1f}s before retry {attempt + 1}/{max_rate_limit_retries}...")
@@ -215,7 +300,7 @@ class LLMClient:
             "model": self.config.llm.model,
             "base_url": self.config.llm.base_url,
             "temperature": temp,
-            "full_prompt": json.dumps({"system": system_prompt, "messages": messages}),
+            "full_prompt": json.dumps({"system": system_prompt, "messages": messages_payload}),
             "full_raw_response": raw_response,
             "parsed_output": parsed_output,
             "prompt_tokens": prompt_tokens,
@@ -235,6 +320,24 @@ class LLMClient:
             "latency_ms": latency_ms,
             "tokens": {"prompt": prompt_tokens, "completion": completion_tokens}
         }
+
+    async def generate(
+        self,
+        prompt: str,
+        system_instruction: str = "",
+        temperature: float = 0.0,
+        max_tokens: int = 500
+    ) -> str:
+        """Convenience method for generating a text response."""
+        res = await self.call_llm(
+            session_id=f"gen_{uuid.uuid4().hex[:8]}",
+            purpose="generic_generate",
+            system_prompt=system_instruction or "You are a helpful assistant.",
+            user_message=prompt,
+            json_mode=False,
+            temperature=temperature
+        )
+        return res.get("raw_response", "")
 
 _llm_client: Optional[LLMClient] = None
 

@@ -5,11 +5,11 @@ from typing import Dict, Any, Optional
 from pydantic import BaseModel, Field
 
 class LLMConfig(BaseModel):
-    base_url: str = "http://localhost:11434/v1"
-    model: str = "qwen2.5:7b-instruct"
-    api_key_env: str = "LLM_API_KEY"
-    api_key: str = "ollama"
-    temperature: float = 0.3
+    base_url: str = "https://api.groq.com/openai/v1"
+    model: str = "llama-3.3-70b-versatile"
+    api_key_env: str = "GROQ_API_KEY"
+    api_key: str = ""
+    temperature: float = 0.2
     request_timeout_seconds: int = 60
 
 class OrchestratorConfig(BaseModel):
@@ -59,7 +59,7 @@ class Stage2Config(BaseModel):
     harmful_threshold: float = 0.90
 
 class Stage3Config(BaseModel):
-    judge_model_version: str = "qwen2.5:7b-instruct-judge"
+    judge_model_version: str = "llama-3.3-70b-versatile-judge"
     temperature: float = 0.0
     timeout_seconds: int = 30
 
@@ -145,13 +145,15 @@ def load_config(config_path: str = "config/app.yaml") -> AppConfig:
         llm_data["base_url"] = os.getenv("LLM_BASE_URL")
     if os.getenv("LLM_MODEL"):
         llm_data["model"] = os.getenv("LLM_MODEL")
-    api_key_env_var = llm_data.get("api_key_env", "LLM_API_KEY")
+    api_key_env_var = llm_data.get("api_key_env", "GROQ_API_KEY")
     if api_key_env_var and os.getenv(api_key_env_var):
         llm_data["api_key"] = os.getenv(api_key_env_var)
+    elif os.getenv("GROQ_API_KEY"):
+        llm_data["api_key"] = os.getenv("GROQ_API_KEY")
     elif os.getenv("LLM_API_KEY"):
         llm_data["api_key"] = os.getenv("LLM_API_KEY")
     else:
-        llm_data["api_key"] = llm_data.get("api_key", "ollama")
+        llm_data["api_key"] = llm_data.get("api_key", "")
     if os.getenv("LLM_TEMPERATURE"):
         try:
             llm_data["temperature"] = float(os.getenv("LLM_TEMPERATURE"))

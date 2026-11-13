@@ -56,7 +56,7 @@ async def lifespan(app: FastAPI):
     print(f"Target Model: {llm.config.llm.model}")
     print(f"Health Status: {health.get('message')}")
     if not health.get("reachable"):
-        print("⚠️ WARNING: LLM endpoint unreachable! Check Ollama / API.")
+        print("⚠️ WARNING: LLM endpoint unreachable! Check GROQ_API_KEY in .env or network connectivity.")
     print("Agent Observatory: http://localhost:8080/observatory")
     print("==================================================")
     yield

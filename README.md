@@ -35,15 +35,23 @@ CampaignForge Orchestrator is a mock agentic CRM messaging orchestrator that ass
 
 ### Prerequisites
 1. Python 3.10+
-2. Ollama installed (or any OpenAI-compatible API)
+2. A [Groq API key](https://console.groq.com/) (free tier available)
 
-### 1. Run Setup Script
+### 1. Configure your API key
+
+Copy `.env.example` to `.env` and add your Groq API key:
+```bash
+cp .env.example .env
+# Then edit .env and set:
+# GROQ_API_KEY=gsk_...your_key_here...
+```
+
+### 2. Run Setup Script
 ```bash
 ./setup.sh
 ```
 This script will:
-- Check for Python and Ollama.
-- Pull `qwen2.5:7b-instruct` (or inform if another model is desired).
+- Check for Python.
 - Create a virtual environment and install dependencies from `requirements.txt`.
 - Launch the FastAPI server on `http://localhost:8000`.
 
@@ -64,10 +72,10 @@ API documentation is available at `http://localhost:8000/docs`.
 Edit `config/app.yaml` or set environment variables in `.env`:
 ```yaml
 llm:
-  base_url: "http://localhost:11434/v1"
-  model: "qwen2.5:7b-instruct"
-  api_key: "ollama"
-  temperature: 0.3
+  base_url: "https://api.groq.com/openai/v1"
+  model: "llama-3.3-70b-versatile"
+  api_key_env: "GROQ_API_KEY"
+  temperature: 0.2
 
 orchestrator:
   word_limit: 320
@@ -76,11 +84,18 @@ orchestrator:
   optout_text: "Reply STOP to unsubscribe."
 ```
 
+**Required `.env` variables:**
+```
+GROQ_API_KEY=gsk_...your_key_here...
+```
+
+> **Tip:** To use a different model (e.g. `llama-3.1-8b-instant` for faster/cheaper calls), set `LLM_MODEL=llama-3.1-8b-instant` in `.env`.
+
 ---
 
 ## Assumptions & Design Choices
 
-1. **Local Ollama Integration**: Defaults to `http://localhost:11434/v1` and `qwen2.5:7b-instruct`. If local model is unreachable, the startup health check warns immediately and gracefully logs the status.
+1. **Groq API Integration**: Defaults to `https://api.groq.com/openai/v1` with `llama-3.3-70b-versatile`. Requires `GROQ_API_KEY` set in `.env`. If the API key is missing or invalid, the startup health check warns immediately and gracefully logs the status.
 2. **Pluggable Input Adapters**: Supports CSV, TSV, XLSX, and pasted lines format (`app/adapters/input_adapter.py`).
 3. **Deterministic Pipeline Events**: Backend orchestrator code deterministically emits `<pipeline_event>` structured events via SSE.
 4. **Safety Guard**: Operates on a fail-closed paradigm. If the safety check fails to validate safely after retries, the campaign request is blocked.

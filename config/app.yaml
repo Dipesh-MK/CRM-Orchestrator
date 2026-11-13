@@ -1,11 +1,11 @@
 # CampaignForge Orchestrator Configuration
 
 llm:
-  base_url: "http://localhost:11434/v1"
-  model: "qwen2.5:7b-instruct"
-  api_key_env: "LLM_API_KEY"
-  temperature: 0.3
-  request_timeout_seconds: 120
+  base_url: "https://api.groq.com/openai/v1"
+  model: "llama-3.3-70b-versatile"
+  api_key_env: "GROQ_API_KEY"
+  temperature: 0.2
+  request_timeout_seconds: 60
 
 
 orchestrator:
@@ -87,7 +87,7 @@ external_evaluator:
     safe_threshold: 0.95
     harmful_threshold: 0.90
   stage3:
-    judge_model_version: "qwen2.5:7b-instruct-judge"
+    judge_model_version: "llama-3.3-70b-versatile"
     temperature: 0.0
     timeout_seconds: 30
   retry_caps:

@@ -3,57 +3,72 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Agent Observatory - CRM Orchestrator v2</title>
+  <title>EchoCard Observatory • Multi-Agent Workflow Engine</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
-    body { background-color: #0b0f19; color: #e2e8f0; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body {
+      background-color: #FAF7F2;
+      color: #1C1917;
+      font-family: 'Space Grotesk', ui-sans-serif, system-ui, -apple-system, sans-serif;
+    }
     
-    /* n8n Canvas Grid */
+    /* Labs.google Architectural Canvas Grid */
     .canvas-grid {
-      background-color: #0c0f1d;
-      background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1.2px, transparent 1.2px);
-      background-size: 24px 24px;
+      background-color: #FAF7F2;
+      background-image: 
+        linear-gradient(to right, rgba(6, 78, 59, 0.04) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(6, 78, 59, 0.04) 1px, transparent 1px);
+      background-size: 28px 28px;
     }
 
-    /* n8n Node Styling */
+    /* Labs Container & Node Styling */
     .n8n-node {
-      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
       cursor: pointer;
       box-sizing: border-box;
+      background-color: #FFFFFF;
+      border: 1px solid #E7E5E4;
+      border-radius: 1rem;
+      box-shadow: 0 1px 4px 0 rgba(0, 0, 0, 0.04), 0 2px 10px 0 rgba(0, 0, 0, 0.02);
     }
     .n8n-node:hover {
       transform: translateY(-2px);
-      box-shadow: 0 14px 32px -4px rgba(0, 0, 0, 0.7), 0 0 0 2px rgba(234, 88, 12, 0.5);
+      box-shadow: 0 10px 24px -4px rgba(6, 78, 59, 0.08), 0 0 0 1px #D97706;
+      border-color: #D97706;
     }
     .n8n-node.selected {
-      box-shadow: 0 0 0 2px #ff6d5a, 0 18px 36px rgba(0, 0, 0, 0.8) !important;
-      border-color: #ff6d5a !important;
+      box-shadow: 0 0 0 2px #064E3B, 0 12px 28px -6px rgba(6, 78, 59, 0.16) !important;
+      border-color: #064E3B !important;
     }
+    
+    /* Connection Ports */
     .port {
       width: 12px;
       height: 12px;
       border-radius: 50%;
-      background: #1e2438;
-      border: 2px solid #64748b;
+      background: #FAF7F2;
+      border: 2px solid #064E3B;
       position: absolute;
       transform: translateY(-50%);
       z-index: 20;
-      transition: all 0.2s;
+      transition: all 0.2s ease;
     }
     .port:hover {
-      background: #ea580c;
-      border-color: #ffffff;
+      background: #D97706;
+      border-color: #064E3B;
       transform: translateY(-50%) scale(1.35);
     }
     .port-in { left: -6px; }
     .port-out { right: -6px; }
 
-    /* Wires / Connectors */
+    /* Clean Wires / Connectors */
     .wire {
       fill: none;
-      stroke: #334155;
-      stroke-width: 2.5;
+      stroke: #CBD5E1;
+      stroke-width: 2.2;
       stroke-linecap: round;
       transition: stroke 0.3s, stroke-width 0.3s;
     }
@@ -62,41 +77,41 @@
       stroke-dasharray: 4 3;
     }
     .wire-branch-fail {
-      stroke: #e11d48;
+      stroke: #DC2626;
       stroke-dasharray: 4 3;
     }
     .wire-loopback {
-      stroke: #f43f5e;
-      stroke-width: 2.5;
+      stroke: #D97706;
+      stroke-width: 2.2;
       stroke-dasharray: 6 5;
-      opacity: 0.85;
+      opacity: 0.9;
       transition: all 0.3s;
     }
     .wire-dot {
-      fill: #38bdf8;
+      fill: #064E3B;
       opacity: 0.85;
     }
     .wire.active-ok {
-      stroke: #10b981 !important;
-      stroke-width: 3.5 !important;
+      stroke: #059669 !important;
+      stroke-width: 3.2 !important;
       stroke-dasharray: 6 6 !important;
       animation: dashMove 1s linear infinite;
     }
     .wire.active-fail {
-      stroke: #f43f5e !important;
-      stroke-width: 3.5 !important;
+      stroke: #DC2626 !important;
+      stroke-width: 3.2 !important;
       stroke-dasharray: 6 6 !important;
       animation: dashMove 1s linear infinite;
     }
     .wire.active-loop {
-      stroke: #fb7185 !important;
-      stroke-width: 4 !important;
+      stroke: #D97706 !important;
+      stroke-width: 3.5 !important;
       stroke-dasharray: 8 6 !important;
       animation: dashMove 0.8s linear infinite;
-      filter: drop-shadow(0 0 10px rgba(244, 63, 94, 0.85));
+      filter: drop-shadow(0 0 6px rgba(217, 119, 6, 0.45));
     }
     .wire.active-flow {
-      stroke: #6366f1 !important;
+      stroke: #064E3B !important;
       stroke-width: 3 !important;
       stroke-dasharray: 6 6 !important;
       animation: dashMove 1s linear infinite;
@@ -105,18 +120,20 @@
       to { stroke-dashoffset: -24; }
     }
     @keyframes pulseGlow {
-      0%, 100% { opacity: 0.85; filter: drop-shadow(0 0 8px rgba(234, 88, 12, 0.5)); }
-      50% { opacity: 1; filter: drop-shadow(0 0 18px rgba(234, 88, 12, 0.9)); }
+      0%, 100% { box-shadow: 0 0 0 2px #D97706, 0 6px 18px rgba(217, 119, 6, 0.2); }
+      50% { box-shadow: 0 0 0 2px #D97706, 0 10px 24px rgba(217, 119, 6, 0.35); }
     }
     .active-node {
       animation: pulseGlow 1.5s infinite;
-      border-color: #ea580c !important;
+      border-color: #D97706 !important;
     }
     .active-node-ok {
-      box-shadow: 0 0 0 2px #10b981, 0 0 20px rgba(16, 185, 129, 0.4) !important;
+      box-shadow: 0 0 0 2px #059669, 0 8px 20px rgba(5, 150, 105, 0.15) !important;
+      border-color: #059669 !important;
     }
     .active-node-fail {
-      box-shadow: 0 0 0 2px #f43f5e, 0 0 20px rgba(244, 63, 94, 0.5) !important;
+      box-shadow: 0 0 0 2px #DC2626, 0 8px 20px rgba(220, 38, 38, 0.15) !important;
+      border-color: #DC2626 !important;
     }
 
     /* Column Stage Divider Labels */
@@ -125,7 +142,7 @@
       font-weight: 700;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: #64748b;
+      color: #78716C;
       position: absolute;
       top: 15px;
       user-select: none;
@@ -135,62 +152,63 @@
     .swimlane-agent1 { border-left-color: #2563EB; }
     .swimlane-agent2 { border-left-color: #7C3AED; }
     .swimlane-guardrail { border-left-color: #D97706; }
-    .swimlane-supervisor { border-left-color: #64748B; }
+    .swimlane-supervisor { border-left-color: #064E3B; }
     .swimlane-compliance { border-left-color: #0D9488; }
     .swimlane-audience { border-left-color: #65A30D; }
     .swimlane-dispatcher { border-left-color: #DB2777; }
     .swimlane-inbound { border-left-color: #EA580C; }
-    .badge-agent1 { background-color: rgba(37, 99, 235, 0.2); color: #60A5FA; border: 1px solid rgba(37, 99, 235, 0.4); }
-    .badge-agent2 { background-color: rgba(124, 58, 237, 0.2); color: #A78BFA; border: 1px solid rgba(124, 58, 237, 0.4); }
-    .badge-guardrail { background-color: rgba(217, 119, 6, 0.2); color: #FBBF24; border: 1px solid rgba(217, 119, 6, 0.4); }
-    .badge-supervisor { background-color: rgba(100, 116, 139, 0.2); color: #94A3B8; border: 1px solid rgba(100, 116, 139, 0.4); }
-    .badge-compliance { background-color: rgba(13, 148, 136, 0.2); color: #2DD4BF; border: 1px solid rgba(13, 148, 136, 0.4); }
-    .badge-audience { background-color: rgba(101, 163, 13, 0.2); color: #A3E635; border: 1px solid rgba(101, 163, 13, 0.4); }
-    .badge-dispatcher { background-color: rgba(219, 39, 119, 0.2); color: #F472B6; border: 1px solid rgba(219, 39, 119, 0.4); }
-    .badge-inbound { background-color: rgba(234, 88, 12, 0.2); color: #FB923C; border: 1px solid rgba(234, 88, 12, 0.4); }
+    .badge-agent1 { background-color: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; }
+    .badge-agent2 { background-color: #F5F3FF; color: #6D28D9; border: 1px solid #DDD6FE; }
+    .badge-guardrail { background-color: #FEF3C7; color: #B45309; border: 1px solid #FDE68A; }
+    .badge-supervisor { background-color: #ECFDF5; color: #065F46; border: 1px solid #A7F3D0; }
+    .badge-compliance { background-color: #F0FDFA; color: #0F766E; border: 1px solid #99F6E4; }
+    .badge-audience { background-color: #F7FEE7; color: #4D7C0F; border: 1px solid #D9F99D; }
+    .badge-dispatcher { background-color: #FDF2F8; color: #BE185D; border: 1px solid #FBCFE8; }
+    .badge-inbound { background-color: #FFF7ED; color: #C2410C; border: 1px solid #FED7AA; }
 
     .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
-    .custom-scrollbar::-webkit-scrollbar-track { background: #0c0f1d; }
-    .custom-scrollbar::-webkit-scrollbar-thumb { background: #2a344d; border-radius: 3px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #FAF7F2; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #E7E5E4; border-radius: 3px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #D6D3D1; }
   </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden">
 
   <!-- Top Navigation Header -->
-  <header class="bg-[#121624] border-b border-[#21283d] px-6 py-3 flex items-center justify-between shrink-0 z-30">
+  <header class="bg-white/95 backdrop-blur border-b border-stone-200 px-6 py-3 flex items-center justify-between shrink-0 z-30">
     <div class="flex items-center space-x-3.5">
-      <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#ea4b35] to-[#f97316] flex items-center justify-center font-bold text-white shadow-md text-sm">
-        <i class="fa-solid fa-diagram-project"></i>
+      <div class="w-8 h-8 rounded-full bg-[#064E3B] text-white flex items-center justify-center font-bold text-xs shadow-sm">
+        EC
       </div>
       <div>
-        <h1 class="text-sm font-bold text-white tracking-wide flex items-center gap-2">
-          Agent Observatory &bull; n8n Workflow Studio
-          <span class="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold font-mono">v2.4 Active</span>
-          <span class="text-[11px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 font-semibold font-mono">Zero-Bypass Guardrail</span>
+        <h1 class="text-sm font-bold text-[#064E3B] tracking-tight flex items-center gap-2">
+          <span>EchoCard Observatory</span>
+          <span class="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold font-mono">v2.4 Active</span>
+          <span class="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 font-bold font-mono">Zero-Bypass Guardrail</span>
         </h1>
-        <p class="text-[11px] text-slate-400">Sequential Multi-Agent Execution Telemetry &bull; Supervisor &bull; Completeness &bull; Copy Drafter &bull; Rubric 4.4</p>
+        <p class="text-[11px] text-stone-500 font-medium">Sequential Multi-Agent Execution Telemetry &bull; Supervisor &bull; Completeness &bull; Copy Drafter &bull; Rubric 4.4</p>
       </div>
     </div>
 
     <!-- Right Controls: Session Selector, Connection, Return Link -->
     <div class="flex items-center space-x-3">
       <!-- Session Run Selector -->
-      <div class="flex items-center gap-1.5 bg-[#181d2e] px-2.5 py-1.5 rounded-lg border border-[#2b354f]">
-        <label for="session-run-select" class="text-[11px] text-slate-400 font-medium">Session / Run:</label>
-        <select id="session-run-select" onchange="onSessionRunChange()" class="bg-[#101422] text-xs text-white px-2 py-1 rounded border border-[#2b354f] focus:outline-none focus:border-orange-500 font-mono max-w-[200px]">
-          <option value="live">🔴 Live Stream (SSE)</option>
-          <!-- Populated from SQLite /runs -->
+      <div class="flex items-center gap-2 bg-stone-50 px-3 py-1.5 rounded-full border border-stone-200">
+        <label for="session-run-select" class="text-[10px] text-stone-500 font-bold uppercase tracking-wider">Session:</label>
+        <select id="session-run-select" onchange="onSessionRunChange()" class="bg-transparent text-xs text-stone-800 px-1 py-0.5 rounded border-0 focus:outline-none font-mono max-w-[210px]">
+          <option value="live">Live Stream (SSE)</option>
         </select>
       </div>
 
       <!-- Realtime Connection Badge -->
-      <div class="flex items-center space-x-2 text-xs bg-[#181d2e] px-3 py-1.5 rounded-lg border border-[#2b354f]">
-        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" id="conn-dot"></span>
-        <span class="text-slate-300 font-medium text-[11px]" id="conn-status">Streaming Traces</span>
+      <div class="flex items-center space-x-2 text-xs bg-stone-50 px-3 py-1.5 rounded-full border border-stone-200">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" id="conn-dot"></span>
+        <span class="text-stone-700 font-semibold text-[11px]" id="conn-status">Streaming Traces</span>
       </div>
 
-      <a href="/" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-[#1f263b] hover:bg-[#2b354f] text-slate-200 hover:text-white border border-[#2b354f] transition flex items-center gap-1.5">
-        <i class="fa-solid fa-comments text-orange-400"></i> Return to Chat UI
+      <a href="/" class="text-xs font-bold px-4 py-1.5 rounded-full bg-[#064E3B] hover:bg-[#043327] text-white shadow-sm transition flex items-center gap-1.5 cursor-pointer">
+        <span>Studio</span>
+        <span>&rarr;</span>
       </a>
     </div>
   </header>
@@ -199,41 +217,44 @@
   <div class="flex-1 flex overflow-hidden">
     
     <!-- Left Sidebar: Component Roster & Navigation Tabs -->
-    <aside class="w-72 bg-[#121624]/90 border-r border-[#21283d] flex flex-col shrink-0 custom-scrollbar overflow-y-auto z-20">
+    <aside class="w-72 bg-white border-r border-stone-200 flex flex-col shrink-0 custom-scrollbar overflow-y-auto z-20">
       
       <!-- Observatory Views Navigation Tabs -->
-      <div class="p-3 border-b border-[#21283d]">
-        <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">Observatory Views</h2>
-        <nav class="space-y-1">
-          <button onclick="switchTab('workflow')" id="tab-btn-workflow" class="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold bg-orange-600 text-white flex items-center justify-between transition shadow-sm">
-            <span class="flex items-center gap-2"><i class="fa-solid fa-diagram-project text-white"></i> n8n Workflow Engine</span>
-            <span class="text-[10px] bg-black/30 px-1.5 py-0.5 rounded font-mono">Live</span>
+      <div class="p-4 border-b border-stone-100">
+        <div class="text-[10px] font-bold uppercase tracking-widest text-[#D97706] mb-3 flex items-center gap-2">
+          <span class="w-3 h-px bg-[#D97706]"></span>
+          <span>Views</span>
+        </div>
+        <nav class="space-y-1.5">
+          <button onclick="switchTab('workflow')" id="tab-btn-workflow" class="w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold bg-[#064E3B] text-white flex items-center justify-between transition shadow-sm">
+            <span>Workflow Engine</span>
+            <span class="text-[10px] bg-white/20 text-white px-2 py-0.5 rounded-full font-mono font-bold">Live</span>
           </button>
-          <button onclick="switchTab('traces')" id="tab-btn-traces" class="w-full text-left px-3 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-[#1a2135] flex items-center justify-between transition">
-            <span class="flex items-center gap-2"><i class="fa-solid fa-stream text-indigo-400"></i> Live Trace Stream</span>
-            <span id="trace-counter" class="text-[10px] bg-[#1e273f] px-1.5 py-0.5 rounded text-slate-300 font-mono">0</span>
+          <button onclick="switchTab('traces')" id="tab-btn-traces" class="w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-stone-600 hover:text-stone-900 hover:bg-stone-50 flex items-center justify-between transition">
+            <span>Live Trace Stream</span>
+            <span id="trace-counter" class="text-[10px] bg-stone-100 px-2 py-0.5 rounded-full text-stone-600 font-mono">0</span>
           </button>
-          <button onclick="switchTab('banned')" id="tab-btn-banned" class="w-full text-left px-3 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-[#1a2135] flex items-center justify-between transition">
-            <span class="flex items-center gap-2"><i class="fa-solid fa-ban text-rose-400"></i> Banned URL Manager</span>
-            <span id="banned-counter" class="text-[10px] bg-[#1e273f] px-1.5 py-0.5 rounded text-slate-400 font-mono">3</span>
+          <button onclick="switchTab('banned')" id="tab-btn-banned" class="w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-stone-600 hover:text-stone-900 hover:bg-stone-50 flex items-center justify-between transition">
+            <span>Banned Domains</span>
+            <span id="banned-counter" class="text-[10px] bg-stone-100 px-2 py-0.5 rounded-full text-stone-600 font-mono">3</span>
           </button>
-          <button onclick="switchTab('orgs')" id="tab-btn-orgs" class="w-full text-left px-3 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-[#1a2135] flex items-center justify-between transition">
-            <span class="flex items-center gap-2"><i class="fa-solid fa-building-shield text-emerald-400"></i> Organization Registry</span>
-            <span id="org-counter" class="text-[10px] bg-[#1e273f] px-1.5 py-0.5 rounded text-slate-400 font-mono">3</span>
+          <button onclick="switchTab('orgs')" id="tab-btn-orgs" class="w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-stone-600 hover:text-stone-900 hover:bg-stone-50 flex items-center justify-between transition">
+            <span>Organization Registry</span>
+            <span id="org-counter" class="text-[10px] bg-stone-100 px-2 py-0.5 rounded-full text-stone-600 font-mono">3</span>
           </button>
-          <button onclick="switchTab('quarantine')" id="tab-btn-quarantine" class="w-full text-left px-3 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-[#1a2135] flex items-center justify-between transition">
-            <span class="flex items-center gap-2"><i class="fa-solid fa-shield-halved text-amber-400"></i> Quarantine & Refusals</span>
-            <span id="quarantine-counter" class="text-[10px] bg-[#1e273f] px-1.5 py-0.5 rounded text-slate-400 font-mono">0</span>
+          <button onclick="switchTab('quarantine')" id="tab-btn-quarantine" class="w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-stone-600 hover:text-stone-900 hover:bg-stone-50 flex items-center justify-between transition">
+            <span>Quarantine & Policy</span>
+            <span id="quarantine-counter" class="text-[10px] bg-stone-100 px-2 py-0.5 rounded-full text-stone-600 font-mono">0</span>
           </button>
         </nav>
       </div>
 
       <!-- Component Roster Module List -->
-      <div class="p-3 flex-1">
-        <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5 flex items-center justify-between">
+      <div class="p-4 flex-1">
+        <div class="text-[10px] font-bold uppercase tracking-widest text-stone-400 mb-3 flex items-center justify-between">
           <span>Component Roster</span>
-          <span class="text-[10px] text-slate-500 font-mono">8 Modules</span>
-        </h2>
+          <span class="text-[10px] text-stone-400 font-mono">8 Modules</span>
+        </div>
         <div class="space-y-1.5" id="roster-list">
           <!-- Populated dynamically from /roster -->
         </div>
@@ -241,46 +262,47 @@
     </aside>
 
     <!-- Main Content Area -->
-    <main class="flex-1 flex flex-col overflow-hidden bg-[#0c0f1d] relative">
+    <main class="flex-1 flex flex-col overflow-hidden bg-[#FAF7F2] relative">
       
       <!-- VIEW 1: n8n Workflow Engine (Primary Interactive Canvas) -->
       <section id="view-workflow" class="flex-1 flex flex-col overflow-hidden">
         
         <!-- Workflow Top Toolbar & Step-by-Step Ticker -->
-        <div class="px-5 py-2.5 border-b border-[#21283d] bg-[#121624] flex items-center justify-between shrink-0">
+        <div class="px-6 py-2.5 border-b border-stone-200 bg-white flex items-center justify-between shrink-0">
           <!-- Step Ticker -->
           <div class="flex items-center space-x-2 overflow-x-auto flex-1 mr-4 py-1">
-            <span class="text-[11px] font-bold uppercase tracking-wider text-orange-400 shrink-0 flex items-center gap-1.5">
-              <span class="w-2 h-2 rounded-full bg-orange-400 animate-ping"></span> Live Step Ticker:
+            <span class="text-[10px] font-bold uppercase tracking-wider text-[#D97706] shrink-0 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-[#D97706] animate-pulse"></span>
+              <span>Ticker:</span>
             </span>
-            <div id="workflow-step-ticker" class="flex items-center space-x-2 text-[11px] font-mono text-slate-300">
-              <span class="px-2 py-0.5 rounded bg-[#1e2438] text-slate-400">Listening for inbound prompt...</span>
+            <div id="workflow-step-ticker" class="flex items-center space-x-2 text-[11px] font-mono text-stone-600">
+              <span class="px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-500 border border-stone-200">Listening for inbound prompt...</span>
             </div>
           </div>
 
           <!-- Canvas Controls: Zoom, Simulation, Drawer Toggle -->
           <div class="flex items-center space-x-2 shrink-0">
             <!-- Zoom & View Controls -->
-            <div class="flex items-center bg-[#181d2e] rounded-lg border border-[#2b354f] overflow-hidden text-xs">
-              <button onclick="applyCanvasZoom(-0.1)" class="px-2 py-1 text-slate-300 hover:bg-[#252f4c] hover:text-white transition" title="Zoom Out">-</button>
-              <button onclick="fitWorkflowToScreen()" class="px-2 py-1 text-[11px] font-mono text-slate-300 hover:bg-[#252f4c] hover:text-white border-x border-[#2b354f] transition" title="Fit to Screen">
-                <i class="fa-solid fa-expand text-[10px] mr-1 text-orange-400"></i><span id="zoomLevelText">Fit</span>
+            <div class="flex items-center bg-stone-50 rounded-full border border-stone-200 overflow-hidden text-xs">
+              <button onclick="applyCanvasZoom(-0.1)" class="px-2.5 py-1 text-stone-600 hover:bg-stone-200 transition" title="Zoom Out">-</button>
+              <button onclick="fitWorkflowToScreen()" class="px-2.5 py-1 text-[11px] font-mono text-stone-700 hover:bg-stone-200 border-x border-stone-200 transition" title="Fit to Screen">
+                <span id="zoomLevelText">Fit</span>
               </button>
-              <button onclick="applyCanvasZoom(0.1)" class="px-2 py-1 text-slate-300 hover:bg-[#252f4c] hover:text-white transition" title="Zoom In">+</button>
+              <button onclick="applyCanvasZoom(0.1)" class="px-2.5 py-1 text-stone-600 hover:bg-stone-200 transition" title="Zoom In">+</button>
             </div>
 
             <!-- Simulators -->
-            <button id="simCompliantBtn" onclick="simulateWorkflow(true)" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow transition">
-              <span>▶</span> Sim Compliant
+            <button id="simCompliantBtn" onclick="simulateWorkflow(true)" class="px-3.5 py-1.5 rounded-full bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold shadow-xs transition">
+              Simulate Compliant
             </button>
-            <button id="simAssuranceBtn" onclick="simulateWorkflow(false)" class="px-3 py-1.5 rounded-lg bg-rose-700 hover:bg-rose-600 text-white text-xs font-semibold flex items-center gap-1.5 shadow transition">
-              <span>🛡️</span> Sim Assurance Bypass
+            <button id="simAssuranceBtn" onclick="simulateWorkflow(false)" class="px-3.5 py-1.5 rounded-full bg-rose-700 hover:bg-rose-800 text-white text-xs font-semibold shadow-xs transition">
+              Simulate Policy Bypass
             </button>
-            <button onclick="resetWorkflowView()" class="px-2.5 py-1.5 rounded-lg bg-[#1a2135] hover:bg-[#252f4c] text-slate-300 text-xs font-medium border border-[#2b354f] transition" title="Clear Status & Highlights">
-              <i class="fa-solid fa-arrows-rotate"></i> Reset
+            <button onclick="resetWorkflowView()" class="px-3 py-1.5 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-medium border border-stone-200 transition">
+              Reset
             </button>
-            <button id="drawerToggleBtn" onclick="toggleInspectorDrawer()" class="px-2.5 py-1.5 rounded-lg bg-[#1e273f] hover:bg-indigo-600 text-indigo-300 hover:text-white text-xs font-medium border border-indigo-900/60 transition flex items-center gap-1">
-              <i class="fa-solid fa-chevron-right"></i> Hide
+            <button id="drawerToggleBtn" onclick="toggleInspectorDrawer()" class="px-3 py-1.5 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-medium border border-stone-200 transition">
+              Hide
             </button>
           </div>
         </div>
@@ -291,11 +313,10 @@
           <!-- n8n Canvas Viewport -->
           <div id="workflowCanvasViewport" class="flex-1 canvas-grid relative overflow-auto p-8 custom-scrollbar">
 
-            <!-- n8n Nodes Layer (Holds both SVG wires and nodes in identical coordinate space) -->
+            <!-- n8n Nodes Layer -->
             <div id="workflowNodesContainer" class="relative w-[1950px] h-[750px] z-10 origin-top-left" style="transform: scale(0.88);">
-              <!-- Connecting SVG Wires Layer (Scales & moves 1:1 with nodes) -->
+              <!-- Connecting SVG Wires Layer -->
               <svg id="workflowWiresSvg" class="absolute inset-0 pointer-events-none w-full h-full" style="z-index: 1;">
-                <!-- Dynamically populated bezier curves and connection dots -->
               </svg>
 
               <!-- Column Stage Headers -->
@@ -307,21 +328,21 @@
               <span class="stage-label" style="left: 1630px;">6. Outbound State</span>
 
               <!-- 1. Inbound Webhook Node (Col 1) -->
-              <div id="node_inbound" class="n8n-node absolute rounded-xl bg-[#161a29] border border-[#2b354f] shadow-xl overflow-hidden" style="left: 40px; top: 220px; width: 250px;" onclick="selectWorkflowNode('inbound')">
-                <div class="px-3 py-2 bg-gradient-to-r from-[#ea580c] to-[#f97316] flex items-center justify-between text-white">
+              <div id="node_inbound" class="n8n-node absolute overflow-hidden" style="left: 40px; top: 220px; width: 250px;" onclick="selectWorkflowNode('inbound')">
+                <div class="px-3.5 py-2.5 bg-stone-50 border-b border-stone-100 flex items-center justify-between">
                   <div class="flex items-center gap-2">
-                    <span class="text-sm">⚡</span>
-                    <span class="font-bold text-xs uppercase tracking-wider">Webhook Trigger</span>
+                    <span class="w-2 h-2 rounded-full bg-[#D97706]"></span>
+                    <span class="font-bold text-xs uppercase tracking-wider text-stone-800">Inbound Trigger</span>
                   </div>
-                  <span class="text-[10px] bg-black/30 px-1.5 py-0.5 rounded font-mono">POST</span>
+                  <span class="text-[10px] bg-stone-200/70 text-stone-700 px-1.5 py-0.5 rounded font-mono font-bold">POST</span>
                 </div>
-                <div class="p-3">
-                  <div class="flex items-center justify-between mb-1">
-                    <h4 class="text-xs font-bold text-white">Inbound Chat / Form</h4>
-                    <span id="badge_inbound" class="text-[10px] px-1.5 py-0.5 rounded font-mono bg-slate-800 text-slate-400">IDLE</span>
+                <div class="p-3.5">
+                  <div class="flex items-center justify-between mb-1.5">
+                    <h4 class="text-xs font-bold text-stone-900">Chat / CRM Form</h4>
+                    <span id="badge_inbound" class="text-[10px] px-2 py-0.5 rounded-full font-mono bg-stone-100 text-stone-600 border border-stone-200 font-bold">IDLE</span>
                   </div>
-                  <p class="text-[11px] text-slate-400 leading-snug">Receives campaign context, tone requirements, and user instructions.</p>
-                  <div id="summary_inbound" class="mt-2 text-[10px] font-mono text-slate-400 truncate bg-[#0f1322] p-1.5 rounded border border-[#21293e]">
+                  <p class="text-[11px] text-stone-600 leading-snug">Receives campaign context, tone requirements, and recipient parameters.</p>
+                  <div id="summary_inbound" class="mt-2.5 text-[10px] font-mono text-stone-600 truncate bg-stone-50 p-1.5 rounded-lg border border-stone-200/80">
                     /api/chat/send
                   </div>
                 </div>
@@ -329,23 +350,23 @@
               </div>
 
               <!-- 2. Supervisor Orchestrator Node (Col 2) -->
-              <div id="node_supervisor" class="n8n-node absolute rounded-xl bg-[#161a29] border border-[#2b354f] shadow-xl overflow-hidden" style="left: 350px; top: 220px; width: 260px;" onclick="selectWorkflowNode('supervisor')">
+              <div id="node_supervisor" class="n8n-node absolute overflow-hidden" style="left: 350px; top: 220px; width: 260px;" onclick="selectWorkflowNode('supervisor')">
                 <div class="port port-in" data-port="in" style="top: 50%;"></div>
-                <div class="port port-in" data-port="loop-in" style="top: 85%; border-color: #f43f5e;" title="Loop-Back Remediation Input"></div>
-                <div class="px-3 py-2 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] flex items-center justify-between text-white">
+                <div class="port port-in" data-port="loop-in" style="top: 85%; border-color: #D97706;" title="Loop-Back Remediation Input"></div>
+                <div class="px-3.5 py-2.5 bg-stone-50 border-b border-stone-100 flex items-center justify-between">
                   <div class="flex items-center gap-2">
-                    <span class="text-sm">🧠</span>
-                    <span class="font-bold text-xs uppercase tracking-wider">Supervisor Orchestrator</span>
+                    <span class="w-2 h-2 rounded-full bg-[#064E3B]"></span>
+                    <span class="font-bold text-xs uppercase tracking-wider text-stone-800">Supervisor</span>
                   </div>
-                  <span class="text-[10px] bg-black/30 px-1.5 py-0.5 rounded font-mono">State Engine</span>
+                  <span class="text-[10px] bg-stone-200/70 text-stone-700 px-1.5 py-0.5 rounded font-mono font-bold">State Engine</span>
                 </div>
-                <div class="p-3">
-                  <div class="flex items-center justify-between mb-1">
-                    <h4 class="text-xs font-bold text-white">State Machine & Turns</h4>
-                    <span id="badge_supervisor" class="text-[10px] px-1.5 py-0.5 rounded font-mono bg-slate-800 text-slate-400">READY</span>
+                <div class="p-3.5">
+                  <div class="flex items-center justify-between mb-1.5">
+                    <h4 class="text-xs font-bold text-stone-900">State Machine & Turns</h4>
+                    <span id="badge_supervisor" class="text-[10px] px-2 py-0.5 rounded-full font-mono bg-stone-100 text-stone-600 border border-stone-200 font-bold">READY</span>
                   </div>
-                  <p class="text-[11px] text-slate-400 leading-snug">Coordinates multi-turn state, Claims Ledger, and intercepts assurance bypass attempts.</p>
-                  <div id="summary_supervisor" class="mt-2 text-[10px] font-mono text-indigo-300 truncate bg-[#0f1322] p-1.5 rounded border border-[#21293e]">
+                  <p class="text-[11px] text-stone-600 leading-snug">Coordinates multi-turn state, Claims Ledger, and intercepts assurance bypass attempts.</p>
+                  <div id="summary_supervisor" class="mt-2.5 text-[10px] font-mono text-[#064E3B] truncate bg-stone-50 p-1.5 rounded-lg border border-stone-200/80 font-bold">
                     evaluate_and_update_card_state
                   </div>
                 </div>
@@ -354,22 +375,22 @@
               </div>
 
               <!-- 3. Agent 2: Completeness Checker Node (Col 3 Top) -->
-              <div id="node_agent2" class="n8n-node absolute rounded-xl bg-[#161a29] border border-[#2b354f] shadow-xl overflow-hidden" style="left: 680px; top: 70px; width: 260px;" onclick="selectWorkflowNode('agent2')">
+              <div id="node_agent2" class="n8n-node absolute overflow-hidden" style="left: 680px; top: 70px; width: 260px;" onclick="selectWorkflowNode('agent2')">
                 <div class="port port-in" data-port="in" style="top: 50%;"></div>
-                <div class="px-3 py-2 bg-gradient-to-r from-[#0284c7] to-[#38bdf8] flex items-center justify-between text-white">
+                <div class="px-3.5 py-2.5 bg-stone-50 border-b border-stone-100 flex items-center justify-between">
                   <div class="flex items-center gap-2">
-                    <span class="text-sm">📋</span>
-                    <span class="font-bold text-xs uppercase tracking-wider">Agent 2: Completeness</span>
+                    <span class="w-2 h-2 rounded-full bg-blue-600"></span>
+                    <span class="font-bold text-xs uppercase tracking-wider text-stone-800">Agent 2: Completeness</span>
                   </div>
-                  <span class="text-[10px] bg-black/30 px-1.5 py-0.5 rounded font-mono">Extractor</span>
+                  <span class="text-[10px] bg-stone-200/70 text-stone-700 px-1.5 py-0.5 rounded font-mono font-bold">Extractor</span>
                 </div>
-                <div class="p-3">
-                  <div class="flex items-center justify-between mb-1">
-                    <h4 class="text-xs font-bold text-white">Slot & Claims Auditor</h4>
-                    <span id="badge_agent2" class="text-[10px] px-1.5 py-0.5 rounded font-mono bg-slate-800 text-slate-400">IDLE</span>
+                <div class="p-3.5">
+                  <div class="flex items-center justify-between mb-1.5">
+                    <h4 class="text-xs font-bold text-stone-900">Slot & Claims Auditor</h4>
+                    <span id="badge_agent2" class="text-[10px] px-2 py-0.5 rounded-full font-mono bg-stone-100 text-stone-600 border border-stone-200 font-bold">IDLE</span>
                   </div>
-                  <p class="text-[11px] text-slate-400 leading-snug">Audits required slots: Org, CTA, Dates, Audience. Extracts verified claims ledger.</p>
-                  <div id="summary_agent2" class="mt-2 text-[10px] font-mono text-sky-300 truncate bg-[#0f1322] p-1.5 rounded border border-[#21293e]">
+                  <p class="text-[11px] text-stone-600 leading-snug">Audits required slots: Org, CTA, Dates, Audience. Extracts verified claims ledger.</p>
+                  <div id="summary_agent2" class="mt-2.5 text-[10px] font-mono text-blue-700 truncate bg-stone-50 p-1.5 rounded-lg border border-stone-200/80">
                     Claims ledger: 0 items
                   </div>
                 </div>
@@ -377,22 +398,22 @@
               </div>
 
               <!-- 4. Agent 1: Copy Drafter Node (Col 3 Bottom) -->
-              <div id="node_agent1" class="n8n-node absolute rounded-xl bg-[#161a29] border border-[#2b354f] shadow-xl overflow-hidden" style="left: 680px; top: 380px; width: 260px;" onclick="selectWorkflowNode('agent1')">
+              <div id="node_agent1" class="n8n-node absolute overflow-hidden" style="left: 680px; top: 380px; width: 260px;" onclick="selectWorkflowNode('agent1')">
                 <div class="port port-in" data-port="in" style="top: 50%;"></div>
-                <div class="px-3 py-2 bg-gradient-to-r from-[#8b5cf6] to-[#d946ef] flex items-center justify-between text-white">
+                <div class="px-3.5 py-2.5 bg-stone-50 border-b border-stone-100 flex items-center justify-between">
                   <div class="flex items-center gap-2">
-                    <span class="text-sm">✍️</span>
-                    <span class="font-bold text-xs uppercase tracking-wider">Agent 1: Copy Drafter</span>
+                    <span class="w-2 h-2 rounded-full bg-purple-600"></span>
+                    <span class="font-bold text-xs uppercase tracking-wider text-stone-800">Agent 1: Copy Drafter</span>
                   </div>
-                  <span class="text-[10px] bg-black/30 px-1.5 py-0.5 rounded font-mono">Qwen 2.5</span>
+                  <span class="text-[10px] bg-stone-200/70 text-stone-700 px-1.5 py-0.5 rounded font-mono font-bold">Qwen 2.5</span>
                 </div>
-                <div class="p-3">
-                  <div class="flex items-center justify-between mb-1">
-                    <h4 class="text-xs font-bold text-white">CRM Copy Synthesis</h4>
-                    <span id="badge_agent1" class="text-[10px] px-1.5 py-0.5 rounded font-mono bg-slate-800 text-slate-400">IDLE</span>
+                <div class="p-3.5">
+                  <div class="flex items-center justify-between mb-1.5">
+                    <h4 class="text-xs font-bold text-stone-900">CRM Copy Synthesis</h4>
+                    <span id="badge_agent1" class="text-[10px] px-2 py-0.5 rounded-full font-mono bg-stone-100 text-stone-600 border border-stone-200 font-bold">IDLE</span>
                   </div>
-                  <p class="text-[11px] text-slate-400 leading-snug">Generates SMS copy within 160-character budget, matching requested tone and disclaimers.</p>
-                  <div id="summary_agent1" class="mt-2 text-[10px] font-mono text-purple-300 truncate bg-[#0f1322] p-1.5 rounded border border-[#21293e]">
+                  <p class="text-[11px] text-stone-600 leading-snug">Generates SMS copy within 160-character budget, matching requested tone and disclaimers.</p>
+                  <div id="summary_agent1" class="mt-2.5 text-[10px] font-mono text-purple-700 truncate bg-stone-50 p-1.5 rounded-lg border border-stone-200/80">
                     Draft candidate: Ready
                   </div>
                 </div>
@@ -400,22 +421,22 @@
               </div>
 
               <!-- 5. Compliance Rules Engine Node (Col 4 Top) -->
-              <div id="node_compliance" class="n8n-node absolute rounded-xl bg-[#161a29] border border-[#2b354f] shadow-xl overflow-hidden" style="left: 1010px; top: 70px; width: 270px;" onclick="selectWorkflowNode('compliance')">
+              <div id="node_compliance" class="n8n-node absolute overflow-hidden" style="left: 1010px; top: 70px; width: 270px;" onclick="selectWorkflowNode('compliance')">
                 <div class="port port-in" data-port="in" style="top: 50%;"></div>
-                <div class="px-3 py-2 bg-gradient-to-r from-[#0d9488] to-[#14b8a6] flex items-center justify-between text-white">
+                <div class="px-3.5 py-2.5 bg-stone-50 border-b border-stone-100 flex items-center justify-between">
                   <div class="flex items-center gap-2">
-                    <span class="text-sm">⚖️</span>
-                    <span class="font-bold text-xs uppercase tracking-wider">Compliance Rules</span>
+                    <span class="w-2 h-2 rounded-full bg-teal-600"></span>
+                    <span class="font-bold text-xs uppercase tracking-wider text-stone-800">Compliance Rules</span>
                   </div>
-                  <span class="text-[10px] bg-black/30 px-1.5 py-0.5 rounded font-mono">Priority A & B</span>
+                  <span class="text-[10px] bg-stone-200/70 text-stone-700 px-1.5 py-0.5 rounded font-mono font-bold">Rules A & B</span>
                 </div>
-                <div class="p-3">
-                  <div class="flex items-center justify-between mb-1">
-                    <h4 class="text-xs font-bold text-white">10DLC Carrier Gates</h4>
-                    <span id="badge_compliance" class="text-[10px] px-1.5 py-0.5 rounded font-mono bg-slate-800 text-slate-400">IDLE</span>
+                <div class="p-3.5">
+                  <div class="flex items-center justify-between mb-1.5">
+                    <h4 class="text-xs font-bold text-stone-900">10DLC Carrier Gates</h4>
+                    <span id="badge_compliance" class="text-[10px] px-2 py-0.5 rounded-full font-mono bg-stone-100 text-stone-600 border border-stone-200 font-bold">IDLE</span>
                   </div>
-                  <p class="text-[11px] text-slate-400 leading-snug">Deterministic checks: Sender identity first 80 chars, STOP opt-out, banned shorteners.</p>
-                  <div id="summary_compliance" class="mt-2 text-[10px] font-mono text-teal-300 truncate bg-[#0f1322] p-1.5 rounded border border-[#21293e]">
+                  <p class="text-[11px] text-stone-600 leading-snug">Deterministic checks: Sender in first 80 chars, STOP opt-out, banned shorteners.</p>
+                  <div id="summary_compliance" class="mt-2.5 text-[10px] font-mono text-teal-700 truncate bg-stone-50 p-1.5 rounded-lg border border-stone-200/80">
                     4 Rule Tools: All Active
                   </div>
                 </div>
@@ -423,45 +444,45 @@
               </div>
 
               <!-- 6. Guardrail Agent Node (Col 4 Bottom) -->
-              <div id="node_guardrail" class="n8n-node absolute rounded-xl bg-[#161a29] border border-[#2b354f] shadow-xl overflow-hidden" style="left: 1010px; top: 380px; width: 280px;" onclick="selectWorkflowNode('guardrail')">
+              <div id="node_guardrail" class="n8n-node absolute overflow-hidden" style="left: 1010px; top: 380px; width: 280px;" onclick="selectWorkflowNode('guardrail')">
                 <div class="port port-in" data-port="in" style="top: 50%;"></div>
-                <div class="px-3 py-2 bg-gradient-to-r from-[#dc2626] to-[#f43f5e] flex items-center justify-between text-white">
+                <div class="px-3.5 py-2.5 bg-stone-50 border-b border-stone-100 flex items-center justify-between">
                   <div class="flex items-center gap-2">
-                    <span class="text-sm">🛡️</span>
-                    <span class="font-bold text-xs uppercase tracking-wider">Guardrail Agent (Rubric 4.4)</span>
+                    <span class="w-2 h-2 rounded-full bg-rose-600"></span>
+                    <span class="font-bold text-xs uppercase tracking-wider text-stone-800">Guardrail Rubric 4.4</span>
                   </div>
-                  <span class="text-[10px] bg-black/30 px-1.5 py-0.5 rounded font-mono">Zero Bypass</span>
+                  <span class="text-[10px] bg-stone-200/70 text-stone-700 px-1.5 py-0.5 rounded font-mono font-bold">Zero Bypass</span>
                 </div>
-                <div class="p-3">
-                  <div class="flex items-center justify-between mb-1">
-                    <h4 class="text-xs font-bold text-white">Section 4.4 Rubric Firewall</h4>
-                    <span id="badge_guardrail" class="text-[10px] px-1.5 py-0.5 rounded font-mono bg-slate-800 text-slate-400">IDLE</span>
+                <div class="p-3.5">
+                  <div class="flex items-center justify-between mb-1.5">
+                    <h4 class="text-xs font-bold text-stone-900">Section 4.4 Firewall</h4>
+                    <span id="badge_guardrail" class="text-[10px] px-2 py-0.5 rounded-full font-mono bg-stone-100 text-stone-600 border border-stone-200 font-bold">IDLE</span>
                   </div>
-                  <p class="text-[11px] text-slate-400 leading-snug">9 rubric gates. Unconditionally rejects user assurance bypasses ('it is safe', '100% legal').</p>
-                  <div id="summary_guardrail" class="mt-2 text-[10px] font-mono text-rose-300 truncate bg-[#0f1322] p-1.5 rounded border border-[#21293e]">
+                  <p class="text-[11px] text-stone-600 leading-snug">9 rubric gates. Unconditionally rejects user assurance bypasses ('it is safe', '100% legal').</p>
+                  <div id="summary_guardrail" class="mt-2.5 text-[10px] font-mono text-rose-700 truncate bg-stone-50 p-1.5 rounded-lg border border-stone-200/80 font-bold">
                     Anti-Assurance: Armed (100% Rate)
                   </div>
                 </div>
                 <div class="port port-out" data-port="out" style="top: 50%;"></div>
               </div>
 
-              <!-- 7. Decision Switch / Router Node (Col 5 Center) -->
-              <div id="node_router" class="n8n-node absolute rounded-xl bg-[#161a29] border border-[#2b354f] shadow-xl overflow-hidden" style="left: 1360px; top: 220px; width: 200px;" onclick="selectWorkflowNode('router')">
+              <!-- 7. Decision Router Node (Col 5 Center) -->
+              <div id="node_router" class="n8n-node absolute overflow-hidden" style="left: 1360px; top: 220px; width: 200px;" onclick="selectWorkflowNode('router')">
                 <div class="port port-in" data-port="in-top" style="top: 30%;"></div>
                 <div class="port port-in" data-port="in-bottom" style="top: 70%;"></div>
-                <div class="px-3 py-2 bg-gradient-to-r from-[#475569] to-[#64748b] flex items-center justify-between text-white">
-                  <div class="flex items-center gap-1.5">
-                    <span class="text-sm">🔀</span>
-                    <span class="font-bold text-xs uppercase tracking-wider">Decision Router</span>
+                <div class="px-3.5 py-2.5 bg-stone-50 border-b border-stone-100 flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-stone-600"></span>
+                    <span class="font-bold text-xs uppercase tracking-wider text-stone-800">Decision Router</span>
                   </div>
-                  <span class="text-[10px] bg-black/30 px-1 py-0.5 rounded font-mono">Switch</span>
+                  <span class="text-[10px] bg-stone-200/70 text-stone-700 px-1 py-0.5 rounded font-mono font-bold">Switch</span>
                 </div>
                 <div class="p-3 text-[11px] space-y-2">
-                  <div class="p-1.5 rounded bg-emerald-950/40 border border-emerald-800/60 text-emerald-300 flex items-center justify-between">
+                  <div class="p-2 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold flex items-center justify-between">
                     <span>All Pass</span>
                     <span class="font-mono">&rarr; Ready</span>
                   </div>
-                  <div class="p-1.5 rounded bg-rose-950/40 border border-rose-800/60 text-rose-300 flex items-center justify-between">
+                  <div class="p-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 font-bold flex items-center justify-between">
                     <span>Fail / Assurance</span>
                     <span class="font-mono">&rarr; Refuse</span>
                   </div>
@@ -471,45 +492,45 @@
               </div>
 
               <!-- 8. Output Ready Node (Col 6 Top) -->
-              <div id="node_dispatcher" class="n8n-node absolute rounded-xl bg-[#161a29] border border-[#2b354f] shadow-xl overflow-hidden" style="left: 1630px; top: 80px; width: 260px;" onclick="selectWorkflowNode('dispatcher')">
+              <div id="node_dispatcher" class="n8n-node absolute overflow-hidden" style="left: 1630px; top: 80px; width: 260px;" onclick="selectWorkflowNode('dispatcher')">
                 <div class="port port-in" data-port="in" style="top: 50%;"></div>
-                <div class="px-3 py-2 bg-gradient-to-r from-[#10b981] to-[#059669] flex items-center justify-between text-white">
+                <div class="px-3.5 py-2.5 bg-stone-50 border-b border-stone-100 flex items-center justify-between">
                   <div class="flex items-center gap-2">
-                    <span class="text-sm">🚀</span>
-                    <span class="font-bold text-xs uppercase tracking-wider">Ready Card & Dispatch</span>
+                    <span class="w-2 h-2 rounded-full bg-emerald-600"></span>
+                    <span class="font-bold text-xs uppercase tracking-wider text-stone-800">Ready Card</span>
                   </div>
-                  <span class="text-[10px] bg-black/30 px-1.5 py-0.5 rounded font-mono">Port 3000</span>
+                  <span class="text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-200 px-1.5 py-0.5 rounded font-mono font-bold">Dispatched</span>
                 </div>
-                <div class="p-3">
-                  <div class="flex items-center justify-between mb-1">
-                    <h4 class="text-xs font-bold text-white">Tone Card Ready</h4>
-                    <span id="badge_dispatcher" class="text-[10px] px-1.5 py-0.5 rounded font-mono bg-slate-800 text-slate-400">IDLE</span>
+                <div class="p-3.5">
+                  <div class="flex items-center justify-between mb-1.5">
+                    <h4 class="text-xs font-bold text-stone-900">Tone Card Ready</h4>
+                    <span id="badge_dispatcher" class="text-[10px] px-2 py-0.5 rounded-full font-mono bg-stone-100 text-stone-600 border border-stone-200 font-bold">IDLE</span>
                   </div>
-                  <p class="text-[11px] text-slate-400 leading-snug">Emits verified card with compliance badges and pushes to Mock Aggregator queue.</p>
-                  <div id="summary_dispatcher" class="mt-2 text-[10px] font-mono text-emerald-400 truncate bg-[#0f1322] p-1.5 rounded border border-[#21293e]">
+                  <p class="text-[11px] text-stone-600 leading-snug">Emits verified card with compliance badges and pushes to Mock Aggregator queue.</p>
+                  <div id="summary_dispatcher" class="mt-2.5 text-[10px] font-mono text-emerald-700 truncate bg-stone-50 p-1.5 rounded-lg border border-stone-200/80 font-bold">
                     Status: Dispatched
                   </div>
                 </div>
               </div>
 
               <!-- 9. Output Refusal Node (Col 6 Bottom) -->
-              <div id="node_quarantine" class="n8n-node absolute rounded-xl bg-[#161a29] border border-[#2b354f] shadow-xl overflow-hidden" style="left: 1630px; top: 370px; width: 260px;" onclick="selectWorkflowNode('quarantine')">
+              <div id="node_quarantine" class="n8n-node absolute overflow-hidden" style="left: 1630px; top: 370px; width: 260px;" onclick="selectWorkflowNode('quarantine')">
                 <div class="port port-in" data-port="in" style="top: 50%;"></div>
-                <div class="port port-out" data-port="loop-out" style="top: 75%; border-color: #f43f5e;" title="Loop-Back Remediation Output"></div>
-                <div class="px-3 py-2 bg-gradient-to-r from-[#e11d48] to-[#be123c] flex items-center justify-between text-white">
+                <div class="port port-out" data-port="loop-out" style="top: 75%; border-color: #D97706;" title="Loop-Back Remediation Output"></div>
+                <div class="px-3.5 py-2.5 bg-stone-50 border-b border-stone-100 flex items-center justify-between">
                   <div class="flex items-center gap-2">
-                    <span class="text-sm">🚫</span>
-                    <span class="font-bold text-xs uppercase tracking-wider">Card Refusal & Quarantine</span>
+                    <span class="w-2 h-2 rounded-full bg-rose-600"></span>
+                    <span class="font-bold text-xs uppercase tracking-wider text-stone-800">Card Refusal</span>
                   </div>
-                  <span class="text-[10px] bg-black/30 px-1.5 py-0.5 rounded font-mono">Refused</span>
+                  <span class="text-[10px] bg-rose-50 text-rose-800 border border-rose-200 px-1.5 py-0.5 rounded font-mono font-bold">Refused</span>
                 </div>
-                <div class="p-3">
-                  <div class="flex items-center justify-between mb-1">
-                    <h4 class="text-xs font-bold text-white">Refusal Maintained</h4>
-                    <span id="badge_quarantine" class="text-[10px] px-1.5 py-0.5 rounded font-mono bg-slate-800 text-slate-400">IDLE</span>
+                <div class="p-3.5">
+                  <div class="flex items-center justify-between mb-1.5">
+                    <h4 class="text-xs font-bold text-stone-900">Refusal Maintained</h4>
+                    <span id="badge_quarantine" class="text-[10px] px-2 py-0.5 rounded-full font-mono bg-stone-100 text-stone-600 border border-stone-200 font-bold">IDLE</span>
                   </div>
-                  <p class="text-[11px] text-slate-400 leading-snug">Maintains rejection, presents suggestion chips, and records trace to SQLite Quarantine.</p>
-                  <div id="summary_quarantine" class="mt-2 text-[10px] font-mono text-rose-400 truncate bg-[#0f1322] p-1.5 rounded border border-[#21293e]">
+                  <p class="text-[11px] text-stone-600 leading-snug">Maintains rejection, presents suggestion chips, and records trace to SQLite Quarantine.</p>
+                  <div id="summary_quarantine" class="mt-2.5 text-[10px] font-mono text-rose-700 truncate bg-stone-50 p-1.5 rounded-lg border border-stone-200/80 font-bold">
                     Quarantine Queue Active
                   </div>
                 </div>
@@ -519,21 +540,21 @@
           </div>
 
           <!-- Deep Inspection Drawer (Right Panel) -->
-          <div id="workflowInspectorDrawer" class="w-96 bg-[#121624] border-l border-[#21283d] flex flex-col p-4 overflow-y-auto custom-scrollbar shrink-0 z-20">
-            <div class="flex items-center justify-between pb-3 border-b border-[#21283d] mb-3">
+          <div id="workflowInspectorDrawer" class="w-96 bg-white border-l border-stone-200 flex flex-col p-4 overflow-y-auto custom-scrollbar shrink-0 z-20">
+            <div class="flex items-center justify-between pb-3 border-b border-stone-200 mb-3">
               <div>
-                <span id="inspectorNodeType" class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Node Properties</span>
-                <h3 id="inspectorNodeTitle" class="text-sm font-bold text-white">Supervisor Orchestrator</h3>
+                <span id="inspectorNodeType" class="text-[10px] uppercase tracking-wider font-bold text-stone-400">Node Properties</span>
+                <h3 id="inspectorNodeTitle" class="text-sm font-bold text-stone-900">Supervisor Orchestrator</h3>
               </div>
               <div class="flex items-center gap-2">
-                <span id="inspectorNodeBadge" class="text-[10px] px-2 py-0.5 rounded font-mono bg-indigo-950 text-indigo-300 border border-indigo-800">Active</span>
-                <button onclick="toggleInspectorDrawer()" class="text-slate-400 hover:text-white text-xs px-1.5 py-0.5 rounded bg-[#181d2e] hover:bg-[#252f4c]" title="Close Drawer">
-                  <i class="fa-solid fa-times"></i>
+                <span id="inspectorNodeBadge" class="text-[10px] px-2 py-0.5 rounded-full font-mono bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold">Active</span>
+                <button onclick="toggleInspectorDrawer()" class="text-stone-400 hover:text-stone-700 text-sm px-2 py-0.5 rounded-full hover:bg-stone-100" title="Close Drawer">
+                  &times;
                 </button>
               </div>
             </div>
 
-            <div id="inspectorDrawerBody" class="space-y-3.5 text-xs text-slate-300">
+            <div id="inspectorDrawerBody" class="space-y-3.5 text-xs text-stone-700">
               <!-- Dynamically populated details on node click -->
             </div>
           </div>
@@ -545,14 +566,13 @@
       <!-- VIEW 2: Live Trace Stream (Tabular / Swimlanes) -->
       <section id="view-traces" class="hidden flex-1 flex flex-col overflow-hidden">
         <!-- Filter Bar -->
-        <div class="px-6 py-3 border-b border-[#21283d] flex items-center justify-between bg-[#121624]/70">
+        <div class="px-6 py-3 border-b border-stone-200 flex items-center justify-between bg-white">
           <div class="flex items-center space-x-3">
             <div class="relative">
-              <i class="fa-solid fa-search absolute left-3 top-2.5 text-xs text-slate-500"></i>
               <input type="text" id="trace-filter-input" placeholder="Filter traces..." onkeyup="filterTraces()"
-                class="bg-[#181d2e] text-xs text-white pl-8 pr-3 py-1.5 rounded-lg border border-[#2b354f] focus:outline-none focus:border-indigo-500 w-64">
+                class="bg-stone-50 text-xs text-stone-900 px-3 py-1.5 rounded-full border border-stone-200 focus:outline-none focus:border-[#064E3B] w-64 font-mono">
             </div>
-            <select id="component-filter" onchange="filterTraces()" class="bg-[#181d2e] text-xs text-slate-300 px-3 py-1.5 rounded-lg border border-[#2b354f] focus:outline-none">
+            <select id="component-filter" onchange="filterTraces()" class="bg-stone-50 text-xs text-stone-700 px-3 py-1.5 rounded-full border border-stone-200 focus:outline-none">
               <option value="">All Components</option>
               <option value="agent1">Agent 1: Drafter</option>
               <option value="agent2">Agent 2: Checker</option>
@@ -563,7 +583,7 @@
               <option value="dispatcher">Dispatcher</option>
               <option value="inbound">Inbound</option>
             </select>
-            <select id="status-filter" onchange="filterTraces()" class="bg-[#181d2e] text-xs text-slate-300 px-3 py-1.5 rounded-lg border border-[#2b354f] focus:outline-none">
+            <select id="status-filter" onchange="filterTraces()" class="bg-stone-50 text-xs text-stone-700 px-3 py-1.5 rounded-full border border-stone-200 focus:outline-none">
               <option value="">All Statuses</option>
               <option value="ok">OK / Pass</option>
               <option value="fail">Fail</option>
@@ -572,11 +592,11 @@
             </select>
           </div>
           <div class="flex items-center space-x-2">
-            <button onclick="clearTracesView()" class="text-xs px-2.5 py-1.5 bg-[#181d2e] hover:bg-[#252f4c] text-slate-400 hover:text-white rounded-lg transition border border-[#2b354f]">
+            <button onclick="clearTracesView()" class="text-xs px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-full transition border border-stone-200">
               Clear View
             </button>
-            <button onclick="reloadTracesFromDB()" class="text-xs px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition flex items-center gap-1.5">
-              <i class="fa-solid fa-arrows-rotate"></i> Reload DB
+            <button onclick="reloadTracesFromDB()" class="text-xs px-3.5 py-1.5 bg-[#064E3B] hover:bg-[#043327] text-white font-semibold rounded-full transition">
+              Reload DB
             </button>
           </div>
         </div>
@@ -592,19 +612,19 @@
         <div class="max-w-4xl mx-auto w-full">
           <div class="flex items-center justify-between mb-6">
             <div>
-              <h2 class="text-lg font-bold text-white flex items-center gap-2">
-                <i class="fa-solid fa-ban text-rose-400"></i> Banned URL Domains Registry
+              <h2 class="text-lg font-bold text-stone-900">
+                Banned URL Domains Registry
               </h2>
-              <p class="text-xs text-slate-400">Shorteners and domains strictly prohibited by CTIA and carrier aggregators</p>
+              <p class="text-xs text-stone-500">Shorteners and domains strictly prohibited by CTIA and carrier aggregators</p>
             </div>
-            <button onclick="openAddBannedModal()" class="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold rounded-lg shadow transition flex items-center gap-2">
-              <i class="fa-solid fa-plus"></i> Add Banned Domain
+            <button onclick="openAddBannedModal()" class="px-4 py-2 bg-rose-700 hover:bg-rose-800 text-white text-xs font-semibold rounded-full shadow-xs transition">
+              Add Banned Domain
             </button>
           </div>
 
-          <div class="bg-[#121624] border border-[#21283d] rounded-xl overflow-hidden shadow-xl">
+          <div class="bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-xs">
             <table class="w-full text-left text-xs">
-              <thead class="bg-[#181d2e] text-slate-400 uppercase tracking-wider border-b border-[#21283d] font-mono">
+              <thead class="bg-stone-50 text-stone-500 uppercase tracking-wider border-b border-stone-200 font-mono text-[11px]">
                 <tr>
                   <th class="px-4 py-3">Domain</th>
                   <th class="px-4 py-3">Match Type</th>
@@ -613,7 +633,7 @@
                   <th class="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody id="banned-table-body" class="divide-y divide-[#21283d]">
+              <tbody id="banned-table-body" class="divide-y divide-stone-100">
                 <!-- Populated dynamically -->
               </tbody>
             </table>
@@ -626,10 +646,10 @@
         <div class="max-w-5xl mx-auto w-full">
           <div class="flex items-center justify-between mb-6">
             <div>
-              <h2 class="text-lg font-bold text-white flex items-center gap-2">
-                <i class="fa-solid fa-building-shield text-emerald-400"></i> Organization Registry (`org_registry`)
+              <h2 class="text-lg font-bold text-stone-900">
+                Organization Registry
               </h2>
-              <p class="text-xs text-slate-400">Verified Non-Profit and Political entities, domains, and Campaign Verify tokens</p>
+              <p class="text-xs text-stone-500">Verified Non-Profit and Political entities, domains, and Campaign Verify tokens</p>
             </div>
           </div>
 
@@ -643,10 +663,10 @@
       <section id="view-quarantine" class="hidden flex-1 flex flex-col p-6 overflow-y-auto custom-scrollbar">
         <div class="max-w-4xl mx-auto w-full">
           <div class="mb-6">
-            <h2 class="text-lg font-bold text-white flex items-center gap-2">
-              <i class="fa-solid fa-shield-halved text-amber-400"></i> Quarantine & Refusals Queue
+            <h2 class="text-lg font-bold text-stone-900">
+              Quarantine & Refusals Queue
             </h2>
-            <p class="text-xs text-slate-400">Messages blocked by Compliance Rule Tools, Classifier, or Section 4.4 Guardrail Rubric</p>
+            <p class="text-xs text-stone-500">Messages blocked by Compliance Rule Tools, Classifier, or Section 4.4 Guardrail Rubric</p>
           </div>
 
           <div class="space-y-3" id="quarantine-list">
@@ -659,14 +679,14 @@
   </div>
 
   <!-- Tool Inspector Modal (For Full JSON inspection) -->
-  <div id="inspector-modal" class="fixed inset-0 bg-black/75 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-[#121624] border border-[#2b354f] rounded-2xl max-w-4xl w-full p-6 shadow-2xl flex flex-col max-h-[88vh]">
-      <div class="flex items-center justify-between border-b border-[#21283d] pb-3 mb-4">
-        <h3 class="text-sm font-bold text-white flex items-center gap-2">
-          <i class="fa-solid fa-microscope text-indigo-400"></i> Deep Trace & Tool Inspector
+  <div id="inspector-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white border border-stone-200 rounded-2xl max-w-4xl w-full p-6 shadow-2xl flex flex-col max-h-[88vh]">
+      <div class="flex items-center justify-between border-b border-stone-200 pb-3 mb-4">
+        <h3 class="text-sm font-bold text-stone-900">
+          Deep Trace & Tool Inspector
         </h3>
-        <button onclick="closeInspectorModal()" class="text-slate-400 hover:text-white text-sm">
-          <i class="fa-solid fa-times"></i>
+        <button onclick="closeInspectorModal()" class="text-stone-400 hover:text-stone-800 text-lg px-2 rounded-full">
+          &times;
         </button>
       </div>
       <div class="overflow-y-auto flex-1 custom-scrollbar space-y-4 text-xs font-mono" id="inspector-content">
@@ -676,21 +696,21 @@
   </div>
 
   <!-- Add Banned Domain Modal -->
-  <div id="banned-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-[#121624] border border-[#2b354f] rounded-xl max-w-md w-full p-6 shadow-2xl">
-      <h3 class="text-sm font-bold text-white mb-3">Add Prohibited URL Domain</h3>
+  <div id="banned-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white border border-stone-200 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+      <h3 class="text-sm font-bold text-stone-900 mb-3">Add Prohibited URL Domain</h3>
       <div class="space-y-3 text-xs">
         <div>
-          <label class="block text-slate-400 mb-1">Domain Name (e.g. tiny.cc)</label>
-          <input type="text" id="new-banned-domain" placeholder="example.com" class="w-full bg-[#181d2e] text-white px-3 py-2 rounded-lg border border-[#2b354f] focus:outline-none focus:border-rose-500">
+          <label class="block text-stone-600 mb-1 font-semibold">Domain Name (e.g. tiny.cc)</label>
+          <input type="text" id="new-banned-domain" placeholder="example.com" class="w-full bg-stone-50 text-stone-900 px-3 py-2 rounded-xl border border-stone-200 focus:outline-none focus:border-rose-500 font-mono">
         </div>
         <div>
-          <label class="block text-slate-400 mb-1">Reason</label>
-          <input type="text" id="new-banned-reason" placeholder="Prohibited public shortener" class="w-full bg-[#181d2e] text-white px-3 py-2 rounded-lg border border-[#2b354f] focus:outline-none focus:border-rose-500">
+          <label class="block text-stone-600 mb-1 font-semibold">Reason</label>
+          <input type="text" id="new-banned-reason" placeholder="Prohibited public shortener" class="w-full bg-stone-50 text-stone-900 px-3 py-2 rounded-xl border border-stone-200 focus:outline-none focus:border-rose-500">
         </div>
         <div class="flex justify-end space-x-2 pt-2">
-          <button onclick="closeAddBannedModal()" class="px-3 py-1.5 bg-[#181d2e] hover:bg-[#252f4c] text-slate-300 rounded-lg">Cancel</button>
-          <button onclick="submitNewBannedDomain()" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg font-semibold">Add Domain</button>
+          <button onclick="closeAddBannedModal()" class="px-3.5 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-full font-medium">Cancel</button>
+          <button onclick="submitNewBannedDomain()" class="px-4 py-1.5 bg-rose-700 hover:bg-rose-800 text-white rounded-full font-semibold">Add Domain</button>
         </div>
       </div>
     </div>
@@ -725,7 +745,7 @@
         title: "Inbound Webhook Trigger",
         type: "Trigger / Listener",
         badge: "Webhook Event",
-        badgeClass: "bg-orange-950 text-orange-400 border border-orange-800/60",
+        badgeClass: "bg-amber-50 text-amber-800 border border-amber-200",
         component: "inbound",
         role: "Entry endpoint receiving user requests via Chat UI or automated CRM triggers.",
         endpoint: "/api/chat/send",
@@ -736,7 +756,7 @@
         title: "Supervisor Orchestrator",
         type: "Coordinator / State Engine",
         badge: "Deterministic Bus",
-        badgeClass: "bg-indigo-950 text-indigo-400 border border-indigo-800/60",
+        badgeClass: "bg-emerald-50 text-emerald-800 border border-emerald-200",
         component: "supervisor",
         role: "Maintains multi-turn card state, turn ledger, trace logging, and enforces that user assurances cannot override failures.",
         endpoint: "evaluate_and_update_card_state()",
@@ -747,7 +767,7 @@
         title: "Agent 2: Completeness Checker",
         type: "Analysis Agent",
         badge: "Slot & Claims Auditor",
-        badgeClass: "bg-sky-950 text-sky-400 border border-sky-800/60",
+        badgeClass: "bg-blue-50 text-blue-800 border border-blue-200",
         component: "agent2",
         role: "Extracts required campaign slots (Org, Purpose, CTA, Dates, Audience) and builds verifiable Claims Ledger.",
         endpoint: "check_completeness()",
@@ -758,7 +778,7 @@
         title: "Agent 1: Copy Drafter",
         type: "Synthesis Agent",
         badge: "Qwen 2.5 Drafter",
-        badgeClass: "bg-purple-950 text-purple-400 border border-purple-800/60",
+        badgeClass: "bg-purple-50 text-purple-800 border border-purple-200",
         component: "agent1",
         role: "Drafts concise 160-char SMS copy tailored to requested tone and injects required carrier opt-out disclosures.",
         endpoint: "generate_candidate_copy()",
@@ -768,8 +788,8 @@
       compliance: {
         title: "Compliance Rules Engine",
         type: "Deterministic Policy Gate",
-        badge: "Priority A & B Gates",
-        badgeClass: "bg-teal-950 text-teal-400 border border-teal-800/60",
+        badge: "Rules A & B Gates",
+        badgeClass: "bg-teal-50 text-teal-800 border border-teal-200",
         component: "compliance",
         role: "Executes regex & registry checks: Sender in first 80 chars, STOP keyword, banned URL shorteners, Campaign Verify.",
         endpoint: "run_priority_rules()",
@@ -780,7 +800,7 @@
         title: "Guardrail Agent (Section 4.4 Rubric)",
         type: "Safety & Policy Firewall",
         badge: "Zero Bypass",
-        badgeClass: "bg-rose-950 text-rose-400 border border-rose-800/60",
+        badgeClass: "bg-rose-50 text-rose-800 border border-rose-200",
         component: "guardrail",
         role: "Evaluates 9 rubric dimensions (SHAFT, Phishing, Weapons, Fraud, Official Impersonation, Voting). Strictly rejects user assurances.",
         endpoint: "evaluate_candidate()",
@@ -791,7 +811,7 @@
         title: "Decision Router",
         type: "Logic Switch",
         badge: "Gate Evaluator",
-        badgeClass: "bg-slate-800 text-slate-300 border border-slate-700",
+        badgeClass: "bg-stone-100 text-stone-700 border border-stone-300",
         component: "supervisor",
         role: "Evaluates aggregate status of all compliance rules and guardrail rubric gates to route to Ready or Quarantine.",
         endpoint: "evaluate_card_state_branches()",
@@ -802,7 +822,7 @@
         title: "Ready Card & Dispatcher",
         type: "Action Endpoint",
         badge: "Finalized State",
-        badgeClass: "bg-emerald-950 text-emerald-400 border border-emerald-800/60",
+        badgeClass: "bg-emerald-50 text-emerald-800 border border-emerald-200",
         component: "dispatcher",
         role: "Presents finalized Tone Card with 6 green compliance badges and pushes message to Mock Aggregator queue (port 3000).",
         endpoint: "/api/dispatch/send",
@@ -813,7 +833,7 @@
         title: "Card Refusal & Quarantine Registry",
         type: "Safety Quarantine",
         badge: "Quarantined",
-        badgeClass: "bg-rose-950 text-rose-400 border border-rose-800/60",
+        badgeClass: "bg-rose-50 text-rose-800 border border-rose-200",
         component: "supervisor",
         role: "Maintains card refusal, provides context-specific suggestion chips, and records trace event to SQLite Quarantine.",
         endpoint: "/api/observatory/quarantine",
@@ -828,16 +848,13 @@
       if (!port) return null;
       const isOut = port.classList.contains('port-out');
       
-      // Node position inside container
       const nodeLeft = node.offsetLeft;
       const nodeTop = node.offsetTop;
       const nodeW = node.offsetWidth;
       const nodeH = node.offsetHeight;
       
-      // Horizontal port center (port-out is on right edge, port-in is on left edge)
       const x = isOut ? (nodeLeft + nodeW) : nodeLeft;
       
-      // Vertical port center based on port top percentage
       let topPercent = 0.5;
       if (port.style.top) {
         topPercent = parseFloat(port.style.top) / 100;
@@ -887,10 +904,10 @@
       drawerCollapsed = !drawerCollapsed;
       if (drawerCollapsed) {
         drawer.classList.add("hidden");
-        if (toggleBtn) toggleBtn.innerHTML = '<i class="fa-solid fa-chevron-left"></i> Inspect';
+        if (toggleBtn) toggleBtn.textContent = 'Inspect';
       } else {
         drawer.classList.remove("hidden");
-        if (toggleBtn) toggleBtn.innerHTML = '<i class="fa-solid fa-chevron-right"></i> Hide';
+        if (toggleBtn) toggleBtn.textContent = 'Hide';
       }
       setTimeout(fitWorkflowToScreen, 40);
     }
@@ -919,11 +936,9 @@
 
         let pathData = '';
         if (conn.isLoopback) {
-          // Backward remediation loop: from Col 6 (quarantine) under the canvas back to Col 2 (supervisor)
           const bottomY = 590;
           pathData = `M ${p1.x} ${p1.y} C ${p1.x + 90} ${p1.y + 60}, ${p1.x - 30} ${bottomY}, ${(p1.x + p2.x) / 2} ${bottomY} C ${p2.x + 90} ${bottomY}, ${p2.x - 80} ${bottomY - 40}, ${p2.x} ${p2.y}`;
         } else {
-          // Smooth forward S-curve bezier control points
           const deltaX = Math.max(50, (p2.x - p1.x) * 0.45);
           pathData = `M ${p1.x} ${p1.y} C ${p1.x + deltaX} ${p1.y}, ${p2.x - deltaX} ${p2.y}, ${p2.x} ${p2.y}`;
         }
@@ -944,20 +959,18 @@
         svg.appendChild(path);
 
         if (conn.isLoopback) {
-          // Add a loopback label badge in SVG
           const textBadge = document.createElementNS('http://www.w3.org/2000/svg', 'text');
           textBadge.setAttribute('x', `${(p1.x + p2.x) / 2}`);
           textBadge.setAttribute('y', `${584}`);
-          textBadge.setAttribute('fill', '#f43f5e');
+          textBadge.setAttribute('fill', '#D97706');
           textBadge.setAttribute('font-size', '10.5');
-          textBadge.setAttribute('font-family', 'ui-monospace, monospace');
+          textBadge.setAttribute('font-family', 'Space Grotesk, ui-sans-serif, system-ui');
           textBadge.setAttribute('font-weight', 'bold');
           textBadge.setAttribute('text-anchor', 'middle');
-          textBadge.textContent = '🔁 REMEDIATION LOOP-BACK: WHY REJECTED & PROMPT WHAT TO FIX (A, B, C, D)';
+          textBadge.textContent = 'REMEDIATION LOOP-BACK: WHY REJECTED & PROMPT WHAT TO FIX (A, B, C, D)';
           svg.appendChild(textBadge);
         }
 
-        // Connection endpoint dots
         const startCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         startCircle.setAttribute('cx', p1.x);
         startCircle.setAttribute('cy', p1.y);
@@ -981,7 +994,6 @@
       const el = document.getElementById(`node_${nodeId}`);
       if (el) el.classList.add('selected');
 
-      // Expand drawer if collapsed
       if (drawerCollapsed) {
         toggleInspectorDrawer();
       }
@@ -993,9 +1005,8 @@
       document.getElementById('inspectorNodeTitle').textContent = meta.title;
       const badge = document.getElementById('inspectorNodeBadge');
       badge.textContent = meta.badge;
-      badge.className = `text-[10px] px-2 py-0.5 rounded font-mono ${meta.badgeClass}`;
+      badge.className = `text-[10px] px-2.5 py-0.5 rounded-full font-mono font-bold ${meta.badgeClass}`;
 
-      // Get latest traces for this component from active session/filter
       const relevantTraces = allTraces.filter(t => {
         if (activeSessionRun !== 'live') {
           if (t.campaign_id !== activeSessionRun && t.run_id !== activeSessionRun) return false;
@@ -1016,17 +1027,17 @@
       let traceHistoryHtml = '';
       if (relevantTraces.length > 0) {
         traceHistoryHtml = relevantTraces.slice(0, 5).map(t => `
-          <div onclick="inspectTrace('${t.span_id || t.id}')" class="p-2 rounded bg-[#0f1322] border border-[#21293e] hover:border-indigo-500 cursor-pointer text-[11px] transition">
+          <div onclick="inspectTrace('${t.span_id || t.id}')" class="p-2.5 rounded-xl bg-stone-50 border border-stone-200 hover:border-[#064E3B] cursor-pointer text-[11px] transition">
             <div class="flex items-center justify-between mb-1">
-              <span class="font-mono text-slate-300 font-semibold">${t.type}</span>
-              <span class="text-[10px] uppercase font-mono px-1 py-0.2 rounded ${t.status === 'ok' ? 'text-emerald-400 bg-emerald-950/60' : 'text-rose-400 bg-rose-950/60'}">${t.status}</span>
+              <span class="font-mono text-stone-800 font-semibold">${t.type}</span>
+              <span class="text-[10px] uppercase font-mono px-1.5 py-0.2 rounded font-bold ${t.status === 'ok' ? 'text-emerald-800 bg-emerald-50 border border-emerald-200' : 'text-rose-800 bg-rose-50 border border-rose-200'}">${t.status}</span>
             </div>
-            <div class="text-slate-400 truncate">${escapeHtml(t.summary)}</div>
-            ${t.latency_ms ? `<div class="text-[10px] text-slate-500 font-mono mt-0.5">⚡ ${t.latency_ms}ms</div>` : ''}
+            <div class="text-stone-600 truncate">${escapeHtml(t.summary)}</div>
+            ${t.latency_ms ? `<div class="text-[10px] text-stone-400 font-mono mt-0.5">${t.latency_ms}ms</div>` : ''}
           </div>
         `).join('');
       } else {
-        traceHistoryHtml = `<div class="text-[11px] text-slate-500 py-2">No trace events recorded for this node in selected session.</div>`;
+        traceHistoryHtml = `<div class="text-[11px] text-stone-400 py-2">No trace events recorded for this node in selected session.</div>`;
       }
 
       // Remediation Q&A Block for Refusal / Loopback
@@ -1055,8 +1066,8 @@
           const letter = String.fromCharCode(65 + i);
           const cleanText = opt.replace(/^[A-Z]\)\s*/, '');
           return `
-            <button onclick="applyRemediationOption('${escapeHtml(opt.replace(/'/g, "\\'"))}')" class="w-full text-left p-2 rounded-lg bg-[#1a2135] hover:bg-rose-950/70 border border-slate-700/80 hover:border-rose-500 text-slate-200 text-xs transition flex items-start gap-2 shadow-xs cursor-pointer group">
-              <span class="font-bold font-mono px-1.5 py-0.5 rounded bg-rose-900/60 group-hover:bg-rose-800 text-rose-300 text-[10px] shrink-0">${letter}</span>
+            <button onclick="applyRemediationOption('${escapeHtml(opt.replace(/'/g, "\\'"))}')" class="w-full text-left p-2.5 rounded-xl bg-white hover:bg-rose-50 border border-stone-200 hover:border-rose-300 text-stone-800 text-xs transition flex items-start gap-2 shadow-xs cursor-pointer group">
+              <span class="font-bold font-mono px-2 py-0.5 rounded bg-rose-100 text-rose-800 text-[10px] shrink-0">${letter}</span>
               <span class="leading-snug">${escapeHtml(cleanText)}</span>
             </button>
           `;
@@ -1064,37 +1075,32 @@
 
         remediationBlock = `
           <!-- Remediation Loopback Card -->
-          <div class="p-3 rounded-xl bg-gradient-to-br from-rose-950/50 via-[#181d2e] to-[#121624] border border-rose-600/80 shadow-lg space-y-2.5">
-            <div class="flex items-center justify-between border-b border-rose-800/60 pb-2">
-              <span class="text-[11px] font-bold uppercase text-rose-400 flex items-center gap-1.5">
-                <span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
-                🔁 Remediation Loopback
+          <div class="p-3.5 rounded-2xl bg-rose-50/60 border border-rose-200 shadow-xs space-y-2.5">
+            <div class="flex items-center justify-between border-b border-rose-200/80 pb-2">
+              <span class="text-[11px] font-bold uppercase text-rose-800 flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-rose-600 animate-pulse"></span>
+                <span>Remediation Loopback</span>
               </span>
-              <span class="text-[9px] font-mono px-1.5 py-0.5 rounded bg-rose-900/80 text-rose-200 border border-rose-700">Non-Compliant</span>
+              <span class="text-[9px] font-mono px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-300 font-bold">Non-Compliant</span>
             </div>
 
             <div>
-              <div class="text-[10px] uppercase font-bold text-slate-400 mb-1 flex items-center gap-1">
-                <span>⚠️</span> Why It Cannot Be Accepted:
-              </div>
-              <div class="text-[11px] text-rose-200 leading-snug p-2 rounded bg-rose-950/80 border border-rose-900/80">
+              <div class="text-[10px] uppercase font-bold text-stone-500 mb-1">Why It Cannot Be Accepted:</div>
+              <div class="text-[11px] text-rose-900 leading-snug p-2.5 rounded-xl bg-white border border-rose-200">
                 ${escapeHtml(remediationMeta.why)}
               </div>
             </div>
 
             <div>
-              <div class="text-[10px] uppercase font-bold text-amber-400 mb-1 flex items-center gap-1">
-                <span>❓</span> What Specifically to Fix (Prompting User):
-              </div>
-              <div class="text-[11px] text-amber-200 font-semibold p-2 rounded bg-amber-950/50 border border-amber-900/80">
+              <div class="text-[10px] uppercase font-bold text-amber-800 mb-1">What Specifically to Fix:</div>
+              <div class="text-[11px] text-amber-900 font-semibold p-2.5 rounded-xl bg-amber-50 border border-amber-200">
                 ${escapeHtml(remediationMeta.question)}
               </div>
             </div>
 
             <div>
-              <div class="text-[10px] uppercase font-bold text-slate-300 mb-1.5 flex items-center justify-between">
-                <span>📋 Select Fix Option (Loops back to Redraft):</span>
-                <span class="text-[9px] text-indigo-400 font-mono">Interactive Quiz</span>
+              <div class="text-[10px] uppercase font-bold text-stone-600 mb-1.5 flex items-center justify-between">
+                <span>Select Fix Option (Loops back to Redraft):</span>
               </div>
               <div class="space-y-1.5">
                 ${optionButtons}
@@ -1109,73 +1115,73 @@
           ${remediationBlock}
 
           <!-- Role & Description -->
-          <div class="p-2.5 rounded bg-[#0f1322] border border-[#21293e]">
-            <div class="text-[10px] uppercase font-bold text-slate-400 mb-1">Component Function</div>
-            <p class="text-slate-300 text-[11px] leading-relaxed">${meta.role}</p>
-            <div class="mt-2 text-[10px] text-slate-400 font-mono">
-              <span class="text-slate-500">Target:</span> ${meta.endpoint}
+          <div class="p-3 rounded-2xl bg-stone-50 border border-stone-200">
+            <div class="text-[10px] uppercase font-bold text-stone-400 mb-1">Component Function</div>
+            <p class="text-stone-700 text-[11px] leading-relaxed">${meta.role}</p>
+            <div class="mt-2 text-[10px] text-stone-500 font-mono">
+              <span class="text-stone-400">Target:</span> ${meta.endpoint}
             </div>
           </div>
 
           <!-- Live Execution Status in Active Session -->
-          <div class="p-2.5 rounded bg-[#0f1322] border border-[#21293e]">
+          <div class="p-3 rounded-2xl bg-stone-50 border border-stone-200">
             <div class="flex items-center justify-between mb-1.5">
-              <span class="text-[10px] uppercase font-bold text-slate-400">Latest Live Status</span>
+              <span class="text-[10px] uppercase font-bold text-stone-400">Latest Live Status</span>
               ${latestTrace ? `
-                <span class="text-[10px] font-mono px-1.5 py-0.5 rounded font-bold ${latestTrace.status === 'ok' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-rose-950 text-rose-400 border border-rose-800'}">
+                <span class="text-[10px] font-mono px-2 py-0.5 rounded-full font-bold ${latestTrace.status === 'ok' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-800 border border-rose-200'}">
                   ${latestTrace.status.toUpperCase()}
                 </span>
               ` : `
-                <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">IDLE</span>
+                <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-stone-100 text-stone-500 border border-stone-200">IDLE</span>
               `}
             </div>
             ${latestTrace ? `
-              <div class="text-[11px] text-slate-200 font-medium">${escapeHtml(latestTrace.summary)}</div>
-              ${latestTrace.latency_ms ? `<div class="text-[10px] text-slate-400 font-mono mt-1">Latency: ${latestTrace.latency_ms}ms &bull; Span: ${latestTrace.span_id || 'n/a'}</div>` : ''}
+              <div class="text-[11px] text-stone-800 font-medium">${escapeHtml(latestTrace.summary)}</div>
+              ${latestTrace.latency_ms ? `<div class="text-[10px] text-stone-400 font-mono mt-1">Latency: ${latestTrace.latency_ms}ms &bull; Span: ${latestTrace.span_id || 'n/a'}</div>` : ''}
             ` : `
-              <div class="text-[11px] text-slate-500">Node has not executed in this run yet.</div>
+              <div class="text-[11px] text-stone-400">Node has not executed in this run yet.</div>
             `}
           </div>
 
           <!-- Latest Tool Arguments / Input Payload -->
           ${latestTrace && latestTrace.tool_args && Object.keys(latestTrace.tool_args).length > 0 ? `
-            <div class="p-2.5 rounded bg-[#0f1322] border border-[#21293e]">
+            <div class="p-3 rounded-2xl bg-stone-50 border border-stone-200">
               <div class="flex items-center justify-between mb-1">
-                <span class="text-[10px] uppercase font-bold text-emerald-400">Input Payload (tool_args)</span>
-                <span class="text-[10px] font-mono text-slate-500">${Object.keys(latestTrace.tool_args).length} keys</span>
+                <span class="text-[10px] uppercase font-bold text-emerald-700">Input Payload (tool_args)</span>
+                <span class="text-[10px] font-mono text-stone-400">${Object.keys(latestTrace.tool_args).length} keys</span>
               </div>
-              <pre class="bg-[#090b14] p-2 rounded text-[10px] text-emerald-300 font-mono overflow-x-auto max-h-36 custom-scrollbar">${escapeHtml(JSON.stringify(latestTrace.tool_args, null, 2))}</pre>
+              <pre class="bg-white p-2.5 rounded-xl border border-stone-200 text-[10px] text-stone-800 font-mono overflow-x-auto max-h-36 custom-scrollbar">${escapeHtml(JSON.stringify(latestTrace.tool_args, null, 2))}</pre>
             </div>
           ` : `
-            <div class="p-2.5 rounded bg-[#0f1322] border border-[#21293e]">
-              <div class="text-[10px] uppercase font-bold text-slate-400 mb-1">Contract Input Schema</div>
-              <pre class="bg-[#090b14] p-2 rounded text-[10px] text-slate-300 font-mono overflow-x-auto">${escapeHtml(meta.inputSchema)}</pre>
+            <div class="p-3 rounded-2xl bg-stone-50 border border-stone-200">
+              <div class="text-[10px] uppercase font-bold text-stone-400 mb-1">Contract Input Schema</div>
+              <pre class="bg-white p-2.5 rounded-xl border border-stone-200 text-[10px] text-stone-600 font-mono overflow-x-auto">${escapeHtml(meta.inputSchema)}</pre>
             </div>
           `}
 
           <!-- Latest Tool Result / Output -->
           ${latestTrace && latestTrace.tool_result && Object.keys(latestTrace.tool_result).length > 0 ? `
-            <div class="p-2.5 rounded bg-[#0f1322] border border-[#21293e]">
+            <div class="p-3 rounded-2xl bg-stone-50 border border-stone-200">
               <div class="flex items-center justify-between mb-1">
-                <span class="text-[10px] uppercase font-bold text-amber-400">Execution Output (tool_result)</span>
-                <button onclick="inspectTrace('${latestTrace.span_id || latestTrace.id}')" class="text-[10px] text-indigo-400 hover:text-indigo-300">
-                  <i class="fa-solid fa-expand"></i> Inspect
+                <span class="text-[10px] uppercase font-bold text-amber-700">Execution Output (tool_result)</span>
+                <button onclick="inspectTrace('${latestTrace.span_id || latestTrace.id}')" class="text-[10px] text-[#064E3B] font-bold hover:underline">
+                  Inspect
                 </button>
               </div>
-              <pre class="bg-[#090b14] p-2 rounded text-[10px] text-amber-300 font-mono overflow-x-auto max-h-36 custom-scrollbar">${escapeHtml(JSON.stringify(latestTrace.tool_result, null, 2))}</pre>
+              <pre class="bg-white p-2.5 rounded-xl border border-stone-200 text-[10px] text-stone-800 font-mono overflow-x-auto max-h-36 custom-scrollbar">${escapeHtml(JSON.stringify(latestTrace.tool_result, null, 2))}</pre>
             </div>
           ` : `
-            <div class="p-2.5 rounded bg-[#0f1322] border border-[#21293e]">
-              <div class="text-[10px] uppercase font-bold text-slate-400 mb-1">Contract Output Schema</div>
-              <pre class="bg-[#090b14] p-2 rounded text-[10px] text-slate-400 font-mono overflow-x-auto">${escapeHtml(meta.outputSchema)}</pre>
+            <div class="p-3 rounded-2xl bg-stone-50 border border-stone-200">
+              <div class="text-[10px] uppercase font-bold text-stone-400 mb-1">Contract Output Schema</div>
+              <pre class="bg-white p-2.5 rounded-xl border border-stone-200 text-[10px] text-stone-500 font-mono overflow-x-auto">${escapeHtml(meta.outputSchema)}</pre>
             </div>
           `}
 
           <!-- Node Trace History -->
-          <div class="p-2.5 rounded bg-[#0f1322] border border-[#21283d]">
-            <div class="text-[10px] uppercase font-bold text-slate-400 mb-2 flex items-center justify-between">
+          <div class="p-3 rounded-2xl bg-stone-50 border border-stone-200">
+            <div class="text-[10px] uppercase font-bold text-stone-400 mb-2 flex items-center justify-between">
               <span>Node Execution History</span>
-              <span class="text-[10px] font-mono text-slate-500">${relevantTraces.length} events</span>
+              <span class="text-[10px] font-mono text-stone-400">${relevantTraces.length} events</span>
             </div>
             <div class="space-y-1.5">${traceHistoryHtml}</div>
           </div>
@@ -1220,10 +1226,10 @@
 
       if (badgeEl) {
         badgeEl.textContent = trace.status.toUpperCase();
-        badgeEl.className = `text-[10px] px-1.5 py-0.5 rounded font-mono font-bold ${
-          trace.status === 'ok' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' :
-          trace.status === 'fail' || trace.status === 'refused' ? 'bg-rose-950 text-rose-400 border border-rose-800' :
-          'bg-indigo-950 text-indigo-300 border border-indigo-800'
+        badgeEl.className = `text-[10px] px-2 py-0.5 rounded-full font-mono font-bold ${
+          trace.status === 'ok' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' :
+          trace.status === 'fail' || trace.status === 'refused' ? 'bg-rose-50 text-rose-800 border border-rose-200' :
+          'bg-stone-100 text-stone-700 border border-stone-200'
         }`;
       }
 
@@ -1236,10 +1242,8 @@
         nodeEl.classList.add(trace.status === 'ok' ? 'active-node-ok' : 'active-node-fail');
       }
 
-      // Add to Step Ticker
       addTickerStep(trace);
 
-      // If this node is currently selected in inspector drawer, live refresh it!
       if (currentSelectedNodeId === targetNodeId) {
         selectWorkflowNode(targetNodeId);
       }
@@ -1250,11 +1254,10 @@
       const ticker = document.getElementById('workflow-step-ticker');
       if (!ticker) return;
 
-      const compBadge = getComponentBadge(trace.component_id);
       const isErr = trace.status === 'refused' || trace.status === 'fail' || trace.status === 'blocked';
 
       const stepChip = document.createElement('div');
-      stepChip.className = `px-2 py-0.5 rounded shrink-0 flex items-center gap-1.5 border ${isErr ? 'bg-rose-950/80 border-rose-800 text-rose-300' : 'bg-[#181e30] border-[#2b354f] text-slate-200'} cursor-pointer hover:border-orange-500 transition`;
+      stepChip.className = `px-2.5 py-0.5 rounded-full shrink-0 flex items-center gap-1.5 border text-xs ${isErr ? 'bg-rose-50 border-rose-200 text-rose-800 font-semibold' : 'bg-white border-stone-200 text-stone-800'} cursor-pointer hover:border-[#064E3B] transition shadow-2xs`;
       stepChip.onclick = () => {
         let nId = 'supervisor';
         if (trace.component_id === 'agent1') nId = 'agent1';
@@ -1267,9 +1270,9 @@
       };
 
       stepChip.innerHTML = `
-        <span class="font-bold font-mono text-[10px] ${isErr ? 'text-rose-400' : 'text-orange-400'}">${trace.component_id}:</span>
+        <span class="font-bold font-mono text-[10px] ${isErr ? 'text-rose-700' : 'text-[#064E3B]'}">${trace.component_id}:</span>
         <span class="truncate max-w-[180px]">${escapeHtml(trace.summary)}</span>
-        <span class="text-[9px] uppercase font-bold px-1 rounded ${isErr ? 'bg-rose-900 text-rose-200' : 'bg-emerald-900 text-emerald-200'}">${trace.status}</span>
+        <span class="text-[9px] uppercase font-bold px-1.5 py-0.2 rounded-full ${isErr ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'}">${trace.status}</span>
       `;
 
       ticker.prepend(stepChip);
@@ -1285,11 +1288,11 @@
         n.classList.remove('active-node', 'active-node-ok', 'active-node-fail');
       });
       const ticker = document.getElementById('workflow-step-ticker');
-      if (ticker) ticker.innerHTML = '<span class="px-2 py-0.5 rounded bg-[#1e2438] text-slate-400">Listening for inbound prompt...</span>';
+      if (ticker) ticker.innerHTML = '<span class="px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-500 border border-stone-200">Listening for inbound prompt...</span>';
       selectWorkflowNode('supervisor');
     }
 
-    // Animated Workflow Simulation (Compliant vs Adversarial Pushback)
+    // Animated Workflow Simulation
     async function simulateWorkflow(isCompliant) {
       resetWorkflowView();
 
@@ -1299,7 +1302,7 @@
             { node: 'supervisor', wire: ['wire_node_supervisor_node_agent2', 'wire_node_supervisor_node_agent1'], status: 'ok', summary: 'Turn state initialized' },
             { node: 'agent2', wire: 'wire_node_agent2_node_compliance', status: 'ok', summary: 'Slots verified, claims ledger ready' },
             { node: 'agent1', wire: 'wire_node_agent1_node_guardrail', status: 'ok', summary: 'Candidate copy synthesized (148 chars)' },
-            { node: 'compliance', wire: 'wire_node_compliance_node_router', status: 'ok', summary: 'Priority A & B carrier rules: PASS' },
+            { node: 'compliance', wire: 'wire_node_compliance_node_router', status: 'ok', summary: 'Carrier compliance rules: PASS' },
             { node: 'guardrail', wire: 'wire_node_guardrail_node_router', status: 'ok', summary: 'Section 4.4 Rubric: All 9 gates PASSED' },
             { node: 'router', wire: 'wire_node_router_node_dispatcher', status: 'ok', summary: 'Pass branch selected' },
             { node: 'dispatcher', wire: null, status: 'ok', summary: 'Tone Card dispatched to Aggregator' }
@@ -1311,7 +1314,7 @@
             { node: 'guardrail', wire: 'wire_node_guardrail_node_router', status: 'fail', summary: 'REFUSAL MAINTAINED: User assurances cannot override carrier 10DLC' },
             { node: 'router', wire: 'wire_node_router_node_quarantine', status: 'fail', summary: 'Fail branch selected' },
             { node: 'quarantine', wire: 'wire_node_quarantine_node_supervisor', status: 'fail', summary: 'Trace saved to Quarantine Registry' },
-            { node: 'supervisor', wire: 'wire_node_quarantine_node_supervisor', status: 'loop', summary: '🔁 Loop-Back: Prompting user why rejected & asking specifically what to fix (Options A, B, C, D)' }
+            { node: 'supervisor', wire: 'wire_node_quarantine_node_supervisor', status: 'loop', summary: 'Loop-Back: Prompting user why rejected & asking specifically what to fix' }
           ];
 
       for (const step of sequence) {
@@ -1329,10 +1332,10 @@
         }
         if (badgeEl) {
           badgeEl.textContent = step.status.toUpperCase();
-          badgeEl.className = `text-[10px] px-1.5 py-0.5 rounded font-mono font-bold ${
-            step.status === 'ok' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' :
-            step.status === 'loop' ? 'bg-rose-950 text-rose-300 border border-rose-500 animate-pulse' :
-            'bg-rose-950 text-rose-400 border border-rose-800'
+          badgeEl.className = `text-[10px] px-2 py-0.5 rounded-full font-mono font-bold ${
+            step.status === 'ok' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' :
+            step.status === 'loop' ? 'bg-rose-50 text-rose-800 border border-rose-300 animate-pulse' :
+            'bg-rose-50 text-rose-800 border border-rose-200'
           }`;
         }
         if (summaryEl) {
@@ -1371,18 +1374,18 @@
         dispatcher: { label: "Dispatcher", class: "badge-dispatcher", border: "swimlane-dispatcher" },
         inbound: { label: "Inbound", class: "badge-inbound", border: "swimlane-inbound" },
       };
-      return map[comp] || { label: comp || 'system', class: "bg-gray-800 text-gray-300", border: "border-l-gray-600" };
+      return map[comp] || { label: comp || 'system', class: "bg-stone-100 text-stone-700 border border-stone-200", border: "border-l-stone-400" };
     }
 
     // Connect SSE Stream
     function initTraceStream() {
       const source = new EventSource("/api/observatory/stream");
       source.onopen = () => {
-        document.getElementById("conn-dot").className = "w-2 h-2 rounded-full bg-emerald-400 animate-pulse";
+        document.getElementById("conn-dot").className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
         document.getElementById("conn-status").textContent = "Streaming Traces";
       };
       source.onerror = () => {
-        document.getElementById("conn-dot").className = "w-2 h-2 rounded-full bg-rose-400";
+        document.getElementById("conn-dot").className = "w-2 h-2 rounded-full bg-rose-500";
         document.getElementById("conn-status").textContent = "Reconnecting...";
       };
       source.onmessage = (e) => {
@@ -1402,10 +1405,7 @@
       if (allTraces.length > 500) allTraces.pop();
       document.getElementById("trace-counter").textContent = allTraces.length;
       
-      // Update n8n workflow node
       updateWorkflowNodeFromTrace(evt);
-      
-      // Render Traces view
       renderTraces();
       updateQuarantineCount();
     }
@@ -1428,8 +1428,7 @@
 
       if (filtered.length === 0) {
         container.innerHTML = `
-          <div class="text-center py-12 text-slate-500 text-xs">
-            <i class="fa-solid fa-inbox text-3xl mb-2 text-slate-600 block"></i>
+          <div class="text-center py-12 text-stone-400 text-xs">
             No trace events match the current filter.
           </div>`;
         return;
@@ -1438,34 +1437,34 @@
       container.innerHTML = filtered.map((t, idx) => {
         const badge = getComponentBadge(t.component_id);
         const statusColors = {
-          ok: "text-emerald-400 bg-emerald-500/10 border-emerald-500/30",
-          fail: "text-rose-400 bg-rose-500/10 border-rose-500/30",
-          refused: "text-amber-400 bg-amber-500/10 border-amber-500/30",
-          quarantined: "text-red-400 bg-red-500/10 border-red-500/30",
-          retry: "text-blue-400 bg-blue-500/10 border-blue-500/30"
+          ok: "text-emerald-800 bg-emerald-50 border-emerald-200",
+          fail: "text-rose-800 bg-rose-50 border-rose-200",
+          refused: "text-amber-800 bg-amber-50 border-amber-200",
+          quarantined: "text-rose-800 bg-rose-50 border-rose-200",
+          retry: "text-blue-800 bg-blue-50 border-blue-200"
         };
-        const stClass = statusColors[t.status] || "text-slate-400 bg-slate-800 border-slate-700";
+        const stClass = statusColors[t.status] || "text-stone-700 bg-stone-100 border-stone-200";
 
         return `
-          <div onclick="inspectTrace('${t.span_id || idx}')" class="bg-[#121624] border border-[#21283d] rounded-lg p-3 border-l-4 ${badge.border} hover:bg-[#181d2e] hover:border-indigo-500/50 cursor-pointer transition flex items-center justify-between text-xs group shadow-sm">
+          <div onclick="inspectTrace('${t.span_id || idx}')" class="bg-white border border-stone-200 rounded-xl p-3 border-l-4 ${badge.border} hover:border-[#064E3B] cursor-pointer transition flex items-center justify-between text-xs group shadow-xs">
             <div class="flex items-center space-x-3 flex-1 min-w-0">
-              <span class="px-2 py-0.5 rounded text-[11px] font-semibold ${badge.class} shrink-0">
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${badge.class} shrink-0">
                 ${badge.label}
               </span>
-              <span class="font-mono text-slate-400 shrink-0 text-[11px]">
+              <span class="font-mono text-stone-400 shrink-0 text-[11px]">
                 ${t.type}
               </span>
-              <span class="text-slate-200 font-medium truncate group-hover:text-white">
+              <span class="text-stone-800 font-medium truncate group-hover:text-[#064E3B]">
                 ${escapeHtml(t.summary)}
               </span>
             </div>
             <div class="flex items-center space-x-3 shrink-0 ml-4 font-mono text-[11px]">
-              ${t.latency_ms ? `<span class="text-slate-400">${t.latency_ms}ms</span>` : ''}
-              <span class="px-2 py-0.5 rounded border uppercase text-[10px] font-semibold ${stClass}">
+              ${t.latency_ms ? `<span class="text-stone-400">${t.latency_ms}ms</span>` : ''}
+              <span class="px-2 py-0.5 rounded-full border uppercase text-[10px] font-bold ${stClass}">
                 ${t.status}
               </span>
-              <button onclick="event.stopPropagation(); inspectTrace('${t.span_id || idx}')" class="px-2 py-1 rounded bg-[#181d2e] hover:bg-indigo-600 text-indigo-400 hover:text-white transition" title="Inspect Deep Details">
-                <i class="fa-solid fa-code"></i>
+              <button onclick="event.stopPropagation(); inspectTrace('${t.span_id || idx}')" class="px-2.5 py-1 rounded-full bg-stone-100 hover:bg-[#064E3B] text-stone-600 hover:text-white transition font-sans text-xs">
+                Inspect
               </button>
             </div>
           </div>
@@ -1499,7 +1498,6 @@
         renderTraces();
         updateQuarantineCount();
 
-        // Update workflow status from latest traces
         if (allTraces.length > 0) {
           allTraces.slice().reverse().forEach(t => updateWorkflowNodeFromTrace(t));
         }
@@ -1516,7 +1514,7 @@
         const select = document.getElementById("session-run-select");
         if (!select) return;
 
-        let optionsHtml = '<option value="live">🔴 Live Stream (SSE)</option>';
+        let optionsHtml = '<option value="live">Live Stream (SSE)</option>';
         recentRuns.forEach(r => {
           const label = `${r.campaign_id} (${r.event_count} evs${r.has_error ? ' • Refused' : ''})`;
           optionsHtml += `<option value="${r.campaign_id}">${label}</option>`;
@@ -1536,7 +1534,6 @@
         document.getElementById("conn-status").textContent = "Streaming Traces (Live)";
       } else {
         document.getElementById("conn-status").textContent = `Viewing: ${activeSessionRun}`;
-        // Replay traces of this run onto the n8n diagram
         const runTraces = allTraces.filter(t => t.campaign_id === activeSessionRun || t.run_id === activeSessionRun);
         runTraces.forEach(t => updateWorkflowNodeFromTrace(t));
       }
@@ -1559,14 +1556,14 @@
         roster = data.roster || [];
         const container = document.getElementById("roster-list");
         container.innerHTML = roster.map(r => `
-          <div onclick="filterByComponent('${r.id}')" id="roster-item-${r.id}" class="p-2 rounded-lg bg-[#181d2e]/60 border border-[#21283d] hover:bg-[#181d2e] hover:border-indigo-500/50 cursor-pointer transition text-xs shadow-xs" title="Click to filter traces for ${r.name}">
+          <div onclick="filterByComponent('${r.id}')" id="roster-item-${r.id}" class="p-2.5 rounded-xl bg-stone-50 border border-stone-200/90 hover:bg-white hover:border-[#064E3B] cursor-pointer transition text-xs shadow-2xs" title="Click to filter traces for ${r.name}">
             <div class="flex items-center justify-between mb-1">
-              <span class="font-bold text-slate-200 text-[11px]" style="color: ${r.color}">
+              <span class="font-bold text-stone-800 text-[11px]" style="color: ${r.color || '#064E3B'}">
                 ${r.name}
               </span>
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+              <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
             </div>
-            <div class="text-[10px] text-slate-400 font-mono truncate" title="${r.model}">
+            <div class="text-[10px] text-stone-500 font-mono truncate" title="${r.model}">
               ${r.model}
             </div>
           </div>
@@ -1584,14 +1581,14 @@
         document.getElementById("banned-counter").textContent = domains.length;
         const tbody = document.getElementById("banned-table-body");
         tbody.innerHTML = domains.map(d => `
-          <tr class="hover:bg-[#181d2e]/40">
-            <td class="px-4 py-3 font-semibold text-rose-300 font-mono">${escapeHtml(d.domain)}</td>
-            <td class="px-4 py-3 text-slate-400">${escapeHtml(d.match_type)}</td>
-            <td class="px-4 py-3 text-slate-300">${escapeHtml(d.reason)}</td>
-            <td class="px-4 py-3 text-slate-500">${escapeHtml(d.source)}</td>
+          <tr class="hover:bg-stone-50/70">
+            <td class="px-4 py-3 font-semibold text-rose-700 font-mono">${escapeHtml(d.domain)}</td>
+            <td class="px-4 py-3 text-stone-600">${escapeHtml(d.match_type)}</td>
+            <td class="px-4 py-3 text-stone-800">${escapeHtml(d.reason)}</td>
+            <td class="px-4 py-3 text-stone-400 font-mono">${escapeHtml(d.source)}</td>
             <td class="px-4 py-3 text-right">
-              <button onclick="deleteBannedUrl('${d.domain}')" class="text-rose-400 hover:text-rose-300 transition" title="Delete">
-                <i class="fa-solid fa-trash-can"></i>
+              <button onclick="deleteBannedUrl('${d.domain}')" class="text-rose-600 hover:text-rose-800 transition font-medium" title="Delete">
+                Remove
               </button>
             </td>
           </tr>
@@ -1635,18 +1632,18 @@
         document.getElementById("org-counter").textContent = orgs.length;
         const grid = document.getElementById("orgs-grid");
         grid.innerHTML = orgs.map(o => `
-          <div class="bg-[#121624] border border-[#21283d] rounded-xl p-4 space-y-2 text-xs shadow-lg">
-            <div class="flex items-center justify-between border-b border-[#21283d] pb-2">
-              <span class="font-bold text-white text-sm">${escapeHtml(o.display_name)}</span>
-              <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">
+          <div class="bg-white border border-stone-200 rounded-2xl p-4 space-y-2 text-xs shadow-xs">
+            <div class="flex items-center justify-between border-b border-stone-100 pb-2">
+              <span class="font-bold text-stone-900 text-sm">${escapeHtml(o.display_name)}</span>
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-stone-100 text-stone-700 border border-stone-200">
                 ${escapeHtml(o.org_type)}
               </span>
             </div>
-            <div class="text-slate-400"><strong>Legal Name:</strong> ${escapeHtml(o.legal_name)}</div>
-            ${o.committee_name ? `<div class="text-slate-400"><strong>Committee:</strong> ${escapeHtml(o.committee_name)}</div>` : ''}
-            <div class="text-slate-400 font-mono"><strong>Domains:</strong> ${(o.registered_domains || []).join(', ') || 'None'}</div>
-            <div class="text-slate-400 font-mono"><strong>Numbers:</strong> ${(o.sending_numbers || []).join(', ') || 'None'}</div>
-            ${o.campaign_verify_token ? `<div class="text-emerald-400 font-mono"><strong>Campaign Verify:</strong> Verified Token Active</div>` : ''}
+            <div class="text-stone-600"><strong>Legal Name:</strong> ${escapeHtml(o.legal_name)}</div>
+            ${o.committee_name ? `<div class="text-stone-600"><strong>Committee:</strong> ${escapeHtml(o.committee_name)}</div>` : ''}
+            <div class="text-stone-600 font-mono"><strong>Domains:</strong> ${(o.registered_domains || []).join(', ') || 'None'}</div>
+            <div class="text-stone-600 font-mono"><strong>Numbers:</strong> ${(o.sending_numbers || []).join(', ') || 'None'}</div>
+            ${o.campaign_verify_token ? `<div class="text-emerald-700 font-mono font-semibold">Verified Token Active</div>` : ''}
           </div>
         `).join('');
       } catch (e) {
@@ -1662,18 +1659,18 @@
         document.getElementById("quarantine-counter").textContent = qList.length;
         const container = document.getElementById("quarantine-list");
         if (qList.length === 0) {
-          container.innerHTML = `<div class="text-center py-12 text-slate-500 text-xs">No quarantined items. All drafts compliant.</div>`;
+          container.innerHTML = `<div class="text-center py-12 text-stone-400 text-xs">No quarantined items. All drafts compliant.</div>`;
           return;
         }
         container.innerHTML = qList.map(item => `
-          <div class="bg-[#121624] border border-red-900/40 rounded-xl p-4 text-xs space-y-2 shadow-lg">
+          <div class="bg-white border border-rose-200 rounded-2xl p-4 text-xs space-y-2 shadow-xs">
             <div class="flex items-center justify-between">
-              <span class="font-bold text-red-400 uppercase font-mono">${item.status}</span>
-              <span class="text-slate-500 font-mono text-[10px]">${item.ts}</span>
+              <span class="font-bold text-rose-700 uppercase font-mono">${item.status}</span>
+              <span class="text-stone-400 font-mono text-[10px]">${item.ts}</span>
             </div>
-            <div class="text-slate-200 font-medium">${escapeHtml(item.summary)}</div>
+            <div class="text-stone-800 font-medium">${escapeHtml(item.summary)}</div>
             ${item.tool_result ? `
-              <pre class="bg-[#090b14] p-2 rounded text-[11px] text-slate-400 overflow-x-auto">${escapeHtml(JSON.stringify(item.tool_result, null, 2))}</pre>
+              <pre class="bg-stone-50 p-2.5 rounded-xl border border-stone-200 text-[11px] text-stone-700 overflow-x-auto font-mono">${escapeHtml(JSON.stringify(item.tool_result, null, 2))}</pre>
             ` : ''}
           </div>
         `).join('');
@@ -1688,8 +1685,8 @@
         const btnEl = document.getElementById(`tab-btn-${v}`);
         if (viewEl) viewEl.classList.add("hidden");
         if (btnEl) {
-          btnEl.classList.remove("bg-orange-600", "bg-slate-800", "text-white");
-          btnEl.classList.add("text-slate-400");
+          btnEl.classList.remove("bg-[#064E3B]", "text-white");
+          btnEl.classList.add("text-stone-600");
         }
       });
 
@@ -1697,8 +1694,8 @@
       const targetBtn = document.getElementById(`tab-btn-${viewId}`);
       if (targetView) targetView.classList.remove("hidden");
       if (targetBtn) {
-        targetBtn.classList.add(viewId === 'workflow' ? "bg-orange-600" : "bg-slate-800", "text-white");
-        targetBtn.classList.remove("text-slate-400");
+        targetBtn.classList.add("bg-[#064E3B]", "text-white");
+        targetBtn.classList.remove("text-stone-600");
       }
 
       if (viewId === 'workflow') {
@@ -1718,54 +1715,54 @@
       
       content.innerHTML = `
         <div class="space-y-4">
-          <div class="p-3 bg-[#090b14] rounded-xl border border-[#21283d] flex flex-wrap items-center justify-between gap-2">
+          <div class="p-3 bg-stone-50 rounded-2xl border border-stone-200 flex flex-wrap items-center justify-between gap-2">
             <div class="flex items-center gap-2.5">
-              <span class="px-2.5 py-1 rounded text-xs font-bold ${badge.class}">${badge.label}</span>
-              <span class="font-mono text-slate-400 text-xs">Event: <strong class="text-white">${trace.type || 'action'}</strong></span>
-              ${trace.latency_ms ? `<span class="px-2 py-0.5 rounded bg-indigo-950/60 text-indigo-400 border border-indigo-800 text-[11px] font-mono">⚡ ${trace.latency_ms}ms</span>` : ''}
+              <span class="px-2.5 py-1 rounded-full text-xs font-bold ${badge.class}">${badge.label}</span>
+              <span class="font-mono text-stone-600 text-xs">Event: <strong class="text-stone-900">${trace.type || 'action'}</strong></span>
+              ${trace.latency_ms ? `<span class="px-2 py-0.5 rounded-full bg-stone-100 text-stone-700 border border-stone-200 text-[11px] font-mono">${trace.latency_ms}ms</span>` : ''}
             </div>
-            <div class="text-[11px] text-slate-400 font-mono">${trace.ts || 'Live event'}</div>
+            <div class="text-[11px] text-stone-400 font-mono">${trace.ts || 'Live event'}</div>
           </div>
 
-          <div class="p-3 bg-[#121624] rounded-lg border border-[#21283d]">
-            <span class="text-slate-400 block text-[10px] uppercase tracking-wider mb-1">Summary</span>
-            <div class="text-slate-100 font-medium">${escapeHtml(trace.summary)}</div>
+          <div class="p-3.5 bg-stone-50 rounded-2xl border border-stone-200">
+            <span class="text-stone-400 block text-[10px] uppercase tracking-wider mb-1 font-bold">Summary</span>
+            <div class="text-stone-900 font-medium">${escapeHtml(trace.summary)}</div>
           </div>
 
           ${trace.tool_id ? `
-            <div class="p-3 bg-[#121624] rounded-lg border border-[#21283d]">
-              <span class="text-indigo-400 font-bold block text-[10px] uppercase tracking-wider mb-1">Executed Tool</span>
-              <div class="font-mono text-indigo-300">${trace.tool_id}</div>
+            <div class="p-3.5 bg-stone-50 rounded-2xl border border-stone-200">
+              <span class="text-[#064E3B] font-bold block text-[10px] uppercase tracking-wider mb-1">Executed Tool</span>
+              <div class="font-mono text-[#064E3B] font-bold">${trace.tool_id}</div>
             </div>
           ` : ''}
 
           ${trace.tool_args && Object.keys(trace.tool_args).length > 0 ? `
             <div>
-              <div class="flex items-center justify-between text-[11px] text-slate-400 mb-1">
-                <span class="font-bold text-emerald-400 uppercase">Input Payload & Arguments</span>
+              <div class="flex items-center justify-between text-[11px] text-stone-500 mb-1">
+                <span class="font-bold text-emerald-800 uppercase">Input Payload & Arguments</span>
               </div>
-              <pre class="bg-[#090b14] p-3 rounded-lg border border-[#21283d] overflow-x-auto text-emerald-400 leading-relaxed">${escapeHtml(JSON.stringify(trace.tool_args, null, 2))}</pre>
+              <pre class="bg-stone-50 p-3 rounded-2xl border border-stone-200 overflow-x-auto text-emerald-900 leading-relaxed font-mono">${escapeHtml(JSON.stringify(trace.tool_args, null, 2))}</pre>
             </div>
           ` : ''}
 
           ${trace.tool_result ? `
             <div>
-              <div class="flex items-center justify-between text-[11px] text-slate-400 mb-1">
-                <span class="font-bold text-amber-400 uppercase">Execution Output & Verdict</span>
-                <span class="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded ${trace.status === 'ok' ? 'bg-emerald-900/60 text-emerald-300' : 'bg-rose-900/60 text-rose-300'}">${trace.status}</span>
+              <div class="flex items-center justify-between text-[11px] text-stone-500 mb-1">
+                <span class="font-bold text-amber-800 uppercase">Execution Output & Verdict</span>
+                <span class="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full font-bold ${trace.status === 'ok' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">${trace.status}</span>
               </div>
-              <pre class="bg-[#090b14] p-3 rounded-lg border border-[#21283d] overflow-x-auto text-amber-300 leading-relaxed">${escapeHtml(JSON.stringify(trace.tool_result, null, 2))}</pre>
+              <pre class="bg-stone-50 p-3 rounded-2xl border border-stone-200 overflow-x-auto text-amber-900 leading-relaxed font-mono">${escapeHtml(JSON.stringify(trace.tool_result, null, 2))}</pre>
             </div>
           ` : ''}
 
           <div>
-            <div class="flex items-center justify-between text-[11px] text-slate-400 mb-1">
-              <span class="font-bold text-slate-400 uppercase">Complete Trace Metadata</span>
-              <button onclick="copyInspectorJSON()" class="text-indigo-400 hover:text-indigo-300 text-[11px] flex items-center gap-1 cursor-pointer">
-                <i class="fa-regular fa-copy"></i> Copy Raw JSON
+            <div class="flex items-center justify-between text-[11px] text-stone-500 mb-1">
+              <span class="font-bold text-stone-500 uppercase">Complete Trace Metadata</span>
+              <button onclick="copyInspectorJSON()" class="text-[#064E3B] hover:underline text-[11px] font-bold cursor-pointer">
+                Copy Raw JSON
               </button>
             </div>
-            <pre class="bg-[#090b14] p-3 rounded-lg border border-[#21283d] overflow-x-auto text-slate-300 text-[11px] max-h-56">${escapeHtml(JSON.stringify(trace, null, 2))}</pre>
+            <pre class="bg-stone-50 p-3 rounded-2xl border border-stone-200 overflow-x-auto text-stone-800 text-[11px] max-h-56 font-mono">${escapeHtml(JSON.stringify(trace, null, 2))}</pre>
           </div>
         </div>
       `;

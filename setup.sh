@@ -13,26 +13,22 @@ fi
 
 echo "✓ Python 3 detected: $(python3 --version)"
 
-# Check Ollama
-if command -v ollama &> /dev/null; then
-    echo "✓ Ollama CLI detected."
-    # Check if Ollama service is running
-    if curl -s http://localhost:11434/api/tags &> /dev/null; then
-        echo "✓ Local Ollama service is running."
-    else
-        echo "ℹ️ Starting Ollama service in background or run 'ollama serve' in another terminal."
-    fi
-
-    # Check/Pull target model
-    echo "Checking for default target model: qwen2.5:7b-instruct..."
-    if ollama list | grep -q "qwen2.5:7b-instruct"; then
-        echo "✓ Model qwen2.5:7b-instruct is already installed."
-    else
-        echo "Pulling model qwen2.5:7b-instruct via Ollama (this may take a few minutes)..."
-        ollama pull qwen2.5:7b-instruct || echo "⚠️ Could not pull qwen2.5:7b-instruct right now. You can pull it manually or use another model in .env"
-    fi
+# Check Groq API key
+if [ -f ".env" ]; then
+    source_groq_key=$(grep -E "^GROQ_API_KEY=" .env 2>/dev/null | cut -d'=' -f2- | tr -d '"'"'"' ' || echo "")
 else
-    echo "⚠️ Ollama not detected in PATH. You can install it from https://ollama.ai or configure a hosted OpenAI-compatible model in .env"
+    source_groq_key=""
+fi
+ENV_GROQ="${GROQ_API_KEY:-$source_groq_key}"
+
+if [ -z "$ENV_GROQ" ]; then
+    echo "⚠️  WARNING: GROQ_API_KEY is not set."
+    echo "    Copy .env.example to .env and add your Groq API key:"
+    echo "    cp .env.example .env"
+    echo "    Then set: GROQ_API_KEY=gsk_..."
+    echo "    Get a free key at https://console.groq.com/"
+else
+    echo "✓ GROQ_API_KEY detected."
 fi
 
 # Create virtualenv if not present
