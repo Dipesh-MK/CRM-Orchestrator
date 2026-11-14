@@ -228,21 +228,45 @@ def normalize_domain_token(raw_token: str) -> str:
 
 def check_banned_urls(text: str, banned_domains: Optional[List[Dict[str, Any]]] = None) -> ToolResult:
     """Format: Scans message for public shorteners with suffix and obfuscation matching."""
+    # 1. Direct Regex check for zero-tolerance prohibited shorteners (tiny.url & bit.ly)
+    direct_shortener_pattern = re.compile(
+        r"(?i)(?:https?://)?(?:www\.)?(?:tiny(?:\.|\s*\[\.\]\s*)url|tinyurl(?:\.|\s*\[\.\]\s*)com|bit(?:\.|\s*\[\.\]\s*)ly|bitly(?:\.|\s*\[\.\]\s*)com)(?:[:/?#\s]|$|[^\w.-])"
+    )
+    m_direct = direct_shortener_pattern.search(text)
+    if m_direct:
+        offending = m_direct.group(0).strip()
+        return ToolResult(
+            tool_id="check_banned_urls",
+            category="format",
+            passed=False,
+            reason=f"Prohibited public short URL domain detected ('{offending}'). Carrier 10DLC regulations strictly ban public URL shorteners (tiny.url / bit.ly) to prevent phishing.",
+            offending_span=offending
+        )
+
     if banned_domains is None:
         try:
             banned_domains = get_storage().list_banned_url_domains()
         except Exception:
-            banned_domains = [
-                {"domain": "bit.ly", "match_type": "suffix", "active": 1},
-                {"domain": "tinyurl.com", "match_type": "suffix", "active": 1},
-                {"domain": "tiny.url", "match_type": "suffix", "active": 1},
-            ]
+            banned_domains = []
+
+    hardcoded_banned = [
+        {"domain": "bit.ly", "match_type": "suffix", "active": 1},
+        {"domain": "bitly.com", "match_type": "suffix", "active": 1},
+        {"domain": "tinyurl.com", "match_type": "suffix", "active": 1},
+        {"domain": "tiny.url", "match_type": "suffix", "active": 1},
+    ]
+    seen_domains = {b.get("domain", "").lower().strip() for b in (banned_domains or [])}
+    active_banned = list(banned_domains or [])
+    for hb in hardcoded_banned:
+        if hb["domain"] not in seen_domains:
+            active_banned.append(hb)
+
     # Find all domain or URL-like tokens
     tokens = re.findall(r"(?:https?://)?(?:[a-zA-Z0-9_\-]+(?:\[\.\]|．|\.))+[a-zA-Z]{2,}(?:[^\s]*)?", text)
     
     for tok in tokens:
         clean_d = normalize_domain_token(tok)
-        for b in banned_domains:
+        for b in active_banned:
             if not b.get("active", 1):
                 continue
             b_domain = b["domain"].lower().strip()

@@ -316,7 +316,8 @@ def emit_event(state: Dict[str, Any], step_id: str, step_title: str, step_icon: 
 def is_greeting_or_general_inquiry(msg: str) -> bool:
     clean = msg.strip().lower()
     campaign_keywords = [
-        "charit", "donate", "fundrais", "volunteer", "gala", "non-profit", "ngo",
+        "charit", "donate", "fundrais", "volunteer", "gala", "non-profit", "nonprofit", "ngo", "relief", "food bank", "shelter",
+        "politic", "campaign", "candidate", "pac", "election", "vote", "voter", "ballot", "polling", "senat", "congress", "mayor", "town hall", "rally",
         "electric", "bill", "power", "utility", "energy", "water", "broadband", "disconnection",
         "sale", "discount", "retail", "promo", "shop", "store", "fashion", "deal", "code", "bogo",
         "dental", "clinic", "doctor", "health", "hospital", "patient", "appointment", "checkup",
@@ -340,17 +341,68 @@ def is_greeting_or_general_inquiry(msg: str) -> bool:
 
 def detect_campaign_domain(text: str) -> str:
     t = text.lower()
-    if any(w in t for w in ["charit", "donate", "fundrais", "non-profit", "volunteer", "gala", "ngo", "relief", "cause"]):
+    political_terms = [
+        "politic", "campaign", "candidate", "pac", "super pac", "election",
+        "vote", "voter", "ballot", "polling", "senat", "congress", "representative",
+        "mayor", "governor", "caucus", "town hall", "primary", "paid for by",
+        "civic", "referendum", "proposition", "rally", "legislation", "democrat",
+        "republican", "independent", "libertarian", "green party", "constituent"
+    ]
+    charity_terms = [
+        "charit", "donate", "fundrais", "non-profit", "nonprofit", "volunteer",
+        "gala", "ngo", "relief", "cause", "food bank", "shelter", "rescue",
+        "outreach", "501c3", "501c4", "foundation", "benevolent", "aid", "orphan"
+    ]
+    if any(w in t for w in political_terms):
+        return "Political & Civic"
+    if any(w in t for w in charity_terms):
         return "Charity & Non-Profit"
-    elif any(w in t for w in ["electric", "bill", "power", "utility", "energy", "water", "broadband", "disconnection", "meter"]):
-        return "Utility & Energy"
-    elif any(w in t for w in ["sale", "discount", "retail", "promo", "shop", "store", "boutique", "fashion", "deal", "code", "bogo"]):
-        return "Retail & E-Commerce"
-    elif any(w in t for w in ["dental", "clinic", "doctor", "health", "hospital", "patient", "appointment", "checkup"]):
-        return "Healthcare & Clinic"
-    return "General Business"
+    return "Out of Scope"
 
 DOMAIN_CONFIGS = {
+    "Political & Civic": {
+        "domain_name": "Political & Civic",
+        "badge": "🗳️ Political & Civic",
+        "default_tone": "Patriotic & Rallying 🗳️",
+        "recommended_tones": [
+            "Patriotic & Rallying 🗳️",
+            "Urgent Call to Action ⚡",
+            "Official & Direct 🇺🇸",
+            "Grassroots & Community 🤝"
+        ],
+        "questions": [
+            {
+                "key": "organization_name",
+                "label": "🏢 Candidate or PAC Name",
+                "question": "What is the name of the candidate or political committee sponsoring this message? (e.g. Sanchez for Mayor)",
+                "options": []
+            },
+            {
+                "key": "event_type",
+                "label": "🗳️ Political Event / Civic Action",
+                "question": "What is the primary action or event for this campaign?",
+                "options": [
+                    "Town Hall Rally & Meet-and-Greet",
+                    "Get-Out-The-Vote (GOTV) Election Day Alert",
+                    "Volunteer Canvassing & Phone Bank Drive",
+                    "Campaign Fundraising Dinner & Reception",
+                    "Other (Type custom answer)"
+                ]
+            },
+            {
+                "key": "event_date",
+                "label": "📅 Date & Polling Location",
+                "question": "When is the event / voting day, and what is the venue address or polling precinct?",
+                "options": []
+            },
+            {
+                "key": "link_or_contact",
+                "label": "🔗 Official Website / RSVP Link",
+                "question": "What official campaign website or RSVP link should voters visit? (Full branded domain only, no shorteners)",
+                "options": []
+            }
+        ]
+    },
     "Charity & Non-Profit": {
         "domain_name": "Charity & Non-Profit",
         "badge": "🎗️ Charity & Non-Profit",
@@ -918,20 +970,18 @@ async def chat_send(req: ChatMessageRequest):
         if is_greeting_or_general_inquiry(user_msg) and not state.get("templates") and state.get("conversation_stage") != "collecting_info":
             greeting_text = (
                 "🤖 **Welcome to CRMbot Service!**\n\n"
-                "I help you craft high-converting, compliant CRM message campaigns for SMS, WhatsApp, and Email across any industry:\n\n"
-                "- 🎗️ **Charity & Community Drives** (fundraising, volunteer calls, galas)\n"
-                "- ⚡ **Utility & Bill Reminders** (electricity, water, broadband notices)\n"
-                "- 🛍️ **Retail & E-Commerce** (flash sales, promo codes, exclusive drops)\n"
-                "- 🏥 **Healthcare & Clinics** (appointments, routine checkups)\n"
-                "- 💻 **SaaS & Subscriptions** (renewals, expiring trials)\n"
-                "- 🎓 **Education & Tuition** (course admissions, fee deadlines)\n\n"
-                "To get started, tell me about your campaign idea, or click one of the quick starters below:"
+                "I help you craft high-converting, compliant CRM message campaigns for SMS, WhatsApp, and Email.\n\n"
+                "⚠️ **Gateway Policy Notice**: This system operates strictly under an approved **Charity & Political Events Whitelist**. Public short links (e.g. `tiny.url`, `bit.ly`) are strictly prohibited under carrier 10DLC anti-phishing regulations.\n\n"
+                "**Supported Whitelisted Categories:**\n"
+                "- 🎗️ **Charity & Non-Profit Drives** (fundraising galas, donor appeals, volunteer relief, community food banks)\n"
+                "- 🗳️ **Political & Civic Campaigns** (candidate rallies, voter turnout alerts, town halls, ballot initiative drives)\n\n"
+                "To get started, tell me about your charity or political event, or click one of the quick starters below:"
             )
             starter_chips = [
-                "🎗️ Charity Fundraiser Event",
-                "⚡ Electricity Bill Reminder",
-                "🛍️ 30% Off Flash Sale",
-                "🏥 Dental Clinic Reminder"
+                "🎗️ Hope Foundation Charity Gala",
+                "🗳️ Maria Sanchez Town Hall Rally",
+                "🤝 Community Relief Food Drive",
+                "🗳️ GOTV Voter Turnout Alert"
             ]
             record_assistant_message(session_id, state, greeting_text)
             yield f"data: {json.dumps({'type': 'text_chunk', 'text': greeting_text, 'question_options': starter_chips})}\n\n"
@@ -1152,7 +1202,7 @@ async def chat_send(req: ChatMessageRequest):
         if is_new_campaign_request and len(user_msg.split()) <= 4:
             prompt_new = (
                 "🎯 **Ready to build a new CRM campaign!**\n\n"
-                "Tell me about your business and campaign idea (e.g. retail flash sale, clinic reminders, charity donation, utility reminders) to get started!"
+                "Tell me about your event (exclusively Charity-related or Political-related events, e.g. charity gala fundraiser, volunteer relief drive, candidate town hall rally) to get started!"
             )
             record_assistant_message(session_id, state, prompt_new)
             yield f"data: {json.dumps({'type': 'text_chunk', 'text': prompt_new})}\n\n"
@@ -1162,7 +1212,26 @@ async def chat_send(req: ChatMessageRequest):
         # 4. Initial Campaign Context Received -> Initiate Back-and-forth Q&A or show card if already complete
         if not state.get("templates"):
             domain = detect_campaign_domain(user_msg)
-            cfg = DOMAIN_CONFIGS.get(domain, DOMAIN_CONFIGS["General Business"])
+            if domain == "Out of Scope":
+                refusal_out = (
+                    "⚠️ **Request Declined: Gateway Policy Restriction**\n\n"
+                    "**Why it cannot be accepted:**\n"
+                    "This gateway strictly enforces an allowlist accepting ONLY **Charity-related events** (fundraisers, donation drives, non-profit relief) and **Political-related events** (candidate rallies, voter turnout alerts, town halls).\n\n"
+                    "**What specifically to fix:**\n"
+                    "How would you like to revise your campaign to comply with the Charity & Political Whitelist?"
+                )
+                refusal_opts = [
+                    "A) Pivot to a Non-Profit / Charity fundraising event",
+                    "B) Pivot to a Community volunteer relief drive",
+                    "C) Pivot to a Political campaign rally or civic voter turnout event",
+                    "D) Other (Provide compliant campaign instructions)"
+                ]
+                record_assistant_message(session_id, state, refusal_out, question_options=refusal_opts)
+                yield f"data: {json.dumps({'type': 'text_chunk', 'text': refusal_out, 'question_options': refusal_opts})}\n\n"
+                yield f"data: {json.dumps({'type': 'done'})}\n\n"
+                return
+
+            cfg = DOMAIN_CONFIGS.get(domain, DOMAIN_CONFIGS["Charity & Non-Profit"])
 
             state["campaign_domain"] = domain
             state["business_type"] = domain
@@ -1763,13 +1832,24 @@ async def submit_campaign_form(req: CampaignFormSubmitRequest):
 
         # Check safety
         safety = get_safety_service()
-        combined_text = f"{req.context} {req.organization_name} {req.template_request} {' '.join(req.additional_info or [])}"
+        combined_text = f"{req.context} {req.organization_name} {req.link_or_contact or ''} {req.template_request} {' '.join(req.additional_info or [])}"
         s_eval = await safety.evaluate_safety(session_id, combined_text, "campaign_form_submit")
         if not s_eval.get("allowed", True):
             reason = s_eval.get("reason", "Violates safety policy.")
-            refusal = f"⚠️ **Request Declined**\n\nI cannot assist with this campaign: {reason}."
-            record_assistant_message(session_id, state, refusal)
-            yield f"data: {json.dumps({'type': 'text_chunk', 'text': refusal})}\n\n"
+            fix_question = "How would you like to revise your submission to comply with safety guidelines?"
+            fix_options = [
+                "A) Replace short link with registered full branded domain",
+                "B) Pivot to an authorized Charity or Political event",
+                "C) Remove prohibited content and provide compliant information",
+                "D) Other (Provide compliant prompt instructions)"
+            ]
+            refusal = (
+                f"⚠️ **Request Declined: Safety & Compliance Policy Violation**\n\n"
+                f"**Why it cannot be accepted:**\n{reason}\n\n"
+                f"**What specifically to fix:**\n{fix_question}"
+            )
+            record_assistant_message(session_id, state, refusal, question_options=fix_options)
+            yield f"data: {json.dumps({'type': 'text_chunk', 'text': refusal, 'question_options': fix_options})}\n\n"
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
             return
 
@@ -2528,6 +2608,19 @@ async def regenerate_tone_previews(req: TonePreviewRegenRequest):
     storage.log_user_action(req.session_id, "regenerate_tone_previews", req.model_dump())
 
     safety = get_safety_service()
+
+    # 0. PRE-GUARD: Banned shorteners check
+    test_link_text = f"{req.link_or_contact or ''} {req.user_feedback or ''}"
+    if any(s in test_link_text.lower() for s in ["tiny.url", "tinyurl.com", "bit.ly", "bitly.com"]):
+        return {
+            "status": "blocked",
+            "reason": "Prohibited public URL shortener detected ('tiny.url' / 'bit.ly'). Carrier 10DLC regulations ban public shorteners to prevent phishing.",
+            "question_options": [
+                "A) Replace short link with registered full branded domain",
+                "B) Provide official contact phone number instead",
+                "C) Exclude link from message"
+            ]
+        }
 
     # 1. PRE-GUARD: Verify requested custom tone does not violate carrier ethics or safety rules
     if req.user_feedback and req.user_feedback.strip():

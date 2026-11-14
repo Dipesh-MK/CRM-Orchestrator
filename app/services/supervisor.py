@@ -157,26 +157,46 @@ class Supervisor:
 
     def check_scope(self, text: str) -> Tuple[bool, str]:
         """
-        Scope Screening: Strictly US Non-Profit and Political campaigns only.
-        Decline commercial, retail, SaaS, or general business requests.
+        Scope Screening: Strictly US Non-Profit/Charity and Political campaigns only.
+        Decline commercial, retail, clinic, utility, SaaS, or general business requests.
+        Zero tolerance for public URL shorteners (tiny.url / bit.ly).
         """
         lower = text.lower()
+
+        # 1. Zero tolerance for banned public shorteners
+        if any(s in lower for s in ["tiny.url", "tinyurl.com", "bit.ly", "bitly.com"]):
+            return False, "Prohibited public URL shortener detected ('tiny.url' / 'bit.ly'). Carrier 10DLC regulations ban public shorteners to prevent phishing."
+
         commercial_terms = [
             "retail flash sale", "saas renewal", "dental clinic reminder", "salon booking",
             "ecommerce", "shoe sale", "discount code", "coupon", "black friday", "cyber monday",
-            "gym membership", "chase bank", "bank of america", "crypto trading"
+            "gym membership", "chase bank", "bank of america", "crypto trading", "dental clinic",
+            "teeth cleaning", "utility reminder", "power bill", "electric bill", "water bill"
         ]
         for term in commercial_terms:
             if term in lower:
-                return False, f"This system is strictly scoped to US Non-Profit and Political campaigns. Commercial or banking requests like '{term}' are out of scope."
+                return False, f"This system is strictly scoped to US Non-Profit / Charity and Political campaigns. Commercial or utility requests like '{term}' are out of scope."
 
-        non_profit_terms = ["charity", "nonprofit", "non-profit", "donation", "gala", "donor", "volunteer", "501c3", "501c4", "food bank", "shelter", "rescue"]
-        political_terms = ["candidate", "campaign", "pac", "election", "vote", "voter", "ballot", "polling", "senator", "representative", "mayor", "paid for by", "political"]
+        non_profit_terms = [
+            "charity", "nonprofit", "non-profit", "donation", "donate", "fundraiser",
+            "fundraising", "gala", "donor", "volunteer", "501c3", "501c4", "food bank",
+            "shelter", "rescue", "relief", "outreach"
+        ]
+        political_terms = [
+            "candidate", "campaign", "pac", "super pac", "election", "vote", "voter",
+            "ballot", "polling", "senator", "senate", "representative", "congress", "mayor",
+            "governor", "caucus", "primary", "town hall", "paid for by", "political",
+            "civic", "referendum", "rally"
+        ]
 
         if any(term in lower for term in non_profit_terms + political_terms):
             return True, "Scope valid."
 
-        # Default for ambiguous early discovery: allow if user hasn't explicitly specified commercial
+        # If prompt has substantive text (> 7 words) without charity or political focus, reject
+        if len(lower.split()) > 7:
+            return False, "Gateway Restriction: Only Charity-related events and Political-related events are permitted on this gateway."
+
+        # Default for ambiguous early discovery (e.g. short greetings)
         return True, "Permitted initial discovery."
 
     async def run_compliance_pipeline(

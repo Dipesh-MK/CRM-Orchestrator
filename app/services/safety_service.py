@@ -38,7 +38,7 @@ class SafetyService:
         Skips LLM call on pure chit-chat turns without campaign facts.
         Fails closed on error/invalid output.
         """
-        if context_label in ("user_input", "discovery_input") and is_chit_chat_or_ack(text_to_evaluate):
+        if context_label in ("user_input", "discovery_input", "chat_message") and is_chit_chat_or_ack(text_to_evaluate):
             result = {
                 "allowed": True,
                 "category": "none",
@@ -54,7 +54,113 @@ class SafetyService:
             )
             return result
 
-        # Deterministic Carrier 10DLC SHAFT / Phishing / Credential Harvesting Pre-Filter
+        # 1. Zero-Tolerance Carrier 10DLC Public URL Shortener Filter (tiny.url & bit.ly)
+        banned_shortener_pattern = re.compile(
+            r"(?i)(?:https?://)?(?:www\.)?(?:tiny(?:\.|\s*\[\.\]\s*)url|tinyurl(?:\.|\s*\[\.\]\s*)com|bit(?:\.|\s*\[\.\]\s*)ly|bitly(?:\.|\s*\[\.\]\s*)com)(?:[:/?#\s]|$|[^\w.-])"
+        )
+        m_shortener = banned_shortener_pattern.search(text_to_evaluate)
+        if m_shortener:
+            matched_shortener = m_shortener.group(0).strip()
+            shortener_result = {
+                "allowed": False,
+                "category": "prohibited_url_shortener_carrier_policy",
+                "matched_term": matched_shortener,
+                "reason": (
+                    f"Prohibited public URL shortener detected ('{matched_shortener}'). "
+                    f"US Carrier 10DLC and CTIA regulations strictly ban public URL shorteners (such as tiny.url, tinyurl.com, bit.ly, and bitly.com) "
+                    f"to protect consumers against SMS phishing and fraud."
+                ),
+                "suggested_alternative": "Replace with a registered full domain link (e.g. https://hopefoundation.org/event) or an official support phone number."
+            }
+            self.storage.log_validation(
+                session_id=session_id,
+                validation_type=f"safety_guard_{context_label}",
+                passed=False,
+                details=shortener_result
+            )
+            return shortener_result
+
+        # 2. Strict Whitelist Filter: Accept ONLY Charity-related and Political-related events
+        if context_label in ("user_input", "campaign_interaction", "campaign_form_submit", "discovery_input", "chat_message"):
+            t_lower = text_to_evaluate.lower()
+
+            charity_keywords = (
+                "charit", "non-profit", "nonprofit", "ngo", "fundrais", "donat", "gala",
+                "volunteer", "relief", "food bank", "shelter", "rescue", "outreach",
+                "501c3", "501c4", "foundation", "benevolent", "aid", "orphan"
+            )
+            political_keywords = (
+                "politic", "campaign", "candidate", "pac", "super pac", "election",
+                "vote", "voter", "ballot", "polling", "senat", "congress", "representative",
+                "mayor", "governor", "caucus", "town hall", "primary", "paid for by",
+                "civic", "referendum", "proposition", "rally", "legislation", "democrat",
+                "republican", "independent", "libertarian", "green party", "constituent"
+            )
+
+            is_charity = any(k in t_lower for k in charity_keywords)
+            is_political = any(k in t_lower for k in political_keywords)
+
+            # Detect explicit non-whitelisted commercial, clinic, retail, or utility indicators
+            commercial_indicators = (
+                "dental", "dentist", "teeth", "cleaning", "clinic", "patient", "doctor",
+                "electric", "power bill", "utility", "disconnection", "water bill",
+                "retail", "sale", "discount", "promo", "shop", "store", "boutique",
+                "fashion", "shoes", "coupon", "black friday", "cyber monday", "bogo",
+                "saas", "subscription", "crypto", "casino", "payday", "loan", "bank",
+                "gym", "fitness", "salon", "spa", "car wash", "dealership", "auto repair"
+            )
+            has_commercial = any(c in t_lower for c in commercial_indicators)
+
+            if has_commercial and not (is_charity or is_political):
+                scope_result = {
+                    "allowed": False,
+                    "category": "out_of_scope_non_whitelisted_domain",
+                    "reason": (
+                        "Gateway Policy Restriction: This platform operates strictly under a Charity & Political Events Whitelist. "
+                        "Commercial retail promotions, healthcare/dental clinics, utility billing notices, and general corporate campaigns are strictly disallowed."
+                    ),
+                    "suggested_alternative": "Please submit a message for a registered charitable organization, fundraiser, community relief drive, or an authorized political campaign / civic event."
+                }
+                self.storage.log_validation(
+                    session_id=session_id,
+                    validation_type=f"safety_guard_{context_label}",
+                    passed=False,
+                    details=scope_result
+                )
+                return scope_result
+
+            # Check if this session has already been established as a whitelisted domain
+            is_existing_whitelisted_session = False
+            try:
+                sess_record = self.storage.get_session(session_id)
+                if sess_record and sess_record.get("meta"):
+                    m = sess_record.get("meta", {})
+                    dom = m.get("campaign_domain") or m.get("business_type") or ""
+                    if dom in ("Charity & Non-Profit", "Political & Civic"):
+                        is_existing_whitelisted_session = True
+            except Exception:
+                pass
+
+            # If message is substantial (longer prompt) and not related to charity or political events:
+            if not (is_charity or is_political) and not is_existing_whitelisted_session and len(t_lower.split()) > 7:
+                scope_result = {
+                    "allowed": False,
+                    "category": "out_of_scope_non_whitelisted_domain",
+                    "reason": (
+                        "Gateway Policy Restriction: Only Charity-related events and Political-related events are permitted on this gateway. "
+                        "Commercial promotions, healthcare clinics, retail sales, and corporate messages are not accepted."
+                    ),
+                    "suggested_alternative": "Please specify a charitable cause, fundraiser, non-profit drive, or political / civic campaign."
+                }
+                self.storage.log_validation(
+                    session_id=session_id,
+                    validation_type=f"safety_guard_{context_label}",
+                    passed=False,
+                    details=scope_result
+                )
+                return scope_result
+
+        # 3. Deterministic Carrier 10DLC SHAFT / Phishing / Credential Harvesting Pre-Filter
         prohibited_pattern = re.compile(
             r"(?i)\b("
             r"cannabis|marijuana|thc|pre-rolls|edibles|dispensary|"
@@ -70,7 +176,7 @@ class SafetyService:
                 "allowed": False,
                 "category": "prohibited_content_carrier_policy",
                 "reason": f"Prohibited under US Carrier 10DLC / SHAFT guidelines (detected: '{matched_term}'). Carrier policies strictly prohibit this category nationwide regardless of state licenses.",
-                "suggested_alternative": "Please reformulate for a compliant commercial, charitable, or organizational use-case."
+                "suggested_alternative": "Please reformulate for a compliant charitable or political use-case."
             }
             self.storage.log_validation(
                 session_id=session_id,
@@ -85,9 +191,11 @@ class SafetyService:
         system_prompt = f"""{safety_policy}
 
 CRITICAL INSTRUCTION:
-- Legitimate commercial, non-profit, charitable, and political SMS communications (event galas, invitations, dates, venues, RSVP/ticket links, donations) are FULLY PERMITTED and SAFE.
-- ONLY set allowed: false for actual violations: illegal drugs, weapons, phishing/credential harvesting (passwords, PINs, SSNs), malware, hate speech, or adult/sexual exploitation.
-- Legitimate charity events, RSVPs, and dates are NOT violations. If safe, you MUST output allowed: true, category: "none".
+- This gateway explicitly operates on a Charity and Political whitelist.
+- Legitimate Charity / Non-Profit events (fundraisers, galas, volunteer relief) AND Political / Civic events (candidate campaigns, election alerts, voter turnout, rallies, town halls) are FULLY WHITELISTED, PERMITTED, AND SAFE.
+- DO NOT flag or disallow content simply because it promotes a political candidate, campaign, election, or voter event. Political events with full domains are explicitly allowed.
+- ONLY set allowed: false for actual violations: illegal drugs, weapons, phishing/credential harvesting (passwords, PINs, SSNs), malware, hate speech, adult/sexual exploitation, public URL shorteners (tiny.url, bit.ly), or non-whitelisted commercial retail promotions.
+- If safe and within charity or political categories, you MUST output allowed: true, category: "none".
 
 Evaluate the given content against the policy.
 You MUST respond with a valid JSON object matching this schema:
@@ -161,6 +269,15 @@ You MUST respond with a valid JSON object matching this schema:
                         if not has_real_fraud and any(w in text_to_evaluate.lower() for w in ["show card", "ready to show card", "the card", "confirmation card", "looks good", "ready", "grocery", "exhibition", "farmers"]):
                             data["allowed"] = True
                             data["category"] = "none"
+
+                    # Anti-hallucination check for political content:
+                    # Political and civic campaigns, candidate rallies, voter turnout, and PACs are explicitly WHITELISTED.
+                    if any(c in cat for c in ("politic", "campaign", "candidate", "election", "vote")):
+                        has_real_viol = bool(re.search(r"(?i)\b(kill|bomb|shoot|assassinate|terror|overthrow|fraud|scam|bribe|extort)\b", text_to_evaluate))
+                        if not has_real_viol:
+                            data["allowed"] = True
+                            data["category"] = "none"
+                            data["reason"] = "Political and civic campaign events are fully whitelisted and permitted."
 
                     # Anti-hallucination check for conversational navigational commands:
                     # Generic UI instructions (e.g. "ready to show card", "looks good", "proceed", "that's all")

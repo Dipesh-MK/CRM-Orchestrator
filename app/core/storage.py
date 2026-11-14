@@ -311,6 +311,7 @@ class Storage:
                 now_str = utc_now_iso()
                 seeds = [
                     ("seed_bitly", "bit.ly", "suffix", "Public URL shortener prohibited under carrier 10DLC policy", "CTIA / Carrier Guidelines", 1, now_str, "system_seed"),
+                    ("seed_bitly_com", "bitly.com", "suffix", "Public URL shortener domain prohibited under carrier 10DLC policy", "CTIA / Carrier Guidelines", 1, now_str, "system_seed"),
                     ("seed_tinyurl", "tinyurl.com", "suffix", "Public URL shortener prohibited under carrier 10DLC policy", "CTIA / Carrier Guidelines", 1, now_str, "system_seed"),
                     ("seed_tiny_dot_url", "tiny.url", "suffix", "Public URL shortener alias prohibited under carrier 10DLC policy", "CTIA / Carrier Guidelines", 1, now_str, "system_seed"),
                 ]
