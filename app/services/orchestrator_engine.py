@@ -1728,6 +1728,12 @@ OUTPUT FORMAT (Strict JSON):
         Allows users to see full message copy in each tone, offer suggestions, and re-explore.
         """
         if user_feedback and user_feedback.strip():
+            from app.services.safety_service import get_safety_service
+            safety = get_safety_service()
+            tone_eval = safety.evaluate_tone_safety(session_id, user_feedback)
+            if not tone_eval.get("allowed", True):
+                raise ValueError(tone_eval.get("reason", "Prohibited tone register detected."))
+
             custom_tone = user_feedback.strip()
             target_tones = [
                 f"{custom_tone.title()} ✨" if not any(c in custom_tone for c in ("✨", "🚨", "📜", "💼", "❤️", "🌟")) else custom_tone,
@@ -1744,7 +1750,7 @@ OUTPUT FORMAT (Strict JSON):
 
         def get_tone_description(t_name: str) -> str:
             t_lower = t_name.lower()
-            if "urgent" in t_lower or "aggressive" in t_lower or "final" in t_lower:
+            if "urgent" in t_lower or "aggres" in t_lower or "final" in t_lower:
                 return "Firm, high-priority language highlighting strict deadlines and immediate action."
             elif "heartfelt" in t_lower or "inspiring" in t_lower or "warm" in t_lower:
                 return "Empathetic, community-driven appeal connecting personally with recipients."

@@ -1985,6 +1985,30 @@
         });
 
         const data = await res.json();
+        if (data.status === 'blocked') {
+          if (statusEl) {
+            statusEl.className = 'text-xs p-3 rounded-xl bg-rose-950/80 border border-rose-800 text-rose-200 space-y-2.5 my-2';
+            const optButtons = (data.question_options || []).map(opt => {
+              const cleanVal = opt.replace(/^[A-Z]\)\s*Switch to\s*/i, '').replace(/^[A-Z]\)\s*/i, '').replace(/'/g, "\\'");
+              return `<button type="button" onclick="const inp = document.getElementById('cf-tone-feedback-${formId}'); if(inp) inp.value='${cleanVal}'; regenerateTonePreviewsAction('${formId}');" class="px-2.5 py-1 rounded-lg bg-[#181e30] hover:bg-emerald-950/80 border border-slate-700 hover:border-emerald-500 text-slate-200 hover:text-emerald-300 text-[11px] font-mono transition cursor-pointer flex items-center gap-1.5 shadow-xs"><span class="text-emerald-400 font-bold">✓</span> ${escapeHtml(opt)}</button>`;
+            }).join('');
+
+            statusEl.innerHTML = `
+              <div class="flex items-center justify-between border-b border-rose-900 pb-1.5">
+                <span class="font-bold text-rose-300 flex items-center gap-1.5 text-xs">
+                  <span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+                  🛡️ Guardrail Interception: Tone Request Refused
+                </span>
+                <span class="text-[9px] uppercase font-mono px-1.5 py-0.5 rounded bg-rose-900 text-rose-200">Non-Compliant</span>
+              </div>
+              <div class="text-[11px] text-rose-200 leading-snug">${escapeHtml(data.reason)}</div>
+              <div class="text-[10px] text-slate-300 font-bold uppercase tracking-wider pt-1">Compliant Alternatives (Click to Apply):</div>
+              <div class="flex flex-wrap gap-2 pt-0.5">${optButtons}</div>
+            `;
+          }
+          return;
+        }
+
         if (res.ok && data.tone_candidates && data.tone_candidates.length > 0) {
           formData.tone_candidates = data.tone_candidates;
           formData.tone = data.tone_candidates[0].name;
@@ -1997,10 +2021,14 @@
           updateActiveTonePreview(formId, data.tone_candidates[0].id);
 
           if (statusEl) {
+            statusEl.className = 'text-xs text-amber-300 font-medium py-1';
             statusEl.textContent = `✨ Updated with ${data.tone_candidates.length} fresh variations based on "${feedback || 'tones'}". Select your favorite below!`;
           }
         } else {
-          if (statusEl) statusEl.textContent = '⚠️ Could not regenerate tone previews: ' + (data.detail || 'Server error');
+          if (statusEl) {
+            statusEl.className = 'text-xs text-rose-400 font-medium py-1';
+            statusEl.textContent = '⚠️ Could not regenerate tone previews: ' + (data.detail || data.reason || 'Server error');
+          }
         }
       } catch (e) {
         if (statusEl) statusEl.textContent = '⚠️ Request error: ' + e.message;

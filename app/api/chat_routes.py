@@ -2522,10 +2522,54 @@ Please regenerate the message incorporating all requested modifications while pr
 async def regenerate_tone_previews(req: TonePreviewRegenRequest):
     """
     Generates fresh collapsible message previews across candidate tones based on user suggestions/feedback.
-    Allows continuous loop of refinement until user is satisfied.
+    Applies both PRE-GUARD (tone ethics / anti-coercion) and POST-GUARD (copy compliance) checks.
     """
     state = get_or_create_state(req.session_id)
     storage.log_user_action(req.session_id, "regenerate_tone_previews", req.model_dump())
+
+    safety = get_safety_service()
+
+    # 1. PRE-GUARD: Verify requested custom tone does not violate carrier ethics or safety rules
+    if req.user_feedback and req.user_feedback.strip():
+        tone_eval = safety.evaluate_tone_safety(req.session_id, req.user_feedback)
+        if not tone_eval.get("allowed", True):
+            reason = tone_eval.get("reason", "Prohibited tone request detected.")
+            alt_options = [
+                "A) Switch to 'Direct & High-Converting 🎯'",
+                "B) Switch to 'Urgent & Factual ⏱️'",
+                "C) Switch to 'Professional & Clear 💼'",
+                "D) Switch to 'Warm & Engaging 🌟'"
+            ]
+            from app.services.supervisor import get_supervisor
+            sup = get_supervisor()
+            await sup.emit_trace(
+                run_id=f"run_{req.session_id}",
+                campaign_id=req.session_id,
+                component_id="guardrail",
+                component_kind="agent",
+                event_type="compliance.outcome",
+                to_component="supervisor",
+                status="refused",
+                summary=f"Tone Refusal: {reason}",
+                tool_id="evaluate_tone_safety",
+                tool_args={"requested_tone": req.user_feedback},
+                tool_result={
+                    "blocked": True,
+                    "reason": reason,
+                    "metadata": {
+                        "remediation": {
+                            "why": reason,
+                            "question": "Which compliant tone register would you like to use instead?",
+                            "options": alt_options
+                        }
+                    }
+                }
+            )
+            return {
+                "status": "blocked",
+                "reason": reason,
+                "question_options": alt_options
+            }
 
     b_type = req.business_type or state.get("business_type") or "General Business"
     ctx = req.context or state.get("context") or state.get("slots", {}).get("campaign_goal", {}).get("value") or "Campaign Notice"
@@ -2536,19 +2580,56 @@ async def regenerate_tone_previews(req: TonePreviewRegenRequest):
     channel_fmt = req.channel_format or state.get("channel_format") or "sms"
     dyn_fields = req.dynamic_fields if req.dynamic_fields is not None else state.get("dynamic_fields", {})
 
-    tone_cards = await engine.generate_tone_candidate_previews(
-        session_id=req.session_id,
-        business_type=b_type,
-        context=ctx,
-        organization_name=org_name,
-        link_or_contact=link,
-        address_or_location=addr,
-        event_date=date_val,
-        channel_format=channel_fmt,
-        candidate_tones=req.candidate_tones,
-        user_feedback=req.user_feedback or "",
-        dynamic_fields=dyn_fields
-    )
+    try:
+        tone_cards = await engine.generate_tone_candidate_previews(
+            session_id=req.session_id,
+            business_type=b_type,
+            context=ctx,
+            organization_name=org_name,
+            link_or_contact=link,
+            address_or_location=addr,
+            event_date=date_val,
+            channel_format=channel_fmt,
+            candidate_tones=req.candidate_tones,
+            user_feedback=req.user_feedback or "",
+            dynamic_fields=dyn_fields
+        )
+    except ValueError as ve:
+        # Pre-guard caught prohibited tone in engine
+        reason = str(ve)
+        alt_options = [
+            "A) Switch to 'Direct & High-Converting 🎯'",
+            "B) Switch to 'Urgent & Factual ⏱️'",
+            "C) Switch to 'Professional & Clear 💼'",
+            "D) Switch to 'Warm & Engaging 🌟'"
+        ]
+        return {
+            "status": "blocked",
+            "reason": reason,
+            "question_options": alt_options
+        }
+
+    # 2. POST-GUARD: Audit each generated preview template for coercive language, threats, or deceptive claims
+    verified_tone_cards = []
+    for card in tone_cards:
+        post_eval = await safety.evaluate_copy_safety(req.session_id, card.get("preview", ""))
+        if not post_eval.get("allowed", True):
+            card["compliant"] = False
+            card["safety_warning"] = post_eval.get("reason")
+        else:
+            verified_tone_cards.append(card)
+
+    if not verified_tone_cards:
+        return {
+            "status": "blocked",
+            "reason": "All generated candidate copies failed safety and compliance audit.",
+            "question_options": [
+                "A) Switch to 'Professional & Clear 💼'",
+                "B) Switch to 'Warm & Engaging 🌟'"
+            ]
+        }
+
+    tone_cards = verified_tone_cards
 
     if state.get("current_form_context"):
         state["current_form_context"]["tone_candidates"] = tone_cards

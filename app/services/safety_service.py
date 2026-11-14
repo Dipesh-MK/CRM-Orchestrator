@@ -211,6 +211,88 @@ You MUST respond with a valid JSON object matching this schema:
 
         return result
 
+    def evaluate_tone_safety(self, session_id: str, tone_text: str) -> Dict[str, Any]:
+        """
+        Pre-Guardrail: Validates custom tone requests against carrier ethics and CTIA Section 4.4.
+        Strictly disallows overtly aggressive, hostile, intimidating, threatening,
+        coercive, debt-collection harassment, or deceptive tone registers.
+        """
+        clean = (tone_text or "").strip().lower()
+        if not clean:
+            return {"allowed": True, "category": "none", "reason": "No custom tone specified."}
+
+        # Catch aggressive, intimidating, threatening, coercive, or abusive tone requests (including common misspellings like 'aggresive')
+        prohibited_tone_pattern = re.compile(
+            r"(?i)\b("
+            r"aggres+ive|very\s+aggres+ive|hyper[\s-]?aggres+ive|"
+            r"intimidat(ing|ion)?|threat(ening)?|hostile|coercive|coercion|"
+            r"harass(ing|ment)?|bully(ing)?|abusive|violent|"
+            r"debt[\s-]?collect(ion|or)?[\s-]?(shakedown|threat)|"
+            r"scare[\s-]?tactics?|predatory|extort(ion)?|shaming"
+            r")\b"
+        )
+        m = prohibited_tone_pattern.search(clean)
+        if m:
+            matched = m.group(0)
+            res = {
+                "allowed": False,
+                "category": "prohibited_tone_carrier_ethics",
+                "matched_term": matched,
+                "reason": (
+                    f"Prohibited tone register detected: '{matched}'. "
+                    f"US Carrier 10DLC and CTIA Section 4.4 regulations strictly prohibit aggressive, "
+                    f"intimidating, or coercive messaging registers to protect consumers against harassment."
+                ),
+                "suggested_alternative": "Please select a compliant register such as 'Direct & High-Converting', 'Urgent & Factual', or 'Professional & Clear'."
+            }
+            self.storage.log_validation(
+                session_id=session_id,
+                validation_type="safety_guard_tone_request",
+                passed=False,
+                details=res
+            )
+            return res
+
+        return {"allowed": True, "category": "none", "reason": "Tone request complies with carrier ethics."}
+
+    async def evaluate_copy_safety(self, session_id: str, copy_text: str) -> Dict[str, Any]:
+        """
+        Post-Guardrail: Validates generated message copy to ensure tone does not cross into
+        deceptive urgency, coercive harassment, legal threats, or prohibited carrier content.
+        """
+        clean = (copy_text or "").strip().lower()
+        
+        # Check for deceptive threats or coercive intimidation in drafted copy
+        coercive_copy_pattern = re.compile(
+            r"(?i)\b("
+            r"warrant for your arrest|you will be arrested|sheriff will|police will arrive|"
+            r"law enforcement will take action|jail time|immediate seizure|"
+            r"we are seizing your|pay immediately or face arrest|"
+            r"you will regret this|or else|"
+            r"publicly shame you|we will contact your employer"
+            r")\b"
+        )
+        m_coercive = coercive_copy_pattern.search(clean)
+        if m_coercive:
+            matched = m_coercive.group(0)
+            res = {
+                "allowed": False,
+                "category": "coercive_harassment_in_copy",
+                "matched_term": matched,
+                "reason": f"Generated copy contains coercive or deceptive threats ('{matched}'), violating CTIA consumer protection standards.",
+                "suggested_alternative": "Rephrase as a professional, factual reminder without intimidation."
+            }
+            self.storage.log_validation(
+                session_id=session_id,
+                validation_type="safety_guard_copy_post_guard",
+                passed=False,
+                details=res
+            )
+            return res
+
+        # Fallback to standard safety check
+        return await self.evaluate_safety(session_id, copy_text, context_label="generated_copy_post_guard")
+
 _safety_service: Optional[SafetyService] = None
 
 def get_safety_service() -> SafetyService:
