@@ -244,25 +244,27 @@
 
         <!-- Chat Messages Scroll Container (Center Area, independently scrollable) -->
         <div id="chatMessages" class="flex-1 overflow-y-auto space-y-4 pr-1 min-h-0">
-          <!-- Initial welcome container (Labs.google Inspired Minimal Card) -->
           <div id="welcomeScreen" class="bg-white border border-stone-200 rounded-2xl p-6 sm:p-8 shadow-xs relative">
             <div class="flex items-center justify-between mb-3">
               <span class="text-[10px] font-mono uppercase tracking-widest text-[#D97706] font-bold">Studio / Campaign Drafter</span>
-              <span class="text-[10px] font-mono text-stone-400">v2.4 Active</span>
+              <span class="text-[10px] font-mono text-stone-400">v2.4 Active &bull; Charity &amp; Political Whitelist</span>
             </div>
-            <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-[#064E3B] mb-2">Campaign Drafter & Orchestration</h2>
+            <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-[#064E3B] mb-2">Campaign Drafter &amp; Orchestration</h2>
             <p class="text-stone-600 text-xs sm:text-sm leading-relaxed max-w-xl font-normal">
-              Type your campaign objective, audience details, or offer below. The multi-agent orchestrator will validate claims, propose compliant candidate tones, and format personalized messages.
+              Describe your charity fundraiser or political campaign event below (gateway strictly accepts Charity and Political events). The multi-agent orchestrator will validate compliance, block prohibited shorteners (tiny.url / bit.ly), propose candidate tones, and format personalized messages.
             </p>
             <div class="flex flex-wrap gap-2 pt-5">
-              <button type="button" onclick="prefillChatInput('Flash sale for boutique apparel: 25% off all items with code SPRING25 at checkout.')" class="px-3.5 py-1.5 rounded-full bg-[#FAF7F2] hover:bg-stone-100 text-stone-700 text-xs font-medium border border-stone-200 transition-colors cursor-pointer">
-                Flash Sale Promotion
+              <button type="button" onclick="prefillChatInput('Annual conservation gala for Hope Wildlife Foundation on Dec 15th at Grand Ballroom. RSVP at https://hopewildlife.org/gala.')" class="px-3.5 py-1.5 rounded-full bg-[#FAF7F2] hover:bg-stone-100 text-stone-700 text-xs font-medium border border-stone-200 transition-colors cursor-pointer">
+                🎗️ Charity Gala Fundraiser
               </button>
-              <button type="button" onclick="prefillChatInput('Remind clinic patients their semi-annual hygiene checkup is due next week. Call 88888 88888 to schedule.')" class="px-3.5 py-1.5 rounded-full bg-[#FAF7F2] hover:bg-stone-100 text-stone-700 text-xs font-medium border border-stone-200 transition-colors cursor-pointer">
-                Appointment Reminder
+              <button type="button" onclick="prefillChatInput('Town hall campaign rally for Maria Sanchez for Mayor this Saturday at 4 PM at City Park Pavilion. RSVP at https://sanchezformayor.com/rally.')" class="px-3.5 py-1.5 rounded-full bg-[#FAF7F2] hover:bg-stone-100 text-stone-700 text-xs font-medium border border-stone-200 transition-colors cursor-pointer">
+                🗳️ Mayoral Town Hall Rally
               </button>
-              <button type="button" onclick="prefillChatInput('Annual conservation gala for Hope Wildlife on Dec 12th at Grand Ballroom. RSVP at https://hopewildlife.org/gala.')" class="px-3.5 py-1.5 rounded-full bg-[#FAF7F2] hover:bg-stone-100 text-stone-700 text-xs font-medium border border-stone-200 transition-colors cursor-pointer">
-                Event Announcement
+              <button type="button" onclick="prefillChatInput('Community food bank and winter relief donation drive by Hope Outreach this weekend at Civic Center. Details at https://hopeoutreach.org/relief.')" class="px-3.5 py-1.5 rounded-full bg-[#FAF7F2] hover:bg-stone-100 text-stone-700 text-xs font-medium border border-stone-200 transition-colors cursor-pointer">
+                🤝 Community Relief Food Drive
+              </button>
+              <button type="button" onclick="prefillChatInput('Official election alert: Voting precinct locations and polling hours for the upcoming municipal election on Nov 20th. Find your polling station at https://civicactionpac.org/vote.')" class="px-3.5 py-1.5 rounded-full bg-[#FAF7F2] hover:bg-stone-100 text-stone-700 text-xs font-medium border border-stone-200 transition-colors cursor-pointer">
+                🗳️ GOTV Voter Turnout Alert
               </button>
             </div>
           </div>
@@ -349,7 +351,7 @@
         <!-- Chat Input Form (EchoCard Floating Pill Style) -->
         <form id="chatForm" onsubmit="handleChatSubmit(event)" class="shrink-0 flex items-center gap-2 pt-2 pb-2">
           <div class="flex-1 bg-white border border-stone-200/90 rounded-full px-5 py-2.5 shadow-[0_12px_36px_rgba(28,25,23,0.08)] flex items-center focus-within:ring-2 focus-within:ring-[#D97706]/30 focus-within:border-[#D97706] transition-all">
-            <textarea id="chatInput" rows="1" placeholder="Provide campaign context (e.g. 'flash sale for weekend' or 'donor reminder')..." autocomplete="off"
+            <textarea id="chatInput" rows="1" placeholder="Provide event context (e.g. 'charity gala fundraiser' or 'mayoral campaign rally')..." autocomplete="off"
                       oninput="autoExpandChatInput(this)" onkeydown="handleChatInputKeydown(event)"
                       class="w-full bg-transparent border-0 outline-none focus:outline-none text-xs text-[#064E3B] placeholder:text-stone-400 resize-none max-h-36 overflow-y-auto leading-relaxed custom-scrollbar"></textarea>
           </div>
@@ -497,12 +499,12 @@
       <div class="space-y-1">
         <span class="text-[10px] font-black text-[#064E3B]/50 dark:text-[#FDFBF7]/50 uppercase tracking-widest">Quick Presets:</span>
         <div class="flex items-center gap-1.5 flex-wrap">
-          <button type="button" onclick="setRepromptPreset('Change store/business name to: ')" class="px-3 py-1 rounded-full bg-[#D97706]/10 hover:bg-[#D97706]/20 text-[#D97706] text-[10px] font-bold border border-[#D97706]/20 cursor-pointer">Change Name</button>
-          <button type="button" onclick="setRepromptPreset('Include a 20% promotional discount offer valid until this Friday')" class="px-3 py-1 rounded-full bg-[#064E3B]/10 hover:bg-[#064E3B]/20 text-[#064E3B] dark:text-[#FDFBF7] text-[10px] font-bold border border-[#064E3B]/20 cursor-pointer">Add 20% Offer</button>
-          <button type="button" onclick="setRepromptPreset('Add a strict 24-hour deadline clause before service cutoff')" class="px-3 py-1 rounded-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 text-[10px] font-bold border border-amber-500/20 cursor-pointer">Add Deadline</button>
+          <button type="button" onclick="setRepromptPreset('Change organization / campaign name to: ')" class="px-3 py-1 rounded-full bg-[#D97706]/10 hover:bg-[#D97706]/20 text-[#D97706] text-[10px] font-bold border border-[#D97706]/20 cursor-pointer">Change Name</button>
+          <button type="button" onclick="setRepromptPreset('Include an RSVP deadline and volunteer registration link')" class="px-3 py-1 rounded-full bg-[#064E3B]/10 hover:bg-[#064E3B]/20 text-[#064E3B] dark:text-[#FDFBF7] text-[10px] font-bold border border-[#064E3B]/20 cursor-pointer">Add RSVP Link</button>
+          <button type="button" onclick="setRepromptPreset('Add event start time and venue address')" class="px-3 py-1 rounded-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 text-[10px] font-bold border border-amber-500/20 cursor-pointer">Add Venue Time</button>
         </div>
       </div>
-      <textarea id="repromptModalText" rows="4" placeholder="e.g. 'Change brand name to Apex Dental and add 20% discount offer'..."
+      <textarea id="repromptModalText" rows="4" placeholder="e.g. 'Change organization name to Hope Wildlife and add RSVP link'..."
                 class="w-full bg-[#FDFBF7] dark:bg-[#06241B] border border-[#064E3B]/15 dark:border-white/10 rounded-2xl p-3.5 text-xs text-[#064E3B] dark:text-[#FDFBF7] focus:outline-hidden focus:ring-2 focus:ring-[#D97706]/30"></textarea>
       <div class="flex justify-end gap-2 pt-2">
         <button onclick="closeRepromptModal()" class="px-4 py-2 rounded-full text-xs border border-[#064E3B]/15 hover:bg-[#F3EFE6] font-semibold cursor-pointer">Cancel</button>
@@ -1281,21 +1283,24 @@
         <div id="welcomeScreen" class="bg-white border border-stone-200 rounded-2xl p-6 sm:p-8 shadow-xs relative">
           <div class="flex items-center justify-between mb-3">
             <span class="text-[10px] font-mono uppercase tracking-widest text-[#D97706] font-bold">Studio / Campaign Drafter</span>
-            <span class="text-[10px] font-mono text-stone-400">v2.4 Active</span>
+            <span class="text-[10px] font-mono text-stone-400">v2.4 Active &bull; Charity &amp; Political Whitelist</span>
           </div>
-          <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-[#064E3B] mb-2">Campaign Drafter & Orchestration</h2>
+          <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-[#064E3B] mb-2">Campaign Drafter &amp; Orchestration</h2>
           <p class="text-stone-600 text-xs sm:text-sm leading-relaxed max-w-xl font-normal">
-            Type your campaign objective, audience details, or offer below. The multi-agent orchestrator will validate claims, propose compliant candidate tones, and format personalized messages.
+            Describe your charity fundraiser or political campaign event below (gateway strictly accepts Charity and Political events). The multi-agent orchestrator will validate compliance, block prohibited shorteners (tiny.url / bit.ly), propose candidate tones, and format personalized messages.
           </p>
           <div class="flex flex-wrap gap-2 pt-5">
-            <button type="button" onclick="prefillChatInput('Flash sale for boutique apparel: 25% off all items with code SPRING25 at checkout.')" class="px-3.5 py-1.5 rounded-full bg-[#FAF7F2] hover:bg-stone-100 text-stone-700 text-xs font-medium border border-stone-200 transition-colors cursor-pointer">
-              Flash Sale Promotion
+            <button type="button" onclick="prefillChatInput('Annual conservation gala for Hope Wildlife Foundation on Dec 15th at Grand Ballroom. RSVP at https://hopewildlife.org/gala.')" class="px-3.5 py-1.5 rounded-full bg-[#FAF7F2] hover:bg-stone-100 text-stone-700 text-xs font-medium border border-stone-200 transition-colors cursor-pointer">
+              🎗️ Charity Gala Fundraiser
             </button>
-            <button type="button" onclick="prefillChatInput('Remind clinic patients their semi-annual hygiene checkup is due next week. Call 88888 88888 to schedule.')" class="px-3.5 py-1.5 rounded-full bg-[#FAF7F2] hover:bg-stone-100 text-stone-700 text-xs font-medium border border-stone-200 transition-colors cursor-pointer">
-              Appointment Reminder
+            <button type="button" onclick="prefillChatInput('Town hall campaign rally for Maria Sanchez for Mayor this Saturday at 4 PM at City Park Pavilion. RSVP at https://sanchezformayor.com/rally.')" class="px-3.5 py-1.5 rounded-full bg-[#FAF7F2] hover:bg-stone-100 text-stone-700 text-xs font-medium border border-stone-200 transition-colors cursor-pointer">
+              🗳️ Mayoral Town Hall Rally
             </button>
-            <button type="button" onclick="prefillChatInput('Annual conservation gala for Hope Wildlife on Dec 12th at Grand Ballroom. RSVP at https://hopewildlife.org/gala.')" class="px-3.5 py-1.5 rounded-full bg-[#FAF7F2] hover:bg-stone-100 text-stone-700 text-xs font-medium border border-stone-200 transition-colors cursor-pointer">
-              Event Announcement
+            <button type="button" onclick="prefillChatInput('Community food bank and winter relief donation drive by Hope Outreach this weekend at Civic Center. Details at https://hopeoutreach.org/relief.')" class="px-3.5 py-1.5 rounded-full bg-[#FAF7F2] hover:bg-stone-100 text-stone-700 text-xs font-medium border border-stone-200 transition-colors cursor-pointer">
+              🤝 Community Relief Food Drive
+            </button>
+            <button type="button" onclick="prefillChatInput('Official election alert: Voting precinct locations and polling hours for the upcoming municipal election on Nov 20th. Find your polling station at https://civicactionpac.org/vote.')" class="px-3.5 py-1.5 rounded-full bg-[#FAF7F2] hover:bg-stone-100 text-stone-700 text-xs font-medium border border-stone-200 transition-colors cursor-pointer">
+              🗳️ GOTV Voter Turnout Alert
             </button>
           </div>
         </div>
@@ -1616,7 +1621,7 @@
                     Custom Output / Must-Include Phrasing (Optional)
                   </label>
                   <input type="text" id="cf-template-req-${formId}" value="${tmplVal}"
-                         placeholder="e.g. Free admission, food donation, volunteer perk, 20% discount..."
+                         placeholder="e.g. Free admission, food donation items, volunteer perk, donor tier..."
                          class="w-full px-3 py-1.5 bg-stone-50 border border-stone-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-[#064E3B] text-stone-900">
                 </div>
 
